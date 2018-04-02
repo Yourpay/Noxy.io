@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es6",
+    "newLine": "LF",
+    "outDir": "./build",
+    "sourceMap": false,
+    "declaration": false
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}

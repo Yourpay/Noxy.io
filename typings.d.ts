@@ -1,0 +1,29 @@
+declare module "*env.json" {
+  const value: {
+    mode: string
+    users: {
+      id?: string
+      username: string
+      password?: string
+      email: string
+    }[]
+    roles: {
+      id?: string
+      name: string
+      key: string
+      }[]
+    tokens: { [key: string]: string }
+    databases: {
+      [key: string]: {
+        username: string
+        password: string
+        host: string
+        database: string
+        pool?: number
+      }
+    }
+  };
+  export = value;
+}
+
+declare module "*.json"
