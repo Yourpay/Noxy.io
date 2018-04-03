@@ -7,7 +7,7 @@ import * as path from "path";
 import * as _ from "lodash";
 import User from "../../objects/User";
 
-export default init_chain.addPromise("user", (resolve, reject) => {
+init_chain.addPromise("user", (resolve, reject) => {
   db[env.mode].link()
   .then((link: DBConnection) => {
     Promise.all(_.map(env.users, (u: any) => new User(_.omit(u, "password")).save(u.password)))

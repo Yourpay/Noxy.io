@@ -1,20 +1,24 @@
 import PromiseChain from "./classes/PromiseChain";
-import * as reqall from "require-all";
 import DBPool from "./classes/DBPool";
-import * as _ from "lodash";
+import * as express from "express";
+import User from "./objects/User";
 
 export const db: { [key: string]: DBPool } = {};
 export const users = {};
 export const roles = {};
 export const init_chain = new PromiseChain();
+export const router = express();
 
-init_chain.addLink("db");
-init_chain.addLink("user");
-init_chain.addLink("role");
-reqall(__dirname + "/init");
-init_chain.cycle()
-.then((res) => {
-  console.log(users);
-  console.log(roles);
-})
-.catch(err => console.error(err));
+const user = new User({id: "test", username: "something else", "swagger": "jagger"});
+
+console.log("Normal user", user);
+console.log("Parsed user", user.toObject());
+
+//
+// requireAll(__dirname + "/init");
+// init_chain.cycle()
+// .then((res) => {
+//   console.log(users);
+//   console.log(roles);
+// })
+// .catch(err => console.error(err));

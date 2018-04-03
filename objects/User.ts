@@ -1,4 +1,3 @@
-import * as Promise from "bluebird";
 import * as _ from "lodash";
 import BaseObject from "./BaseObject";
 import * as crypto from "crypto";
@@ -12,23 +11,15 @@ export default class User extends BaseObject {
   public salt?: Buffer;
   public hash?: Buffer;
   
-  constructor(user: DOUser) {
-    super("user", user);
-    this.__required.username = true;
-    this.__required.email = true;
-    this.__protected.salt = this.__required.salt = true;
-    this.__protected.hash = this.__required.hash = true;
-  }
-  
-  public save(password?: string): Promise<this> {
-    return new Promise((resolve, reject) => {
-      const promises = [];
-      if (!this.__validated) { promises.push(this.validate().catch(err => err.code === "400.db.select" ? this : reject(err))); }
-      Promise.all(promises).then(() => {
-        if (password) { this.generateSalt() && this.generateHash(password); }
-        this.__store().then(res => resolve(res), err => reject(err));
-      });
-    });
+  constructor(user: any) {
+    super("user");
+    this.__fields.username = {type: "varchar(32)", required: true};
+    this.__fields.email = {type: "varchar(128)", required: true};
+    this.__fields.password = {intermediate: true};
+    this.__fields.salt = {type: "binary(64)", required: true, protected: true};
+    this.__fields.hash = {type: "binary(64)", required: true, protected: true};
+    this.addTimeFields();
+    this.init(user);
   }
   
   private generateHash(password?: string): this {
@@ -41,15 +32,4 @@ export default class User extends BaseObject {
     return _.set(this, "salt", crypto.randomBytes(64));
   }
   
-}
-
-export interface DOUser {
-  id?: string
-  username?: string
-  email?: string
-  salt?: string
-  hash?: string
-  time_created?: number
-  time_updated?: number
-  time_deleted?: number
 }

@@ -10,7 +10,7 @@ export default class Role extends BaseObject {
   public key?: string;
   
   constructor(role: DORole) {
-    super("role", role);
+    super("role");
     this.__required.name = true;
     this.__protected.key = this.__required.key = true;
     this.__protected.user_created = this.__required.user_created = true;
