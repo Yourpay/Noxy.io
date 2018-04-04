@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import BaseObject from "./BaseObject";
 import * as crypto from "crypto";
+import {tables} from "../app";
 
 export default class User extends BaseObject {
   
@@ -34,3 +35,5 @@ export default class User extends BaseObject {
   }
   
 }
+
+tables["user"] = User;
