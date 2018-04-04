@@ -20,6 +20,7 @@ export default class User extends BaseObject {
     this.__fields.hash = {type: "binary(64)", required: true, protected: true};
     this.addTimeFields();
     this.init(user);
+    if (user.password) { this.__fields.password.onInsert(this, user.password); }
   }
   
   private generateHash(password?: string): this {

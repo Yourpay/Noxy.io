@@ -51,7 +51,7 @@ export default abstract class BaseObject {
   
   protected init(object: string | { [key: string]: any }): this {
     if (typeof object === "string") { return this.__fields.id.onInsert(this, object); }
-    _.each(this.__fields, (value, key) => !value.protected && object[key] && (this[key] = value.onInsert ? value.onInsert(this, object[key]) : object[key]) || true);
+    _.each(this.__fields, (value, key) => !value.protected && object[key] && (this[key] = value.onInsert ? value.onInsert(this, object[key]) : object[key]));
     if (object.id instanceof Buffer && !object.uuid && BaseObject.isUuid(BaseObject.bufferToUuid(object.id))) { return _.set(this, "uuid", BaseObject.bufferToUuid(this.id = object.id)); }
     return this.__fields.id.onInsert(this, object.uuid);
   }
