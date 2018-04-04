@@ -22,7 +22,7 @@ export default abstract class BaseObject {
   protected __type: string;
   protected __validated: boolean;
   protected __fields: { [key: string]: iObjectField } = {
-    id: {type: "binary(16)", onInsert: (t, v) => _.set(t, "id", BaseObject.isUuid(v) ? BaseObject.uuidToBuffer(this.uuid = v) : BaseObject.uuidToBuffer(this.uuid = uuid.v4()))},
+    id: {type: "binary(16)", protected: true, required: true, onInsert: (t, v) => _.set(t, "id", BaseObject.isUuid(v) ? BaseObject.uuidToBuffer(this.uuid = v) : BaseObject.uuidToBuffer(this.uuid = uuid.v4()))},
     uuid: {intermediate: true}
   };
   
@@ -50,18 +50,9 @@ export default abstract class BaseObject {
   }
   
   protected init(object: string | { [key: string]: any }): this {
-    if (typeof object === "string") {
-      return this.__fields.id.onInsert(this, object);
-    }
-    
-    console.log("Building initializer");
-    _.each(object, (value, key) => {
-      console.log(key, value);
-    });
-    
-    if (object.id instanceof Buffer && !object.uuid && BaseObject.isUuid(BaseObject.bufferToUuid(object.id))) {
-      return _.set(this, "uuid", BaseObject.bufferToUuid(this.id = object.id));
-    }
+    if (typeof object === "string") { return this.__fields.id.onInsert(this, object); }
+    _.each(this.__fields, (value, key) => !value.protected && object[key] && (this[key] = value.onInsert ? value.onInsert(this, object[key]) : object[key]) || true);
+    if (object.id instanceof Buffer && !object.uuid && BaseObject.isUuid(BaseObject.bufferToUuid(object.id))) { return _.set(this, "uuid", BaseObject.bufferToUuid(this.id = object.id)); }
     return this.__fields.id.onInsert(this, object.uuid);
   }
   

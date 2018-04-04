@@ -2,16 +2,20 @@ declare module "*env.json" {
   const value: {
     mode: string
     users: {
-      id?: string
-      username: string
-      password?: string
-      email: string
-    }[]
+      [key: string]: {
+        id?: string
+        username: string
+        password?: string
+        email: string
+      }
+    }
     roles: {
-      id?: string
-      name: string
-      key: string
-      }[]
+      [key: string]: {
+        id?: string
+        name: string
+        key: string
+      }
+    }
     tokens: { [key: string]: string }
     databases: {
       [key: string]: {

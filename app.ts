@@ -9,7 +9,7 @@ export const roles = {};
 export const init_chain = new PromiseChain();
 export const router = express();
 
-const user = new User({id: "test", username: "something else", "swagger": "jagger"});
+const user = new User({id: "test", username: "something else", "password": "test"});
 
 console.log("Normal user", user);
 console.log("Parsed user", user.toObject());
@@ -22,3 +22,4 @@ console.log("Parsed user", user.toObject());
 //   console.log(roles);
 // })
 // .catch(err => console.error(err));
+

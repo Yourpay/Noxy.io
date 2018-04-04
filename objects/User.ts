@@ -15,7 +15,7 @@ export default class User extends BaseObject {
     super("user");
     this.__fields.username = {type: "varchar(32)", required: true};
     this.__fields.email = {type: "varchar(128)", required: true};
-    this.__fields.password = {intermediate: true};
+    this.__fields.password = {intermediate: true, protected: true, onInsert: (o: User, v) => typeof v === "string" && o.generateHash(v) && delete o.password};
     this.__fields.salt = {type: "binary(64)", required: true, protected: true};
     this.__fields.hash = {type: "binary(64)", required: true, protected: true};
     this.addTimeFields();
