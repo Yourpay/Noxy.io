@@ -6,7 +6,7 @@ import * as Promise from "bluebird";
 import * as env from "../../env.json";
 import BaseObject, {iObjectField} from "../../classes/BaseObject";
 
-export default init_chain.addPromise("table", (resolve, reject) => {
+init_chain.addPromise("table", (resolve, reject) =>
   db[env.mode].connect()
   .then(connection => {
     const promises = [];
@@ -16,9 +16,14 @@ export default init_chain.addPromise("table", (resolve, reject) => {
         let query = _.join([
           `CREATE TABLE IF NOT EXISTS \`${object.__type}\` (`,
           _.join(_.map(_.omitBy(object.__fields, "intermediate"), (field, key) => `\`${key}\` ${field.type} NOT NULL`), ", "),
+          ", " + _.join(_.map(object.__indexes, (indexes, type) => {
+            if (Array.isArray(indexes)) { return `${_.upperCase(type)} \`${type}\` (\`${_.join(indexes, "`, `")}\`)`; }
+            return _.map(indexes, (index, key) => {
+              return `${_.upperCase(type)} \`${key}\` (\`${_.join(index, "`, `")}\`)`;
+            });
+          }), ", "),
           ") ENGINE=InnoDB DEFAULT CHARSET=utf8"
         ], "");
-        console.log(query);
         promises.push(connection.query(query));
       });
     });
@@ -27,7 +32,7 @@ export default init_chain.addPromise("table", (resolve, reject) => {
     .catch(err => reject(err))
     .finally(() => connection.close());
   })
-  .catch(err => reject(err));
-})
+  .catch(err => reject(err))
+)
 .then(res => console.log("tables res", res))
 .catch(err => console.error("tables err", err));
