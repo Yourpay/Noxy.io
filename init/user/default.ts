@@ -1,26 +1,10 @@
-import DBConnection from "../../classes/DBConnection";
-import {db, init_chain, users} from "../../app";
-import * as Promise from "bluebird";
-import * as env from "../../env.json";
-import * as fs from "fs";
-import * as path from "path";
-import * as _ from "lodash";
+import {init_chain} from "../../app";
 import User from "../../objects/User";
+import * as _ from "lodash";
 
-// init_chain.addPromise("user", (resolve, reject) => {
-//   db[env.mode].link()
-//   .then((link: DBConnection) => {
-//     Promise.all(_.map(env.users, (u: any) => new User(_.omit(u, "password")).save(u.password)))
-//     .then(res => {
-//       _.each(res, (user: User, i) => {
-//         const index = _.keys(env.users)[i];
-//         env.users[index] = _.pick((users[index] = user), ["uuid", "username", "email"]);
-//       });
-//       fs.writeFileSync(path.resolve(process.cwd(), "./env.json"), JSON.stringify(env));
-//       resolve(res);
-//     })
-//     .catch(err => reject(err))
-//     .finally(() => link.close());
-//   })
-//   .catch(err => reject(err));
-// });
+init_chain.addPromise("user", (resolve, reject) => {
+  const user = new User({id: "test", username: "something else", "password": "test"});
+  
+  console.log("Normal user", user);
+  console.log("Parsed user", user.toObject());
+});

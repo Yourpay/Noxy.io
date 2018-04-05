@@ -17,6 +17,10 @@ export default class DB {
     });
   }
   
+  public setDatabase(database: string): this {
+    return _.set(this, "pool.config.database", database);
+  }
+  
 }
 
 export interface iDBConnectionOptions {

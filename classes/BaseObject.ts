@@ -2,54 +2,29 @@ import * as _ from "lodash";
 import * as uuid from "uuid";
 import {users} from "../app";
 
-export interface iObjectField {
-  type?: any;
-  required?: boolean
-  protected?: boolean
-  intermediate?: boolean
-  onInsert?: (object: BaseObject, value?: any) => any;
-  onUpdate?: (object: BaseObject, value?: any) => any;
-  onDelete?: (object: BaseObject, value?: any) => any;
-}
-
 export default abstract class BaseObject {
   
   [key: string]: any
   
   public id: Buffer;
   public uuid: string;
+  protected abstract __validated: boolean = false;
+  protected abstract __fields: { [key: string]: iObjectField };
   
-  protected __type: string;
-  protected __validated: boolean;
-  protected __fields: { [key: string]: iObjectField } = {
-    id: {type: "binary(16)", protected: true, required: true, onInsert: (t, v) => _.set(t, "id", BaseObject.isUuid(v) ? BaseObject.uuidToBuffer(this.uuid = v) : BaseObject.uuidToBuffer(this.uuid = uuid.v4()))},
+  public static __type: string;
+  public static __fields: { [key: string]: iObjectField } = {
+    id: {type: "binary(16)", protected: true, required: true, onInsert: (t, v) => _.set(t, "id", BaseObject.isUuid(v) ? BaseObject.uuidToBuffer(t.uuid = v) : BaseObject.uuidToBuffer(t.uuid = uuid.v4()))},
     uuid: {intermediate: true}
   };
   
-  protected constructor(type: string) {
-    this.__type = type;
-    this.__validated = false;
-  }
+  protected constructor() { }
   
   public toObject() {
     return _.omitBy(this, (v, k) => k.slice(0, 2) === "__");
   }
   
-  protected addTimeFields(): this {
-    this.__fields.time_created = {type: "bigint(14)", protected: true, onInsert: o => o.time_created = Date.now()};
-    this.__fields.time_updated = {type: "bigint(14)", protected: true, onUpdate: o => o.time_updated = Date.now()};
-    this.__fields.time_deleted = {type: "bigint(14)", protected: true, onDelete: o => o.time_deleted = Date.now()};
-    return this;
-  }
-  
-  protected addUserFields(): this {
-    this.__fields.user_created = {type: "binary(16)", protected: true, onInsert: (o, v) => o.user_created = v || users["server"]};
-    this.__fields.user_updated = {type: "binary(16)", protected: true, onUpdate: (o, v) => o.user_updated = v || users["server"]};
-    this.__fields.user_deleted = {type: "binary(16)", protected: true, onDelete: (o, v) => o.user_deleted = v || users["server"]};
-    return this;
-  }
-  
   protected init(object: string | { [key: string]: any }): this {
+    this.__fields = (<typeof BaseObject>this.constructor).__fields;
     if (typeof object === "string") { return this.__fields.id.onInsert(this, object); }
     _.each(this.__fields, (value, key) => !value.protected && object[key] && (this[key] = value.onInsert ? value.onInsert(this, object[key]) : object[key]));
     if (object.id instanceof Buffer && !object.uuid && BaseObject.isUuid(BaseObject.bufferToUuid(object.id))) { return _.set(this, "uuid", BaseObject.bufferToUuid(this.id = object.id)); }
@@ -67,6 +42,22 @@ export default abstract class BaseObject {
   protected static bufferToUuid(buffer: Buffer): string {
     const hex = buffer.toString("hex");
     return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16);
+  }
+  
+  protected static generateTimeFields(): { [key: string]: iObjectField } {
+    return {
+      time_created: {type: "bigint(14)", protected: true, onInsert: o => o.time_created = Date.now()},
+      time_updated: {type: "bigint(14)", protected: true, onUpdate: o => o.time_updated = Date.now()},
+      time_deleted: {type: "bigint(14)", protected: true, onDelete: o => o.time_deleted = Date.now()}
+    };
+  }
+  
+  protected static generateUserFields(): { [key: string]: iObjectField } {
+    return {
+      user_created: {type: "binary(16)", protected: true, onInsert: (o, v) => o.user_created = v || users["server"]},
+      user_updated: {type: "binary(16)", protected: true, onUpdate: (o, v) => o.user_updated = v || users["server"]},
+      user_deleted: {type: "binary(16)", protected: true, onDelete: (o, v) => o.user_deleted = v || users["server"]}
+    };
   }
   
   // public toObject(): any {
@@ -159,4 +150,14 @@ export default abstract class BaseObject {
   //   return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16);
   // }
   
+}
+
+export interface iObjectField {
+  type?: any;
+  required?: boolean
+  protected?: boolean
+  intermediate?: boolean
+  onInsert?: (object: BaseObject, value?: any) => any;
+  onUpdate?: (object: BaseObject, value?: any) => any;
+  onDelete?: (object: BaseObject, value?: any) => any;
 }

@@ -9,11 +9,11 @@ export default class PromiseChain {
   constructor() {
   }
   
-  public addLink(key: string): PromiseChainLink {
+  public addLink(key: string): PromiseChain {
     if (!this.links[key]) {
       this.queue.push(this.links[key] = new PromiseChainLink(key));
     }
-    return this.links[key];
+    return this;
   }
   
   public addPromise(key: string, fnPromise: (resolve, reject) => void): Promise<any> {

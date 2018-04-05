@@ -1,33 +1,20 @@
-import * as Promise from "bluebird";
 import * as _ from "lodash";
-import BaseObject from "./BaseObject";
-import * as crypto from "crypto";
+import BaseObject from "../classes/BaseObject";
 
 export default class Role extends BaseObject {
   
-  public id: Buffer;
-  public name?: string;
-  public key?: string;
+  protected readonly __fields;
+  protected readonly __validated;
   
-  constructor(role: DORole) {
-    super("role");
-    this.__required.name = true;
-    this.__protected.key = this.__required.key = true;
-    this.__protected.user_created = this.__required.user_created = true;
-    this.__protected.user_updated = this.__required.user_updated = true;
-    this.__protected.user_deleted = this.__required.user_deleted = true;
+  public static __type = "role";
+  public static __fields = _.assign({}, BaseObject.__fields, {
+    name: {type: "varchar(32)", required: true, onInsert: (t, v) => t.key = v.replace(/\s|\W/g, ""), onUpdate: (t, v) => t.key = v.replace(/\s|\W/g, "")},
+    key: {type: "varchar(32)", required: true, protected: true}
+  }, BaseObject.generateTimeFields(), BaseObject.generateUserFields());
+  
+  constructor(object: any) {
+    super();
+    this.init(object);
   }
   
-}
-
-export interface DORole {
-  id?: string
-  name?: string
-  key?: string
-  user_created?: string
-  user_updated?: string
-  user_deleted?: string
-  time_created?: number
-  time_updated?: number
-  time_deleted?: number
-}
+};

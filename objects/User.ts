@@ -1,7 +1,6 @@
 import * as _ from "lodash";
-import BaseObject from "./BaseObject";
+import BaseObject from "../classes/BaseObject";
 import * as crypto from "crypto";
-import {tables} from "../app";
 
 export default class User extends BaseObject {
   
@@ -12,16 +11,22 @@ export default class User extends BaseObject {
   public salt?: Buffer;
   public hash?: Buffer;
   
-  constructor(user: any) {
-    super("user");
-    this.__fields.username = {type: "varchar(32)", required: true};
-    this.__fields.email = {type: "varchar(128)", required: true};
-    this.__fields.password = {intermediate: true, protected: true, onInsert: (o: User, v) => typeof v === "string" && o.generateHash(v) && delete o.password};
-    this.__fields.salt = {type: "binary(64)", required: true, protected: true};
-    this.__fields.hash = {type: "binary(64)", required: true, protected: true};
-    this.addTimeFields();
-    this.init(user);
-    if (user.password) { this.__fields.password.onInsert(this, user.password); }
+  protected readonly __fields;
+  protected readonly __validated;
+  
+  public static __type = "user";
+  public static __fields = _.assign({}, BaseObject.__fields, {
+    username: {type: "varchar(32)", required: true},
+    email: {type: "varchar(128)", required: true},
+    password: {intermediate: true, protected: true, onInsert: (o: User, v) => typeof v === "string" && o.generateHash(v) && delete o.password},
+    salt: {type: "binary(64)", required: true, protected: true},
+    hash: {type: "binary(64)", required: true, protected: true}
+  }, BaseObject.generateTimeFields());
+  
+  constructor(object: any) {
+    super();
+    this.init(object);
+    if (object.password) { this.__fields.password.onInsert(this, object.password); }
   }
   
   private generateHash(password?: string): this {
@@ -34,6 +39,4 @@ export default class User extends BaseObject {
     return _.set(this, "salt", crypto.randomBytes(64));
   }
   
-}
-
-tables["user"] = User;
+};
