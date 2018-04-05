@@ -19,7 +19,7 @@ declare module "*env.json" {
     tokens: { [key: string]: string }
     databases: {
       [key: string]: {
-        username: string
+        user: string
         password: string
         host: string
         database: string

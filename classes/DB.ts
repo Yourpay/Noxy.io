@@ -8,7 +8,7 @@ export default class DB {
   private pool: mysql.Pool;
   
   constructor(options: iDBConnectionOptions) {
-    this.pool = mysql.createPool(_.merge(_.omit(options, "database"), {pool: +options.pool || 100, multipleStatements: true}));
+    this.pool = DB.createPool(_.omit(options, "database"))
   }
   
   public connect(): Promise<DBConnection> {
@@ -17,15 +17,22 @@ export default class DB {
     });
   }
   
-  public setDatabase(database: string): this {
-    return _.set(this, "pool.config.database", database);
+  public setDatabase(options): Promise<DB> {
+    return new Promise((resolve, reject) => {
+      this.pool.end(err => !err ? resolve(_.set(this, "pool", DB.createPool(options))) : reject(err));
+    });
+  }
+  
+  private static createPool(options): mysql.Pool {
+    return mysql.createPool(_.merge(options, {pool: +options.pool || 100, multipleStatements: true}));
   }
   
 }
 
 export interface iDBConnectionOptions {
-  username: string
+  user: string
   password: string
   host: string
+  database: string
   pool?: number
 }
