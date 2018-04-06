@@ -11,13 +11,15 @@ export default abstract class BaseObject {
   protected abstract __validated: boolean = false;
   protected abstract __fields: { [key: string]: iObjectField };
   protected abstract __indexes: iObjectIndex;
+  protected abstract __primary: string[];
   
   public static __type: string;
   public static __fields: { [key: string]: iObjectField } = {
     id: {type: "binary(16)", protected: true, required: true, onInsert: (t, v) => _.set(t, "id", BaseObject.isUuid(v) ? BaseObject.uuidToBuffer(t.uuid = v) : BaseObject.uuidToBuffer(t.uuid = uuid.v4()))},
     uuid: {intermediate: true}
   };
-  public static __indexes: iObjectIndex = {primary_key: ["id"]};
+  public static __indexes: iObjectIndex = {};
+  public static __primary: string[] = ["id"];
   
   public toObject() {
     return _.omitBy(this, (v, k) => k.slice(0, 2) === "__");
@@ -26,6 +28,7 @@ export default abstract class BaseObject {
   protected init(object: string | { [key: string]: any }): this {
     this.__fields = (<typeof BaseObject>this.constructor).__fields;
     this.__indexes = (<typeof BaseObject>this.constructor).__indexes;
+    this.__primary = (<typeof BaseObject>this.constructor).__primary;
     if (typeof object === "string") { return this.__fields.id.onInsert(this, object); }
     _.each(this.__fields, (value, key) => !value.protected && object[key] && (this[key] = value.onInsert ? value.onInsert(this, object[key]) : object[key]));
     if (object.id instanceof Buffer && !object.uuid && BaseObject.isUuid(BaseObject.bufferToUuid(object.id))) { return _.set(this, "uuid", BaseObject.bufferToUuid(this.id = object.id)); }
@@ -84,13 +87,17 @@ export default abstract class BaseObject {
 }
 
 export interface iObjectIndex {
-  primary_key?: any;
-  key?: { [key: string]: string[] };
-  fulltext?: any;
-  spatial?: any;
+  [key: string]: { [key: string]: string[] }
+  
+  key?: { [key: string]: string[] }
+  unique?: { [key: string]: string[] }
+  fulltext?: { [key: string]: string[] }
+  spatial?: { [key: string]: string[] }
 }
 
 export interface iObjectField {
+  [key: string]: any
+  
   type?: any;
   required?: boolean
   protected?: boolean

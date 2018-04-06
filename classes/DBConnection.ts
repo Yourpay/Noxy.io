@@ -1,6 +1,6 @@
 import * as Promise from "bluebird";
 import * as mysql from "mysql";
-import DBPool from "./DBPool";
+import DBPool from "./DB";
 
 export default class DBConnection {
   

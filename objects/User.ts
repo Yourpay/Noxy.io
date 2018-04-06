@@ -14,6 +14,7 @@ export default class User extends BaseObject {
   protected readonly __fields;
   protected readonly __validated;
   protected readonly __indexes;
+  protected readonly __primary;
   
   public static __type = "user";
   public static __fields = _.merge({}, BaseObject.__fields, {
@@ -24,7 +25,7 @@ export default class User extends BaseObject {
     hash: {type: "binary(64)", required: true, protected: true}
   }, BaseObject.generateTimeFields());
   public static __indexes = _.merge({}, BaseObject.__indexes, {
-    key: {
+    unique: {
       username: ["username"],
       email: ["email"]
     }

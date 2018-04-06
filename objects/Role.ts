@@ -6,6 +6,7 @@ export default class Role extends BaseObject {
   protected readonly __fields;
   protected readonly __validated;
   protected readonly __indexes;
+  protected readonly __primary;
   
   public static __type = "role";
   public static __fields = _.merge({}, BaseObject.__fields, {
@@ -20,3 +21,4 @@ export default class Role extends BaseObject {
   }
   
 };
+
