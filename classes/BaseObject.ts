@@ -1,6 +1,9 @@
 import * as _ from "lodash";
 import * as uuid from "uuid";
-import {users} from "../app";
+import {db, users} from "../app";
+import * as Promise from "bluebird";
+import * as env from "../env.json";
+import ServerError from "./ServerError";
 
 export default abstract class BaseObject {
   
@@ -22,7 +25,37 @@ export default abstract class BaseObject {
   public static __primary: string[] = ["id"];
   
   public toObject() {
-    return _.omitBy(this, (v, k) => k.slice(0, 2) === "__");
+    return _.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || v instanceof Buffer);
+  }
+  
+  public validate() {
+    return new Promise<this>((resolve, reject) => {
+      db[env.mode].connect()
+      .then(link => {
+        link.query("SELECT * FROM ?? WHERE id = ?", [(<typeof BaseObject>this.constructor).__type, this.id])
+        .then(res => res[0] ? resolve(_.assign(this, res[0], {__validated: true})) : reject(new ServerError("400.db.select")))
+        .catch(err => reject(ServerError.parseSQLError(err)))
+        .finally(() => link.close());
+      })
+      .catch(err => reject(err));
+    });
+  }
+  
+  public save() {
+    return new Promise<this>((resolve, reject) => {
+      new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
+      .catch(err => err.code === "400.db.select" ? this : reject(err))
+      .then(res => {
+        db[env.mode].connect()
+        .then(link => {
+          link.query("INSERT INTO ?? SET ?? ON DUPLICATE KEY UPDATE  WHERE id = ?", [(<typeof BaseObject>this.constructor).__type, this.id])
+          .then(res => res[0] ? resolve(_.assign(this, res[0], {__validated: true})) : reject(new ServerError("400.db.select")))
+          .catch(err => reject(ServerError.parseSQLError(err)))
+          .finally(() => link.close());
+        })
+        .catch(err => reject(err));
+      });
+    });
   }
   
   protected init(object: string | { [key: string]: any }): this {
@@ -59,7 +92,7 @@ export default abstract class BaseObject {
   protected static generateTimeIndexes(): iObjectIndex {
     return {
       key: {
-        time_created: ["time_created"],
+        time_created: ["time_created", "id"],
         time_updated: ["time_updated"],
         time_deleted: ["time_deleted"]
       }

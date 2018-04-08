@@ -18,11 +18,11 @@ init_chain.addPromise("table", (resolve, reject) =>
           _.join([
             _.join(_.map(_.omitBy(object.__fields, "intermediate"), (field, key) => `\`${key}\` ${field.type} NOT NULL`), ", "),
             `PRIMARY KEY (\`${_.join(object.__primary, "`, `")}\`)`,
-            _.join(_.map(object.__indexes, (index_set, type) => _.map(index_set, (index, key) => `${_.upperCase(type)} \`${key}\` (\`${_.join(index, "`, `")}\`)`))
-            )
-          ]),
+            _.join(_.map(object.__indexes, (index_set, type) => _.join(_.map(index_set, (index, key) => `${_.upperCase(type)} \`${key}\` (\`${_.join(index, "`, `")}\`)`), ", ")), ","),
+          ], ", "),
           ") ENGINE=InnoDB DEFAULT CHARSET=utf8"
         ], "");
+        console.log(query);
         promises.push(connection.query(query));
       });
     });
