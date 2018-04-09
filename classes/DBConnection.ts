@@ -10,7 +10,7 @@ export default class DBConnection {
     this.connection = connection;
   }
   
-  public query(query: string, replacers?: any): Promise<any[]> {
+  public query(query: string, replacers?: any): Promise<any> {
     return new Promise((resolve, reject) => {
       const callback = (err, result) => err ? reject(err) : resolve(result);
       replacers ? this.connection.query(query, replacers, callback) : this.connection.query(query, callback);

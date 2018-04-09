@@ -45,11 +45,12 @@ export default abstract class BaseObject {
     return new Promise<this>((resolve, reject) => {
       new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
       .catch(err => err.code === "400.db.select" ? this : reject(err))
-      .then(res => {
+      .then(() => {
         db[env.mode].connect()
         .then(link => {
-          link.query("INSERT INTO ?? SET ?? ON DUPLICATE KEY UPDATE  WHERE id = ?", [(<typeof BaseObject>this.constructor).__type, this.id])
-          .then(res => res[0] ? resolve(_.assign(this, res[0], {__validated: true})) : reject(new ServerError("400.db.select")))
+          if (!_.every(this.__fields, (v,k) => !v.required || v.required && this[k])) { return reject(new ServerError("400.db.insert")) }
+          link.query("INSERT INTO ?? SET ? ON DUPLICATE KEY UPDATE ?", [(<typeof BaseObject>this.constructor).__type, this.filter(), this.filter()])
+          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true})) : reject(new ServerError("400.db.select")))
           .catch(err => reject(ServerError.parseSQLError(err)))
           .finally(() => link.close());
         })
@@ -63,9 +64,13 @@ export default abstract class BaseObject {
     this.__indexes = (<typeof BaseObject>this.constructor).__indexes;
     this.__primary = (<typeof BaseObject>this.constructor).__primary;
     if (typeof object === "string") { return this.__fields.id.onInsert(this, object); }
-    _.each(this.__fields, (value, key) => !value.protected && object[key] && (this[key] = value.onInsert ? value.onInsert(this, object[key]) : object[key]));
+    _.each(this.__fields, (value, key) => !value.protected && object[key] && (this[key] = value.onInsert ? value.onInsert(this, object[key]) : object[key]) || true);
     if (object.id instanceof Buffer && !object.uuid && BaseObject.isUuid(BaseObject.bufferToUuid(object.id))) { return _.set(this, "uuid", BaseObject.bufferToUuid(this.id = object.id)); }
     return this.__fields.id.onInsert(this, object.uuid);
+  }
+  
+  protected filter(): Partial<this> {
+    return _.omitBy(this, (v, k) => k.slice(0, 2) === "__" || k === "uuid");
   }
   
   protected static isUuid(uuid: string): boolean {

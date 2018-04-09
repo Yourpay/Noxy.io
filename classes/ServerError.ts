@@ -6,8 +6,10 @@ export default class ServerError extends Error {
   public item: string;
   
   private static codes: { [key: string]: string } = {
-    "400.db.select": "Resource not found while selecting from database.",
-    "500.db.select": "Server occured while selecting from database."
+    "400.db.select": "Malformed request received while selecting from database.",
+    "400.db.insert": "Malformed request received while inserting into database.",
+    "404.db.select": "Resource not found while selecting from database.",
+    "500.db.select": "Server error occured while selecting from database."
   };
   
   constructor(code: string, item?: any) {

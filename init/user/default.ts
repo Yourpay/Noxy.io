@@ -3,7 +3,7 @@ import User from "../../objects/User";
 import * as _ from "lodash";
 
 init_chain.addPromise("user", (resolve, reject) => {
-  const user = new User({id: "test", username: "something else", "password": "test"});
+  const user = new User({id: "test", username: "something else", email: "test@swag.com", "password": "test"});
   user.save()
     .then(res => console.log("ressss", res), err => console.log("end", err));
   
