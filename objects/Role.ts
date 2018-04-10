@@ -3,6 +3,7 @@ import BaseObject from "../classes/BaseObject";
 
 export default class Role extends BaseObject {
   
+  protected readonly __type;
   protected readonly __fields;
   protected readonly __validated;
   protected readonly __indexes;

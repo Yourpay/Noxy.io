@@ -11,6 +11,7 @@ export default class User extends BaseObject {
   public salt?: Buffer;
   public hash?: Buffer;
   
+  protected readonly __type;
   protected readonly __fields;
   protected readonly __validated;
   protected readonly __indexes;
@@ -20,7 +21,7 @@ export default class User extends BaseObject {
   public static __fields = _.merge({}, BaseObject.__fields, {
     username: {type: "varchar(32)", required: true},
     email: {type: "varchar(128)", required: true},
-    password: {intermediate: true, protected: true, onInsert: (o: User, v) => typeof v === "string" && o.generateHash(v) && delete o.password},
+    password: {intermediate: true, protected: true, onCreate: (o: User, v) => typeof v === "string" && o.generateHash(v) ? null : null},
     salt: {type: "binary(64)", required: true, protected: true},
     hash: {type: "binary(64)", required: true, protected: true}
   }, BaseObject.generateTimeFields());
@@ -34,7 +35,6 @@ export default class User extends BaseObject {
   constructor(object: any) {
     super();
     this.init(object);
-    if (object.password) { this.__fields.password.onInsert(this, object.password); }
   }
   
   private generateHash(password?: string): this {

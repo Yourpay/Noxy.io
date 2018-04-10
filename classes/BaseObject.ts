@@ -4,6 +4,7 @@ import {db, users} from "../app";
 import * as Promise from "bluebird";
 import * as env from "../env.json";
 import ServerError from "./ServerError";
+import User from "../objects/User";
 
 export default abstract class BaseObject {
   
@@ -12,13 +13,14 @@ export default abstract class BaseObject {
   public id: Buffer;
   public uuid: string;
   protected abstract __validated: boolean = false;
+  protected abstract __type: string;
   protected abstract __fields: { [key: string]: iObjectField };
   protected abstract __indexes: iObjectIndex;
   protected abstract __primary: string[];
   
   public static __type: string;
   public static __fields: { [key: string]: iObjectField } = {
-    id: {type: "binary(16)", protected: true, required: true, onInsert: (t, v) => _.set(t, "id", BaseObject.isUuid(v) ? BaseObject.uuidToBuffer(t.uuid = v) : BaseObject.uuidToBuffer(t.uuid = uuid.v4()))},
+    id: {type: "binary(16)", protected: true, required: true, onCreate: (t, v) => _.set(t, "id", BaseObject.isUuid(v) ? BaseObject.uuidToBuffer(t.uuid = v) : BaseObject.uuidToBuffer(t.uuid = uuid.v4()))},
     uuid: {intermediate: true}
   };
   public static __indexes: iObjectIndex = {};
@@ -32,8 +34,12 @@ export default abstract class BaseObject {
     return new Promise<this>((resolve, reject) => {
       db[env.mode].connect()
       .then(link => {
-        link.query("SELECT * FROM ?? WHERE id = ?", [(<typeof BaseObject>this.constructor).__type, this.id])
-        .then(res => res[0] ? resolve(_.assign(this, res[0], {__validated: true})) : reject(new ServerError("400.db.select")))
+        const indexes = _.concat(_.values(this.__indexes.unique), [this.__primary]);
+        const where = _.join(_.map(indexes, a => `(${_.join(_.map(a, k => `${k} = ?`), " AND ")})`), " OR ");
+        const values = _.reduce(indexes, (r, a) => _.concat(r, _.map(a, v => this[v])), []);
+        const sql = link.parse(`SELECT * FROM ?? WHERE ${where}`, _.concat(this.__type, values));
+        link.query(sql)
+        .then(res => res[0] ? resolve(_.assign(this, res[0], {__validated: true})) : reject(new ServerError("400.db.select", sql)))
         .catch(err => reject(ServerError.parseSQLError(err)))
         .finally(() => link.close());
       })
@@ -41,16 +47,19 @@ export default abstract class BaseObject {
     });
   }
   
-  public save() {
+  public save(invoker?: User) {
     return new Promise<this>((resolve, reject) => {
       new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
       .catch(err => err.code === "400.db.select" ? this : reject(err))
       .then(() => {
+        if (!this.__validated && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerError("400.db.insert", this)); }
         db[env.mode].connect()
         .then(link => {
-          if (!_.every(this.__fields, (v,k) => !v.required || v.required && this[k])) { return reject(new ServerError("400.db.insert")) }
-          link.query("INSERT INTO ?? SET ? ON DUPLICATE KEY UPDATE ?", [(<typeof BaseObject>this.constructor).__type, this.filter(), this.filter()])
-          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true})) : reject(new ServerError("400.db.select")))
+          _.each(this.__fields, field => _.invoke(field, !this.__validated ? "onInsert" : "onUpdate", this, invoker));
+          const values = [this.__type, this.filter(), this.id];
+          const sql = link.parse(!this.__validated ? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
+          link.query(sql)
+          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true})) : reject(new ServerError(`400.db.${!this.__validated ? "insert" : "update"}`, sql)))
           .catch(err => reject(ServerError.parseSQLError(err)))
           .finally(() => link.close());
         })
@@ -60,13 +69,16 @@ export default abstract class BaseObject {
   }
   
   protected init(object: string | { [key: string]: any }): this {
-    this.__fields = (<typeof BaseObject>this.constructor).__fields;
-    this.__indexes = (<typeof BaseObject>this.constructor).__indexes;
-    this.__primary = (<typeof BaseObject>this.constructor).__primary;
-    if (typeof object === "string") { return this.__fields.id.onInsert(this, object); }
-    _.each(this.__fields, (value, key) => !value.protected && object[key] && (this[key] = value.onInsert ? value.onInsert(this, object[key]) : object[key]) || true);
+    const base = (<typeof BaseObject>this.constructor);
+    this.__type = base.__type;
+    this.__fields = base.__fields;
+    this.__indexes = base.__indexes;
+    this.__primary = base.__primary;
+    if (typeof object === "string") { return this.__fields.id.onCreate(this, object); }
+    _.each(this.__fields, (value, key) => (!value.protected || value.onCreate) && object[key] && (this[key] = value.onCreate ? value.onCreate(this, object[key]) : object[key]) || true);
+    _.each(this, (value, key) => this[key] === null ? delete this[key] : true);
     if (object.id instanceof Buffer && !object.uuid && BaseObject.isUuid(BaseObject.bufferToUuid(object.id))) { return _.set(this, "uuid", BaseObject.bufferToUuid(this.id = object.id)); }
-    return this.__fields.id.onInsert(this, object.uuid);
+    return this.__fields.id.onCreate(this, object.uuid);
   }
   
   protected filter(): Partial<this> {
@@ -88,7 +100,7 @@ export default abstract class BaseObject {
   
   protected static generateTimeFields(): { [key: string]: iObjectField } {
     return {
-      time_created: {type: "bigint(14)", protected: true, onInsert: o => o.time_created = Date.now()},
+      time_created: {type: "bigint(14)", protected: true, onInsert: o => console.log("created", o) || (o.time_created = Date.now())},
       time_updated: {type: "bigint(14)", protected: true, onUpdate: o => o.time_updated = Date.now()},
       time_deleted: {type: "bigint(14)", protected: true, onDelete: o => o.time_deleted = Date.now()}
     };
@@ -106,9 +118,9 @@ export default abstract class BaseObject {
   
   protected static generateUserFields(): { [key: string]: iObjectField } {
     return {
-      user_created: {type: "binary(16)", protected: true, onInsert: (o, v) => o.user_created = v || users["server"]},
-      user_updated: {type: "binary(16)", protected: true, onUpdate: (o, v) => o.user_updated = v || users["server"]},
-      user_deleted: {type: "binary(16)", protected: true, onDelete: (o, v) => o.user_deleted = v || users["server"]}
+      user_created: {type: "binary(16)", protected: true, onInsert: (o, v) => o.user_created = v.id || users["server"].id},
+      user_updated: {type: "binary(16)", protected: true, onUpdate: (o, v) => o.user_updated = v.id || users["server"].id},
+      user_deleted: {type: "binary(16)", protected: true, onDelete: (o, v) => o.user_deleted = v.id || users["server"].id}
     };
   }
   
@@ -140,9 +152,10 @@ export interface iObjectField {
   required?: boolean
   protected?: boolean
   intermediate?: boolean
-  onInsert?: (object: BaseObject, value?: any) => any;
-  onUpdate?: (object: BaseObject, value?: any) => any;
-  onDelete?: (object: BaseObject, value?: any) => any;
+  onCreate?: (object: BaseObject, value?: any) => any;
+  onInsert?: (object: BaseObject, invoker?: User) => any;
+  onUpdate?: (object: BaseObject, invoker?: User) => any;
+  onDelete?: (object: BaseObject, invoker?: User) => any;
 }
 
 // public toObject(): any {
