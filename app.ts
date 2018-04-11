@@ -4,13 +4,15 @@ import * as express from "express";
 import * as requireAll from "require-all";
 import * as _ from "lodash";
 import * as env from "./env.json";
+import Role from "./objects/Role";
+import User from "./objects/User";
 
 export const db: { [key: string]: DBPool } = _.mapValues(env.databases, env_db => new DB(env_db));
-export const users = {};
-export const roles = {};
+export const users: {[key: string]: User} = {};
+export const roles: {[key: string]: Role} = {};
 export const tables = {};
 export const router = express();
-export const init_chain = new PromiseChain().addLink("db").addLink("table").addLink("user");
+export const init_chain = new PromiseChain().addLink("db").addLink("table").addLink("user").addLink("role");
 
 requireAll(__dirname + "/init");
 

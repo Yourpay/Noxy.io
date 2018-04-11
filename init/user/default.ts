@@ -1,12 +1,23 @@
-import {init_chain} from "../../app";
+import {init_chain, users} from "../../app";
 import User from "../../objects/User";
+import * as env from "../../env.json";
 import * as _ from "lodash";
+import * as Promise from "bluebird";
 
 init_chain.addPromise("user", (resolve, reject) => {
-  const user = new User({id: "test", username: "something else", email: "test@swag.com", "password": "test"});
-  user.save()
-    .then(res => console.log("ressss", res), err => console.log("end", err));
-  
-  console.log("Normal user", user);
-  console.log("Parsed user", user.toObject());
+  Promise.all(_.map(env.users, (user, key) =>
+    new Promise((resolve, reject) => {
+      users[key] = new User(user);
+      users[key].validate()
+      .catch(err => err.code === "404.db.select" ? this : reject(err))
+      .then(res => {
+        if (this.__validated) { resolve(res); }
+        users[key].save()
+        .then(res => resolve(res))
+        .catch(err => reject(err));
+      });
+    })
+  ))
+  .then(res => resolve(res))
+  .catch(err => reject(err));
 });
