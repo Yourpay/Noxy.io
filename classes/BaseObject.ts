@@ -30,13 +30,17 @@ export default abstract class BaseObject {
     return _.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || v instanceof Buffer);
   }
   
+  public get validated() {
+    return this.__validated;
+  }
+  
   public validate() {
     return new Promise<this>((resolve, reject) => {
       db[env.mode].connect()
       .then(link => {
         const indexes = _.concat(_.values(this.__indexes.unique), [this.__primary]);
-        const where = _.join(_.map(indexes, a => `(${_.join(_.map(a, k => `${k} = ?`), " AND ")})`), " OR ");
-        const values = _.reduce(indexes, (r, a) => _.concat(r, _.map(a, v => this[v])), []);
+        const where = _.join(_.map(indexes, a => `(${_.join(_.map(a, k => `\`${k}\` = ?`), " AND ")})`), " OR ");
+        const values = _.reduce(indexes, (r, a) => _.concat(r, _.map(a, v => this[v] || "")), []);
         const sql = link.parse(`SELECT * FROM ?? WHERE ${where}`, _.concat(this.__type, values));
         link.query(sql)
         .then(res => res[0] ? resolve(_.assign(this, res[0], {__validated: true, uuid: BaseObject.bufferToUuid(res[0].id)})) : reject(new ServerError("404.db.select", sql)))

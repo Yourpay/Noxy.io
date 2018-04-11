@@ -1,4 +1,4 @@
-import {init_chain, users} from "../../app";
+import {init_chain, roles, users} from "../../app";
 import User from "../../objects/User";
 import * as env from "../../env.json";
 import * as _ from "lodash";
@@ -11,7 +11,7 @@ init_chain.addPromise("user", (resolve, reject) => {
       users[key].validate()
       .catch(err => err.code === "404.db.select" ? this : reject(err))
       .then(res => {
-        if (this.__validated) { resolve(res); }
+        if (users[key].validated) { return resolve(res); }
         users[key].save()
         .then(res => resolve(res))
         .catch(err => reject(err));
