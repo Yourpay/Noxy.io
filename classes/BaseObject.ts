@@ -25,6 +25,7 @@ export default abstract class BaseObject {
   };
   public static __indexes: iObjectIndex = {};
   public static __primary: string[] = ["id"];
+  public static __constraints: iObjectConstraints;
   
   public toObject() {
     return _.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || v instanceof Buffer);
@@ -139,6 +140,18 @@ export default abstract class BaseObject {
     };
   }
   
+}
+
+export interface iObjectConstraints {
+  [key: string]: any
+  
+  foreign: {
+    name: string
+    table: string
+    field: string
+    onDelete: string
+    onUpdate: string
+  }
 }
 
 export interface iObjectIndex {

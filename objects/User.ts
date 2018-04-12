@@ -10,21 +10,21 @@ export default class User extends BaseObject {
   public email?: string;
   public salt?: Buffer;
   public hash?: Buffer;
-
+  
   public static __type = "user";
-  public static __fields = _.merge({}, BaseObject.__fields, {
+  public static __fields = _.merge({}, BaseObject.__fields, BaseObject.generateTimeFields(), {
     username: {type: "varchar(32)", required: true},
     email: {type: "varchar(128)", required: true},
     password: {intermediate: true, protected: true, onCreate: ($this, value) => typeof value === "string" && $this.generateHash(value) ? null : null},
     salt: {type: "binary(64)", required: true, protected: true},
     hash: {type: "binary(64)", required: true, protected: true}
-  }, BaseObject.generateTimeFields());
-  public static __indexes = _.merge({}, BaseObject.__indexes, {
+  });
+  public static __indexes = _.merge({}, BaseObject.__indexes, BaseObject.generateTimeIndexes(), {
     unique: {
       username: ["username"],
       email: ["email"]
     }
-  }, BaseObject.generateTimeIndexes());
+  });
   
   constructor(object: any) {
     super();
