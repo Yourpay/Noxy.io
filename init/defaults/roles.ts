@@ -20,4 +20,7 @@ init_chain.addPromise("role", (resolve, reject) => {
   ))
   .then(res => resolve(res))
   .catch(err => reject(err));
-});
+})
+  .finally(() => {
+    console.log(Role.__constraints.foreign_key[0]);
+  })
