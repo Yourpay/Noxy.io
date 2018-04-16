@@ -23,9 +23,9 @@ export default abstract class BaseObject {
     id: {type: "binary(16)", protected: true, required: true, onCreate: (t, v) => BaseObject.isUuid(v) ? BaseObject.uuidToBuffer(t.uuid = v) : BaseObject.uuidToBuffer(t.uuid = uuid.v4())},
     uuid: {intermediate: true}
   };
-  public static __indexes: iObjectIndex = {};
   public static __primary: string[] = ["id"];
-  public static __constraints: iObjectConstraint = {};
+  public static __indexes: iObjectIndex = {};
+  public static __relations: iObjectRelationSet = {};
   
   public toObject() {
     return _.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || v instanceof Buffer);
@@ -140,27 +140,22 @@ export default abstract class BaseObject {
     };
   }
   
-  protected static generateUserConstraints(): iObjectConstraint {
+  protected static generateUserConstraints(): iObjectRelationSet {
     return {
-      foreign_key: [
-        {table: require("./../objects/User").default.__type, column: "user_created", on_delete: "NO ACTION", on_update: "CASCADE"},
-        {table: require("./../objects/User").default.__type, column: "user_updated", on_delete: "NO ACTION", on_update: "CASCADE"},
-        {table: require("./../objects/User").default.__type, column: "user_deleted", on_delete: "NO ACTION", on_update: "CASCADE"}
-      ]
+      user_created: {table: require("./../objects/User").default.__type, on_delete: "NO ACTION", on_update: "CASCADE"},
+      user_updated: {table: require("./../objects/User").default.__type, on_delete: "NO ACTION", on_update: "CASCADE"},
+      user_deleted: {table: require("./../objects/User").default.__type, on_delete: "NO ACTION", on_update: "CASCADE"}
     };
   }
   
 }
 
-export interface iObjectConstraint {
-  [key: string]: any
-  
-  foreign_key?: iObjectForeignKeyConstraint[]
+export interface iObjectRelationSet {
+  [key: string]: iObjectRelation
 }
 
-export interface iObjectForeignKeyConstraint {
+export interface iObjectRelation {
   table: string
-  column: string
   on_delete: "RESTRICT" | "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT"
   on_update: "RESTRICT" | "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT"
 }
