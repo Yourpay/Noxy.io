@@ -18,9 +18,9 @@ requireAll(__dirname + "/init");
 
 init_chain.cycle()
 .then((res) => {
-  console.log(users);
-  console.log(roles);
-  console.log(tables);
+  // console.log(users);
+  // console.log(roles);
+  // console.log(tables);
 })
 .catch(err => console.error(err));
 

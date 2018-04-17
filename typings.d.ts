@@ -1,6 +1,22 @@
 declare module "*env.json" {
   const value: {
     mode: string
+    databases: {
+      [key: string]: {
+        user: string
+        password: string
+        host: string
+        database: string
+        pool?: number
+      }
+    },
+    tables: {
+      default: {
+        names: {
+          [key: string]: string
+        }
+      }
+    }
     users: {
       [key: string]: {
         id?: string
@@ -17,17 +33,10 @@ declare module "*env.json" {
       }
     }
     tokens: { [key: string]: string }
-    databases: {
-      [key: string]: {
-        user: string
-        password: string
-        host: string
-        database: string
-        pool?: number
-      }
-    }
+    
   };
   export = value;
 }
 
 declare module "*.json"
+

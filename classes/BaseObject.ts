@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import * as uuid from "uuid";
+import * as mysql from "mysql";
 import {db, users} from "../app";
 import * as Promise from "bluebird";
 import * as env from "../env.json";
@@ -91,6 +92,34 @@ export default abstract class BaseObject {
     return _.omitBy(this, (v, k) => k.slice(0, 2) === "__" || k === "uuid");
   }
   
+  public static generateTableSQL(): string {
+    return `CREATE TABLE IF NOT EXISTS ${mysql.escapeId(this.__type)} (${this.generateFieldSQL()}) ENGINE=InnoDB DEFAULT CHARSET=utf8`;
+  }
+  
+  private static generateFieldSQL(): string {
+    return _.trimEnd(_.join([this.generateColumnSQL(), this.generatePrimaryIndexSQL(), this.generateIndexSQL(), this.generateRelationSQL()], ", "), ",");
+  }
+  
+  private static generateColumnSQL(): string {
+    return _.join(_.reduce(this.__fields, (r, v, k) => !v.intermediate && _.concat(r, mysql.format(`?? ${v.type} NOT NULL`, [k])), []), ", ");
+  }
+  
+  private static generatePrimaryIndexSQL(): string {
+    return `PRIMARY KEY (${_.join(_.map(this.__primary, v => mysql.escapeId(v)))})`;
+  }
+  
+  private static generateIndexSQL(): string {
+    return _.map(object.__indexes, (index_set, type) =>
+      _.join(_.map(index_set, (index, key) => `${_.upperCase(type)} \`${key}\` (\`${_.join(index, "`, `")}\`)`))
+    );
+  }
+  
+  private static generateRelationSQL(): string {
+    return _.map(object.__relations, (relation, column) =>
+      `CONSTRAINT \`${object.__type}:${column}\` FOREIGN KEY (\`${column}\`) REFERENCES \`${relation.table}\` (\`id\`) ON DELETE ${relation.on_delete} ON UPDATE ${relation.on_update}`
+    );
+  }
+  
   protected static isUuid(uuid: string): boolean {
     return !!`${uuid}`.match(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
   }
@@ -142,9 +171,9 @@ export default abstract class BaseObject {
   
   protected static generateUserConstraints(): iObjectRelationSet {
     return {
-      user_created: {table: require("./../objects/User").default.__type, on_delete: "NO ACTION", on_update: "CASCADE"},
-      user_updated: {table: require("./../objects/User").default.__type, on_delete: "NO ACTION", on_update: "CASCADE"},
-      user_deleted: {table: require("./../objects/User").default.__type, on_delete: "NO ACTION", on_update: "CASCADE"}
+      user_created: {table: env.tables.default.names.user, on_delete: "NO ACTION", on_update: "CASCADE"},
+      user_updated: {table: env.tables.default.names.user, on_delete: "NO ACTION", on_update: "CASCADE"},
+      user_deleted: {table: env.tables.default.names.user, on_delete: "NO ACTION", on_update: "CASCADE"}
     };
   }
   
@@ -164,7 +193,7 @@ export interface iObjectIndex {
   [key: string]: { [key: string]: string[] }
   
   key?: { [key: string]: string[] }
-  unique?: { [key: string]: string[] }
+  unique_key?: { [key: string]: string[] }
   fulltext?: { [key: string]: string[] }
   spatial?: { [key: string]: string[] }
 }
