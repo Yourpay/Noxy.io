@@ -12,7 +12,7 @@ export default class Role extends BaseObject {
     key: {type: "varchar(32)", required: true, protected: true}
   });
   public static __indexes = _.merge({}, BaseObject.__indexes, BaseObject.generateTimeIndexes(), BaseObject.generateUserIndexes(), {
-    unique: {
+    unique_key: {
       name: ["name"],
       key: ["key"]
     }

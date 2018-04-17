@@ -97,11 +97,18 @@ export default abstract class BaseObject {
   }
   
   private static generateFieldSQL(): string {
-    return _.trimEnd(_.join([this.generateColumnSQL(), this.generatePrimaryIndexSQL(), this.generateIndexSQL(), this.generateRelationSQL()], ", "), ",");
+    return _.trimEnd(_.join([this.generateColumnSQL(), this.generatePrimaryIndexSQL(), this.generateIndexSQL(), this.generateRelationSQL()]), ",");
   }
   
   private static generateColumnSQL(): string {
-    return _.join(_.reduce(this.__fields, (r, v, k) => !v.intermediate && _.concat(r, mysql.format(`?? ${v.type} NOT NULL`, [k])), []), ", ");
+    return _.join(_.reduce(this.__fields, (r, v, k) => {
+      if (!v.intermediate) {
+        const default_value = v.default ? `DEFAULT ${mysql.escape(v.default)}` : v.default === null ? "DEFAULT NULL" : "";
+        const null_value = !v.null && v.default !== null ? "NOT NULL" : "";
+        r.push(mysql.format(`?? ${v.type} ${default_value} ${null_value}`, [k]));
+      }
+      return r;
+    }, []));
   }
   
   private static generatePrimaryIndexSQL(): string {
@@ -109,15 +116,13 @@ export default abstract class BaseObject {
   }
   
   private static generateIndexSQL(): string {
-    return _.map(object.__indexes, (index_set, type) =>
-      _.join(_.map(index_set, (index, key) => `${_.upperCase(type)} \`${key}\` (\`${_.join(index, "`, `")}\`)`))
-    );
+    return _.join(_.map(this.__indexes, (set, type) => _.join(_.map(set, (index, key) => `${_.upperCase(type)} ${mysql.escapeId(key)} (${_.join(_.map(index, v => mysql.escapeId(v)))})`))));
   }
   
   private static generateRelationSQL(): string {
-    return _.map(object.__relations, (relation, column) =>
-      `CONSTRAINT \`${object.__type}:${column}\` FOREIGN KEY (\`${column}\`) REFERENCES \`${relation.table}\` (\`id\`) ON DELETE ${relation.on_delete} ON UPDATE ${relation.on_update}`
-    );
+    return _.join(_.map(this.__relations, (relation, column) =>
+      mysql.format(`CONSTRAINT ?? FOREIGN KEY (??) REFERENCES ?? (??) ON DELETE ${relation.on_delete} ON UPDATE ${relation.on_update}`, [this.__type + ":" + column, column, relation.table, this.__primary])
+    ));
   }
   
   protected static isUuid(uuid: string): boolean {
@@ -135,9 +140,9 @@ export default abstract class BaseObject {
   
   protected static generateTimeFields(): { [key: string]: iObjectField } {
     return {
-      time_created: {type: "bigint(14)", protected: true, onInsert: o => o.time_created = Date.now()},
-      time_updated: {type: "bigint(14)", protected: true, onUpdate: o => o.time_updated = Date.now()},
-      time_deleted: {type: "bigint(14)", protected: true, onDelete: o => o.time_deleted = Date.now()}
+      time_created: {type: "bigint(14)", default: null, protected: true, onInsert: o => o.time_created = Date.now()},
+      time_updated: {type: "bigint(14)", default: null, protected: true, onUpdate: o => o.time_updated = Date.now()},
+      time_deleted: {type: "bigint(14)", default: null, protected: true, onDelete: o => o.time_deleted = Date.now()}
     };
   }
   
@@ -153,9 +158,9 @@ export default abstract class BaseObject {
   
   protected static generateUserFields(): { [key: string]: iObjectField } {
     return {
-      user_created: {type: "binary(16)", protected: true, onInsert: (o, v) => _.get(v, "id", _.get(users, "server.id", null))},
-      user_updated: {type: "binary(16)", protected: true, onUpdate: (o, v) => _.get(v, "id", _.get(users, "server.id", null))},
-      user_deleted: {type: "binary(16)", protected: true, onDelete: (o, v) => _.get(v, "id", _.get(users, "server.id", null))}
+      user_created: {type: "binary(16)", protected: true, default: null, onInsert: (o, v) => _.get(v, "id", _.get(users, "server.id", null))},
+      user_updated: {type: "binary(16)", protected: true, default: null, onUpdate: (o, v) => _.get(v, "id", _.get(users, "server.id", null))},
+      user_deleted: {type: "binary(16)", protected: true, default: null, onDelete: (o, v) => _.get(v, "id", _.get(users, "server.id", null))}
     };
   }
   
