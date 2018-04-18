@@ -20,7 +20,7 @@ export default class User extends BaseObject {
     hash: {type: "binary(64)", required: true, protected: true}
   });
   public static __indexes = _.merge({}, BaseObject.__indexes, BaseObject.generateTimeIndexes(), {
-    unique: {
+    unique_key: {
       username: ["username"],
       email: ["email"]
     }

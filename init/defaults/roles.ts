@@ -14,7 +14,7 @@ init_chain.addPromise("role", (resolve, reject) => {
         if (roles[key].validated) { return resolve(res); }
         roles[key].save(users.server)
         .then(res => resolve(res))
-        .catch(err => reject(err));
+        .catch(err => console.log(err.item) || reject(err));
       });
     })
   ))
