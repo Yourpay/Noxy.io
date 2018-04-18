@@ -15,9 +15,16 @@ export default class User extends BaseObject {
   public static __fields = _.merge({}, BaseObject.__fields, BaseObject.generateTimeFields(), {
     username: {type: "varchar(32)", required: true},
     email: {type: "varchar(128)", required: true},
-    password: {intermediate: true, protected: true, onCreate: ($this, value) => typeof value === "string" && $this.generateHash(value) ? null : null},
     salt: {type: "binary(64)", required: true, protected: true},
-    hash: {type: "binary(64)", required: true, protected: true}
+    hash: {type: "binary(64)", required: true, protected: true},
+    password: {
+      intermediate: true,
+      protected: true,
+      onCreate: ($this, value) => {
+        if (typeof value === "string") {$this.generateHash(value);}
+        return null;
+      }
+    }
   });
   public static __indexes = _.merge({}, BaseObject.__indexes, BaseObject.generateTimeIndexes(), {
     unique_key: {

@@ -29,7 +29,7 @@ export default abstract class BaseObject {
   public static __relations: iObjectRelationSet = {};
   
   public toObject() {
-    return _.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || v instanceof Buffer);
+    return _.set(_.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || k === "uuid" || v instanceof Buffer), "id", this.uuid);
   }
   
   public get validated() {
