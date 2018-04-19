@@ -7,7 +7,7 @@ import * as env from "../env.json";
 import ServerError from "./ServerError";
 import User from "../objects/User";
 
-export default abstract class BaseObject {
+export default abstract class Element {
   
   [key: string]: any
   
@@ -21,7 +21,7 @@ export default abstract class BaseObject {
   
   public static __type: string;
   public static __fields: { [key: string]: iObjectField } = {
-    id: {type: "binary(16)", protected: true, required: true, onCreate: (t, v) => BaseObject.isUuid(v) ? BaseObject.uuidToBuffer(t.uuid = v) : BaseObject.uuidToBuffer(t.uuid = uuid.v4())},
+    id: {type: "binary(16)", protected: true, required: true, onCreate: (t, v) => Element.isUuid(v) ? Element.uuidToBuffer(t.uuid = v) : Element.uuidToBuffer(t.uuid = uuid.v4())},
     uuid: {intermediate: true}
   };
   public static __primary: string[] = ["id"];
@@ -45,7 +45,7 @@ export default abstract class BaseObject {
         const values = _.reduce(indexes, (r, a) => _.concat(r, _.map(a, v => this[v] || "")), []);
         const sql = link.parse(`SELECT * FROM ?? WHERE ${where}`, _.concat(this.__type, values));
         link.query(sql)
-        .then(res => res[0] ? resolve(_.assign(this, res[0], {__validated: true, uuid: BaseObject.bufferToUuid(res[0].id)})) : reject(new ServerError("404.db.select", sql)))
+        .then(res => res[0] ? resolve(_.assign(this, res[0], {__validated: true, uuid: Element.bufferToUuid(res[0].id)})) : reject(new ServerError("404.db.select", sql)))
         .catch(err => reject(ServerError.parseSQLError(err)))
         .finally(() => link.close());
       })
@@ -76,7 +76,7 @@ export default abstract class BaseObject {
   }
   
   protected init(object: string | { [key: string]: any }): this {
-    const base = (<typeof BaseObject>this.constructor);
+    const base = (<typeof Element>this.constructor);
     this.__type = base.__type;
     this.__fields = base.__fields;
     this.__indexes = base.__indexes;
@@ -84,7 +84,7 @@ export default abstract class BaseObject {
     if (typeof object === "string") { return this.__fields.id.onCreate(this, object); }
     _.each(this.__fields, (value, key) => (!value.protected || value.onCreate) && (object[key] || key === "id") && (this[key] = value.onCreate ? value.onCreate(this, object[key]) : object[key]) || true);
     _.each(this, (value, key) => this[key] === null ? delete this[key] : true);
-    if (object.id instanceof Buffer && !object.uuid && BaseObject.isUuid(BaseObject.bufferToUuid(object.id))) { return _.set(this, "uuid", BaseObject.bufferToUuid(this.id = object.id)); }
+    if (object.id instanceof Buffer && !object.uuid && Element.isUuid(Element.bufferToUuid(object.id))) { return _.set(this, "uuid", Element.bufferToUuid(this.id = object.id)); }
     return this;
   }
   
@@ -138,48 +138,44 @@ export default abstract class BaseObject {
     return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
   }
   
-  protected static generateTimeFields(): { [key: string]: iObjectField } {
-    return {
-      time_created: {type: "bigint(14)", default: null, protected: true, onInsert: o => o.time_created = Date.now()},
-      time_updated: {type: "bigint(14)", default: null, protected: true, onUpdate: o => o.time_updated = Date.now()},
-      time_deleted: {type: "bigint(14)", default: null, protected: true, onDelete: o => o.time_deleted = Date.now()}
-    };
+  protected static generateTimeFields(created: boolean = true, updated: boolean = true, deleted: boolean = false): { [key: string]: iObjectField } {
+    const fields: { [key: string]: iObjectField } = {};
+    if (created) { fields.time_created = {type: "bigint(14)", default: null, protected: true, onInsert: (o, v) => o.time_created = Date.now()}; }
+    if (updated) { fields.time_updated = {type: "bigint(14)", default: null, protected: true, onUpdate: (o, v) => o.time_updated = Date.now()}; }
+    if (deleted) { fields.time_deleted = {type: "bigint(14)", default: null, protected: true, onDelete: (o, v) => o.time_deleted = Date.now()}; }
+    return fields;
   }
   
-  protected static generateTimeIndexes(): iObjectIndex {
-    return {
-      key: {
-        time_created: ["time_created"],
-        time_updated: ["time_updated"],
-        time_deleted: ["time_deleted"]
-      }
-    };
+  protected static generateTimeIndexes(created: boolean = true, updated: boolean = false, deleted: boolean = false): iObjectIndex {
+    const indexes: iObjectIndex = {key: {}};
+    if (created) { indexes.key.time_created = ["time_created"]; }
+    if (updated) { indexes.key.time_updated = ["time_updated"]; }
+    if (deleted) { indexes.key.time_deleted = ["time_deleted"]; }
+    return indexes;
   }
   
-  protected static generateUserFields(): { [key: string]: iObjectField } {
-    return {
-      user_created: {type: "binary(16)", protected: true, default: null, onInsert: (o, v) => _.get(v, "id", _.get(users, "server.id", null))},
-      user_updated: {type: "binary(16)", protected: true, default: null, onUpdate: (o, v) => _.get(v, "id", _.get(users, "server.id", null))},
-      user_deleted: {type: "binary(16)", protected: true, default: null, onDelete: (o, v) => _.get(v, "id", _.get(users, "server.id", null))}
-    };
+  protected static generateUserFields(created: boolean = true, updated: boolean = false, deleted: boolean = false): { [key: string]: iObjectField } {
+    const fields: { [key: string]: iObjectField } = {};
+    if (created) { fields.user_created = {type: "binary(16)", default: null, protected: true, onInsert: (o, v) => _.get(v, "id", _.get(users, "server.id", null))}; }
+    if (updated) { fields.user_updated = {type: "binary(16)", default: null, protected: true, onUpdate: (o, v) => _.get(v, "id", _.get(users, "server.id", null))}; }
+    if (deleted) { fields.user_deleted = {type: "binary(16)", default: null, protected: true, onDelete: (o, v) => _.get(v, "id", _.get(users, "server.id", null))}; }
+    return fields;
   }
   
-  protected static generateUserIndexes(): iObjectIndex {
-    return {
-      key: {
-        user_created: ["user_created"],
-        user_updated: ["user_updated"],
-        user_deleted: ["user_deleted"]
-      }
-    };
+  protected static generateUserIndexes(created: boolean = true, updated: boolean = false, deleted: boolean = false): iObjectIndex {
+    const indexes: iObjectIndex = {key: {}};
+    if (created) { indexes.key.user_created = ["user_created"]; }
+    if (updated) { indexes.key.user_updated = ["user_updated"]; }
+    if (deleted) { indexes.key.user_deleted = ["user_deleted"]; }
+    return indexes;
   }
   
-  protected static generateUserConstraints(): iObjectRelationSet {
-    return {
-      user_created: {table: env.tables.default.names.user, on_delete: "NO ACTION", on_update: "CASCADE"},
-      user_updated: {table: env.tables.default.names.user, on_delete: "NO ACTION", on_update: "CASCADE"},
-      user_deleted: {table: env.tables.default.names.user, on_delete: "NO ACTION", on_update: "CASCADE"}
-    };
+  protected static generateUserRelations(created: boolean = true, updated: boolean = false, deleted: boolean = false): iObjectRelationSet {
+    const relations: iObjectRelationSet = {};
+    if (created) { relations.user_created = {table: env.tables.default.names.user, on_delete: "NO ACTION", on_update: "CASCADE"}; }
+    if (updated) { relations.user_updated = {table: env.tables.default.names.user, on_delete: "NO ACTION", on_update: "CASCADE"}; }
+    if (deleted) { relations.user_deleted = {table: env.tables.default.names.user, on_delete: "NO ACTION", on_update: "CASCADE"}; }
+    return relations;
   }
   
 }
@@ -210,8 +206,8 @@ export interface iObjectField {
   required?: boolean
   protected?: boolean
   intermediate?: boolean
-  onCreate?: (object: BaseObject, value?: any) => any;
-  onInsert?: (object: BaseObject, invoker?: User) => any;
-  onUpdate?: (object: BaseObject, invoker?: User) => any;
-  onDelete?: (object: BaseObject, invoker?: User) => any;
+  onCreate?: (object: Element, value?: any) => any;
+  onInsert?: (object: Element, invoker?: User) => any;
+  onUpdate?: (object: Element, invoker?: User) => any;
+  onDelete?: (object: Element, invoker?: User) => any;
 }

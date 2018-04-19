@@ -1,8 +1,8 @@
 import * as _ from "lodash";
-import BaseObject from "../classes/BaseObject";
+import Element from "../classes/Element";
 import * as crypto from "crypto";
 
-export default class User extends BaseObject {
+export default class User extends Element {
   
   public id: Buffer;
   public uuid: string;
@@ -12,7 +12,7 @@ export default class User extends BaseObject {
   public hash?: Buffer;
   
   public static __type = "user";
-  public static __fields = _.merge({}, BaseObject.__fields, BaseObject.generateTimeFields(), {
+  public static __fields = _.merge({}, Element.__fields, Element.generateTimeFields(), {
     username: {type: "varchar(32)", required: true},
     email: {type: "varchar(128)", required: true},
     salt: {type: "binary(64)", required: true, protected: true},
@@ -24,9 +24,10 @@ export default class User extends BaseObject {
         if (typeof value === "string") {$this.generateHash(value);}
         return null;
       }
-    }
+    },
+    time_login: {type: "bigint(14)", default: null, protected: true},
   });
-  public static __indexes = _.merge({}, BaseObject.__indexes, BaseObject.generateTimeIndexes(), {
+  public static __indexes = _.merge({}, Element.__indexes, Element.generateTimeIndexes(), {
     unique_key: {
       username: ["username"],
       email: ["email"]
