@@ -92,6 +92,23 @@ export default abstract class Element {
     return _.omitBy(this, (v, k) => k.slice(0, 2) === "__" || k === "uuid");
   }
   
+  protected static stringToKey(string: string): string {
+    return _.deburr(string).toLowerCase().replace(/\s|\W/g, "");
+  }
+  
+  protected static isUuid(uuid: string): boolean {
+    return !!`${uuid}`.match(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
+  }
+  
+  protected static uuidToBuffer(uuid: string): Buffer {
+    return new Buffer(uuid.replace(/-/g, ""), "hex");
+  }
+  
+  protected static bufferToUuid(buffer: Buffer): string {
+    const hex = buffer.toString("hex");
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+  }
+  
   public static generateTableSQL(): string {
     return `CREATE TABLE IF NOT EXISTS ${mysql.escapeId(this.__type)} (${this.generateFieldSQL()}) ENGINE=InnoDB DEFAULT CHARSET=utf8`;
   }
@@ -123,19 +140,6 @@ export default abstract class Element {
     return _.join(_.map(this.__relations, (relation, column) =>
       mysql.format(`CONSTRAINT ?? FOREIGN KEY (??) REFERENCES ?? (??) ON DELETE ${relation.on_delete} ON UPDATE ${relation.on_update}`, [this.__type + ":" + column, column, relation.table, this.__primary])
     ));
-  }
-  
-  protected static isUuid(uuid: string): boolean {
-    return !!`${uuid}`.match(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
-  }
-  
-  protected static uuidToBuffer(uuid: string): Buffer {
-    return new Buffer(uuid.replace(/-/g, ""), "hex");
-  }
-  
-  protected static bufferToUuid(buffer: Buffer): string {
-    const hex = buffer.toString("hex");
-    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
   }
   
   protected static generateTimeFields(created: boolean = true, updated: boolean = true, deleted: boolean = false): { [key: string]: iObjectField } {
