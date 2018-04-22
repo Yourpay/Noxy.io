@@ -5,7 +5,8 @@
     "newLine": "LF",
     "outDir": "./build",
     "sourceMap": false,
-    "declaration": false
+    "declaration": false,
+    "noStrictGenericChecks": true
   },
   "exclude": [
     "node_modules"

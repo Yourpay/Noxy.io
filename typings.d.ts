@@ -1,6 +1,6 @@
 declare module "*env.json" {
   const value: {
-    mode: string
+    mode: "development" | "production"
     databases: {
       [key: string]: {
         user: string
@@ -33,7 +33,19 @@ declare module "*env.json" {
       }
     }
     tokens: { [key: string]: string }
-    
+    ports: {
+      [key: string]: number
+      
+      http: number
+      https: number
+    }
+    certificates: {
+      [key: string]: string
+      
+      key: string
+      cert: string
+      ca: string
+    }
   };
   export = value;
 }

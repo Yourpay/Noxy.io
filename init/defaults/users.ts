@@ -1,4 +1,4 @@
-import {init_chain, roles, tables, users} from "../../app";
+import {init_chain, roles, elements, users} from "../../app";
 import User from "../../objects/User";
 import * as env from "../../env.json";
 import * as _ from "lodash";

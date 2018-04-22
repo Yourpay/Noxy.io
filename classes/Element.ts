@@ -6,6 +6,8 @@ import * as Promise from "bluebird";
 import * as env from "../env.json";
 import ServerError from "./ServerError";
 import User from "../objects/User";
+import ElementRouter from "./ElementRouter";
+import Router from "./Router";
 
 export default abstract class Element {
   
@@ -27,9 +29,14 @@ export default abstract class Element {
   public static __primary: string[] = ["id"];
   public static __indexes: iObjectIndex = {};
   public static __relations: iObjectRelationSet = {};
+  public static __router: Router;
   
   public toObject() {
     return _.set(_.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || k === "uuid" || v instanceof Buffer), "id", this.uuid);
+  }
+  
+  public get type() {
+    return this.__type;
   }
   
   public get validated() {
@@ -89,7 +96,7 @@ export default abstract class Element {
   }
   
   protected filter(): Partial<this> {
-    return _.omitBy(this, (v, k) => k.slice(0, 2) === "__" || k === "uuid");
+    return _.omitBy(this, (v, k) => k.slice(0, 2) === "__" || k === "uuid" || _.get(v, "intermediate"));
   }
   
   protected static stringToKey(string: string): string {
