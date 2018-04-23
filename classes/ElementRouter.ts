@@ -4,9 +4,9 @@ import Element from "./Element";
 import * as env from "../env.json";
 import * as jwt from "jsonwebtoken";
 
-export default class ElementRouter extends Router {
+export default class ElementRouter<T extends typeof Element> extends Router {
   
-  constructor(element: typeof Element) {
+  constructor(element: typeof Element | any) {
     super(`/${element.__type}`, 0);
     
     const auth: express.Handler = (request, response, next) => {

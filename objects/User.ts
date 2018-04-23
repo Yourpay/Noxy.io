@@ -27,7 +27,7 @@ export default class User extends Element {
       email: ["email"]
     }
   });
-  public static __router = new ElementRouter(<any>User);
+  public static __router = new ElementRouter(User);
   
   constructor(object: any) {
     super();
