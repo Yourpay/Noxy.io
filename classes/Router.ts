@@ -3,11 +3,11 @@ import * as _ from "lodash";
 
 export default abstract class Router {
   
-  protected application = express.Router();
-  protected path: string;
-  protected weight: number;
-  protected routers: { [key: string]: Router } = {};
-  protected routes: iRouteCollection;
+  public application = express.Router();
+  public path: string;
+  public weight: number;
+  public routers: { [key: string]: Router } = {};
+  public routes: iRouteCollection;
   
   private __finalized: boolean = false;
   
@@ -28,6 +28,7 @@ export default abstract class Router {
   }
   
   public finalize(): this {
+    _.each(this.routers, (router) => router.finalize());
     _.each(this.routes, (routing, method) => {
       _.each(routing, (handler, path) => {
         this.application.apply(null, _.concat(method, path, <any>handler));

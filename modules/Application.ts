@@ -30,7 +30,8 @@ export namespace Application {
   }
   
   export function addRouter(router: Router, path?: string) {
-  
+    if (_.size(router.routers) === 0) { return _.set(__routers, path + router.path, router); }
+    console.log(router, path);
   }
   
 }
