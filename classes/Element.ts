@@ -79,7 +79,7 @@ export default abstract class Element {
     });
   }
   
-  protected init(object: string | { [key: string]: any }): this {
+  protected init(object: string | { [key: string]: any } = {}): this {
     const base = (<typeof Element>this.constructor);
     this.__type = base.__type;
     this.__fields = base.__fields;
