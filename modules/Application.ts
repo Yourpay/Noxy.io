@@ -22,12 +22,17 @@ export namespace Application {
       Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) => {
         Promise.all(_.map(router.stack, layer => new Promise((resolve, reject) => {
           const route = {
-            path:         (path + layer.route.path).replace(/\/$/, ""),
-            method:      _.findKey(layer.route.methods, v => v)
+            path:   (path + layer.route.path).replace(/\/$/, ""),
+            method: _.findKey(layer.route.methods, v => v)
           };
-          new Route(route).save()
-          .then(res => resolve(res))
-          .catch(err => reject(err));
+          new Route(route).validate()
+          .catch(err => err.code === "404.db.select" ? this : reject(err))
+          .then(res => {
+            if (res.validated) { return resolve(res); }
+            res.save()
+            .then(res => resolve(res))
+            .catch(err => reject(err));
+          });
         })))
         .then(res => __application.use(path, router) && resolve(res))
         .catch(err => reject(err));

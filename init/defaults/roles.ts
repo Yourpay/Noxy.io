@@ -1,9 +1,9 @@
 import {init_chain, roles, users} from "../../app";
-import * as env from "../../env.json";
-import * as _ from "lodash";
-import * as Promise from "bluebird";
 import Role from "../../objects/Role";
+import * as env from "../../env.json";
+import * as Promise from "bluebird";
 import * as path from "path";
+import * as _ from "lodash";
 import * as fs from "fs";
 
 init_chain.addPromise("role", (resolve, reject) => {
@@ -14,10 +14,12 @@ init_chain.addPromise("role", (resolve, reject) => {
       roles[key].validate()
       .catch(err => err.code === "404.db.select" ? this : reject(err))
       .then(res => {
-        env.roles[key].id = roles[key].uuid;
         if (roles[key].validated && !changed) { return resolve(res); }
         roles[key].save(users.server)
-        .then(res => resolve(res))
+        .then(res => {
+          env.roles[key].id = roles[key].uuid;
+          resolve(res);
+        })
         .catch(err => reject(err));
       });
     })

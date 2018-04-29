@@ -13,8 +13,8 @@ export default class Role extends Element {
   public static __type = "role";
   
   public static __fields = _.merge({}, Element.__fields, Element.generateTimeFields(), Element.generateUserFields(), {
-    name: {type: "varchar(32)", required: true, onInsert: $this => Element.stringToKey($this.name), onUpdate: $this => Element.stringToKey($this.name)},
-    key: {type: "varchar(32)", required: true, protected: true}
+    name: {type: "varchar(32)", required: true},
+    key: {type: "varchar(32)", required: true, protected: true, onCreate: $this => Element.stringToKey($this.name)}
   });
   
   public static __indexes = _.merge({}, Element.__indexes, Element.generateTimeIndexes(), Element.generateUserIndexes(), {unique_key: {name: ["name"], key: ["key"]}});

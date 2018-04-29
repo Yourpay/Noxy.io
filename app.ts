@@ -13,13 +13,7 @@ export const db: { [key: string]: DBPool } = _.mapValues(env.databases, env_db =
 export const users: { [key: string]: User } = {};
 export const roles: { [key: string]: Role } = {};
 export const elements: { [key: string]: Element } = {};
-export const init_chain = new PromiseChain()
-.addLink("db")
-.addLink("table")
-.addLink("user")
-.addLink("role")
-.addLink("route")
-.addLink("publicize");
+export const init_chain = new PromiseChain(["db", "table", "user", "role", "route", "publicize"]);
 
 requireAll(__dirname + "/init");
 

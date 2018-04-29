@@ -4,7 +4,7 @@ import User from "../../objects/User";
 import Role from "../../objects/Role";
 import Route from "../../objects/Route";
 
-init_chain.addPromise("routes", (resolve, reject) => {
+init_chain.addPromise("route", (resolve, reject) => {
   
   Application.addRoute("POST", {path: "/api/user", parameter: "/login"}, Application.auth, (request, response, next) => {
     const user = new User(request.body);

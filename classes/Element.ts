@@ -21,7 +21,7 @@ export default abstract class Element {
   
   public static __type: string;
   public static __fields: { [key: string]: iObjectField } = {
-    id: {type: "binary(16)", protected: true, required: true, onCreate: (t, v) => Element.isUuid(v) ? Element.uuidToBuffer(t.uuid = v) : Element.uuidToBuffer(t.uuid = uuid.v4())},
+    id:   {type: "binary(16)", protected: true, required: true, onCreate: (t, v) => Element.isUuid(v) ? Element.uuidToBuffer(t.uuid = v) : Element.uuidToBuffer(t.uuid = uuid.v4())},
     uuid: {intermediate: true}
   };
   public static __primary: string[] = ["id"];
@@ -93,7 +93,7 @@ export default abstract class Element {
   }
   
   protected filter(): Partial<this> {
-    return _.omitBy(this, (v, k) => k.slice(0, 2) === "__" || k === "uuid" || _.get(v, "intermediate"));
+    return _.omitBy(this, (v, k) => k.slice(0, 2) === "__" || k === "uuid" || this.__fields[k]["intermediate"]);
   }
   
   protected static stringToKey(string: string): string {
