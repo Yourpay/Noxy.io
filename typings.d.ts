@@ -39,7 +39,7 @@ declare module "*env.json" {
       http: number
       https: number
     }
-    certificates: {
+    certificates?: {
       [key: string]: string
       
       key: string

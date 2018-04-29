@@ -6,7 +6,7 @@ import User from "../../objects/User";
 init_chain.addPromise("routes", (resolve, reject) => {
   
   
-  Application.addRouter(new ElementRouter(User), "/api")
+  Application.addRouter(new ElementRouter(User), "/api" )
   
   console.log(Application);
 

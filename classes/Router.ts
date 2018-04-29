@@ -27,6 +27,14 @@ export default abstract class Router {
     return this;
   }
   
+  public paths(base_path = "", object?): { [key: string]: Router } {
+    return _.transform(this.routers, (result, router) => {
+      _.set(result, base_path + this.path, this);
+      router.paths(base_path + this.path, result);
+      return result;
+    }, _.merge(object || {}, _.set({}, base_path + this.path, this)));
+  }
+  
   public finalize(): this {
     _.each(this.routers, (router) => router.finalize());
     _.each(this.routes, (routing, method) => {
