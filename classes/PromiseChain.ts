@@ -6,13 +6,12 @@ export default class PromiseChain {
   private links: { [key: string]: PromiseChainLink } = {};
   private queue: PromiseChainLink[] = [];
   
-  constructor() {
+  constructor(links?: string | string[]) {
+    if (links) { this.addLink(links); }
   }
   
-  public addLink(key: string): PromiseChain {
-    if (!this.links[key]) {
-      this.queue.push(this.links[key] = new PromiseChainLink(key));
-    }
+  public addLink(key: string | string[]): PromiseChain {
+    _.each(Array.isArray(key) ? key : [key], k => !this.links[k] && this.queue.push(this.links[k] = new PromiseChainLink(k)));
     return this;
   }
   

@@ -1,7 +1,6 @@
 import * as _ from "lodash";
 import Element from "../classes/Element";
 import * as crypto from "crypto";
-import ElementRouter from "../classes/ElementRouter";
 
 export default class User extends Element {
   
@@ -27,7 +26,6 @@ export default class User extends Element {
       email: ["email"]
     }
   });
-  public static __router = new ElementRouter(User);
   
   constructor(object: any) {
     super();
