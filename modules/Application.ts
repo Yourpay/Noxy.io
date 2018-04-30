@@ -65,6 +65,16 @@ export namespace Application {
     });
   }
   
+  export function response(object) {
+    return {
+      success: object.code !== "200" && !object.message,
+      content: object,
+      code: object.code || "200.server.any",
+      message: object.message || "Request performed successfully.",
+      time: Date.now()
+    }
+  }
+  
   export function auth(request, response, next) {
     const route_key = `${request.method}:${request.path}`;
     return new Promise<Route>((resolve, reject) => {
