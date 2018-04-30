@@ -26,8 +26,11 @@ export namespace Application {
   
   export function listen(port?: number): Promise<any> {
     return new Promise((resolve, reject) => {
+      console.log(__routers);
       Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) => {
+        console.log(path, router);
         Promise.all(_.map(router.stack, layer => new Promise((resolve, reject) => {
+          console.log(router.stack)
           const route = new Route({
             path:   (path + layer.route.path).replace(/\/$/, ""),
             method: _.findKey(layer.route.methods, v => v)
@@ -42,7 +45,7 @@ export namespace Application {
             .catch(err => reject(err));
           });
         })))
-        .then(res => __application.use(path, router) && resolve(res))
+        .then(res => console.log(path, router) || __application.use(path, router) && resolve(res))
         .catch(err => reject(err));
       })))
       .catch(err => reject(err))
