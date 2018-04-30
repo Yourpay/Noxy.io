@@ -28,13 +28,14 @@ export namespace Application {
     return new Promise((resolve, reject) => {
       Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) => {
         Promise.all(_.map(router.stack, layer => new Promise((resolve, reject) => {
-          const route = {
+          const route = new Route({
             path:   (path + layer.route.path).replace(/\/$/, ""),
             method: _.findKey(layer.route.methods, v => v)
-          };
-          new Route(route).validate()
-          .catch(err => err.code === "404.db.select" ? this : reject(err))
+          });
+          route.validate()
+          .catch(err => err.code === "404.db.select" ? route : err)
           .then(res => {
+            if (res instanceof Error) { return reject(res); }
             if (res.validated) { return resolve(res); }
             res.save()
             .then(res => resolve(res))
@@ -73,12 +74,11 @@ export namespace Application {
     .then(route => {
       if (!route.flag_active) { return response.sendStatus(404); }
       if (!__roles[route_key]) { return next(); }
-      jwt.verify(request.get("Authorization"), env.tokens.jwt, (err, decoded) => {
-        if (err) { return response.sendStatus(401); }
-        return response.sendStatus(200);
-      });
+      jwt.verify(request.get("Authorization"), env.tokens.jwt, (err, decoded) =>
+        err ? response.sendStatus(401) : console.log(decoded) || response.sendStatus(200)
+      );
     })
-    .catch(err => response.sendStatus(404));
+    .catch(() => response.sendStatus(404));
   }
   
   export function addRoute(method: Method, path: string | Path, ...args): typeof Application {
@@ -97,12 +97,12 @@ export namespace Application {
       next();
     });
     
-    router.get(`/`, auth, (request, response, next) => {
+    router.get(`/`, auth, (request, response) => {
       console.log("GET PATH HIT");
       response.status(401).json({fuck: "yes"});
     });
     
-    router.get(`/:id`, auth, (request, response, next) => {
+    router.get(`/:id`, auth, (request, response) => {
       console.log("GET PATH HIT");
       response.status(401).json({fuck: "yes"});
     });
@@ -114,12 +114,12 @@ export namespace Application {
       .catch(err => response.status(err.code.split(".")[0]).send(err.message));
     });
     
-    router.put(`/:id`, auth, (request, response, next) => {
+    router.put(`/:id`, auth, (request, response) => {
       console.log("GET PATH HIT");
       response.status(401).json({fuck: "yes"});
     });
     
-    router.delete(`/:id`, auth, (request, response, next) => {
+    router.delete(`/:id`, auth, (request, response) => {
       console.log("GET PATH HIT");
       response.status(401).json({fuck: "yes"});
     });

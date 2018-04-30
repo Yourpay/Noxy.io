@@ -32,15 +32,15 @@ export default abstract class Element {
     return _.set(_.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || k === "uuid" || v instanceof Buffer), "id", this.uuid);
   }
   
-  public get type() {
-    return this.__type;
-  }
+  // public get type() {
+  //   return this.__type;
+  // }
   
   public get validated() {
     return this.__validated;
   }
   
-  public validate() {
+  public validate(): Promise<this> {
     return new Promise<this>((resolve, reject) => {
       db[env.mode].connect()
       .then(link => {
@@ -57,7 +57,7 @@ export default abstract class Element {
     });
   }
   
-  public save(invoker?: User) {
+  public save(invoker?: User): Promise<this> {
     return new Promise<this>((resolve, reject) => {
       new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
       .catch(err => err.code === "404.db.select" ? this : reject(err))
@@ -148,9 +148,9 @@ export default abstract class Element {
   
   protected static generateTimeFields(created: boolean = true, updated: boolean = true, deleted: boolean = false): { [key: string]: iObjectField } {
     const fields: { [key: string]: iObjectField } = {};
-    if (created) { fields.time_created = {type: "bigint(14)", default: null, protected: true, onInsert: (o, v) => o.time_created = Date.now()}; }
-    if (updated) { fields.time_updated = {type: "bigint(14)", default: null, protected: true, onUpdate: (o, v) => o.time_updated = Date.now()}; }
-    if (deleted) { fields.time_deleted = {type: "bigint(14)", default: null, protected: true, onDelete: (o, v) => o.time_deleted = Date.now()}; }
+    if (created) { fields.time_created = {type: "bigint(14)", default: null, protected: true, onInsert: o => o.time_created = Date.now()}; }
+    if (updated) { fields.time_updated = {type: "bigint(14)", default: null, protected: true, onUpdate: o => o.time_updated = Date.now()}; }
+    if (deleted) { fields.time_deleted = {type: "bigint(14)", default: null, protected: true, onDelete: o => o.time_deleted = Date.now()}; }
     return fields;
   }
   

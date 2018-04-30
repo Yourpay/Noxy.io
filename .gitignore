@@ -20,3 +20,4 @@ node_modules/
 /build/
 /env.json
 /ddl.sql
+/package-lock.json

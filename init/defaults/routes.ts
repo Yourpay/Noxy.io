@@ -1,12 +1,11 @@
-import {init_chain} from "../../app";
+import {elements, init_chain} from "../../app";
 import {Application} from "../../modules/Application";
 import User from "../../objects/User";
-import Role from "../../objects/Role";
-import Route from "../../objects/Route";
+import * as _ from "lodash";
 
-init_chain.addPromise("route", (resolve, reject) => {
+init_chain.addPromise("route", resolve => {
   
-  Application.addRoute("POST", {path: "/api/user", parameter: "/login"}, Application.auth, (request, response, next) => {
+  Application.addRoute("POST", {path: "/api/user", parameter: "/login"}, Application.auth, (request, response) => {
     const user = new User(request.body);
     user.validate()
     .then((res) => { console.log(res); })
@@ -14,9 +13,7 @@ init_chain.addPromise("route", (resolve, reject) => {
     .finally(() => { response.status(200).json({"yes": "no"}); });
   });
   
-  Application.addElementRouter(User);
-  Application.addElementRouter(Role);
-  
+  _.each(elements, v => { Application.addElementRouter(v); });
   resolve();
   
 });
