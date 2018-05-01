@@ -13,8 +13,9 @@ import * as _ from "lodash";
 import * as fs from "fs";
 import ServerError from "../classes/ServerError";
 import User from "../objects/User";
+import {roles} from "../app";
 
-export namespace Application {
+export namespace RoutingService {
   
   const __roles: { [key: string]: Role[] } = {};
   const __routes: { [key: string]: Route } = {};
@@ -97,17 +98,16 @@ export namespace Application {
     .catch(() => response.sendStatus(404));
   }
   
-  export function addRoute(method: Method, path: string | Path, ...args): typeof Application {
+  export function addRoute(method: Method, path: string | Path, ...args): typeof RoutingService {
     const parsed_path = _.get(path, "path", path);
     const router = __routers[parsed_path] || (__routers[parsed_path] = express.Router());
     router[_.toLower(method)].apply(router, _.concat(_.get(path, "parameter", "/"), args));
-    return Application;
+    return RoutingService;
   }
   
   export function addElementRouter(element: typeof Element | any) {
     const path = `/api/${element.__type}`;
     const router = __routers[path] || (__routers[path] = express.Router());
-    
     router.param("id", (request: ElementRequest, response, next, id) => {
       request.id = id;
       next();
@@ -117,13 +117,19 @@ export namespace Application {
       if (request.query.start < 0) { request.query.start = 0; }
       if (request.query.limit < 0 || request.query.limit > 100) { request.query.limit = 100; }
       element.retrieve(request.query.start, request.query.limit, request.user)
-      .then(res => response.status(200).json(Application.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(Application.response(err)));
+      .then(res => response.status(200).json(RoutingService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
     });
     
-    router.get(`/:id`, auth, (request, response) => {
-      console.log("GET PATH HIT");
-      response.status(401).json({fuck: "yes"});
+    router.get(`/:id`, auth, (request: ElementRequest, response) => {
+      new element(request.id).validate()
+      .then(res => {
+        const owner_check = element.__fields.user_created && request.user.id === element.__fields.user_created;
+        const admin_check = !element.__fields.user_created && _.includes(request.roles, roles["admin"]);
+        if (!owner_check && !admin_check) { throw new ServerError("403.db.select"); }
+        response.status(200).json(RoutingService.response(res.toObject()));
+      })
+      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
     });
     
     router.post(`/`, auth, (request, response) => {
@@ -134,7 +140,7 @@ export namespace Application {
         if (res instanceof ServerError) { throw res; }
         if (res.validated) { throw new ServerError("400.db.duplicate"); }
         res.save()
-        .then(res => response.json(Application.response(res.toObject())))
+        .then(res => response.json(RoutingService.response(res.toObject())))
         .catch(err => response.status(err.code.split(".")[0]).send(err.message));
       })
       .catch(err => response.status(err.code.split(".")[0]).send(err.message));
@@ -151,7 +157,7 @@ export namespace Application {
     });
     
     __routers[`/api/${element.__type}`] = router;
-    return Application;
+    return RoutingService;
   }
   
 }
@@ -159,6 +165,7 @@ export namespace Application {
 interface ElementRequest extends express.Request {
   id?: string
   user?: User
+  roles: Role[]
 }
 
 type Path = { path: string, parameter: string }

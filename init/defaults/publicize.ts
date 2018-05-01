@@ -1,5 +1,5 @@
 import {init_chain} from "../../app";
-import {Application} from "../../modules/Application";
+import {RoutingService} from "../../modules/RoutingService";
 import Route from "../../objects/Route";
 import * as Promise from "bluebird";
 import * as _ from "lodash";
@@ -19,7 +19,7 @@ init_chain.addPromise("publicize", (resolve, reject) => {
     });
   })))
   .then(() => {
-    Application.listen()
+    RoutingService.listen()
     .then(res => resolve(res))
     .catch(err => reject(err));
   })

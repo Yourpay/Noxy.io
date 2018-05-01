@@ -100,7 +100,7 @@ export default abstract class Element {
     this.__fields = base.__fields;
     this.__indexes = base.__indexes;
     this.__primary = base.__primary;
-    if (typeof object === "string") { return this.__fields.id.onCreate(this, object); }
+    if (typeof object === "string") { return this.id = this.__fields.id.onCreate(this, object); }
     _.each(this.__fields, (value, key) => (!value.protected || value.onCreate) && (object[key] || key === "id") && (this[key] = value.onCreate ? value.onCreate(this, object[key]) : object[key]) || true);
     _.each(this, (value, key) => this[key] === null ? delete this[key] : true);
     if (object.id instanceof Buffer && !object.uuid && Element.isUuid(Element.bufferToUuid(object.id))) { return _.set(this, "uuid", Element.bufferToUuid(this.id = object.id)); }
