@@ -9,6 +9,7 @@ export default class ServerError extends Error {
     "200.server.any": "Request performed successfully",
     "400.db.select": "Malformed request received while selecting from database.",
     "400.db.insert": "Malformed request received while inserting into database.",
+    "400.db.duplicate": "Duplicate resource request received while inserting into database.",
     "404.db.select": "Resource not found while selecting from database.",
     "500.db.select": "Server error occured while selecting from database."
   };

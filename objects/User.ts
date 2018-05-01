@@ -38,7 +38,7 @@ export default class User extends Element {
     _.set(this, "hash", crypto.pbkdf2Sync(password, salt.toString("base64"), 100000, 64, "sha512"));
   }
   
-  public static generateHash (password, salt) {
+  public static generateHash (password: string, salt: Buffer) {
     return crypto.pbkdf2Sync(password, salt.toString("base64"), 100000, 64, "sha512")
   }
   

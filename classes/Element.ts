@@ -40,6 +40,21 @@ export default abstract class Element {
     return this.__validated;
   }
   
+  public static retrieve(start = 0, limit = 100, user?: User): Promise<{ [key: string]: Element }> {
+    return new Promise((resolve, reject) => {
+      db[env.mode].connect()
+      .then(link => {
+        const where = user && this.__fields.user_created ? link.parse("??", {user_created: user.id}) : "";
+        const sql = link.parse(`SELECT * FROM ?? ${where} LIMIT ? OFFSET ?`, [this.__type, limit, start]);
+        link.query(sql)
+        .then(res => resolve(_.transform(res, (r, v: any) => (v = new (<any>this)(v).toObject()) && _.set(r, v.id, v), {})))
+        .catch(err => reject(ServerError.parseSQLError(err)))
+        .finally(() => link.close());
+      })
+      .catch(err => reject(err));
+    });
+  }
+  
   public validate(): Promise<this> {
     return new Promise<this>((resolve, reject) => {
       db[env.mode].connect()
