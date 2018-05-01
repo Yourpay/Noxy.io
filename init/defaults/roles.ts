@@ -14,6 +14,7 @@ init_chain.addPromise("role", (resolve, reject) => {
       roles[key].validate()
       .catch(err => err.code === "404.db.select" ? this : reject(err))
       .then(res => {
+        if (!res) { return false; }
         if (roles[key].validated && !changed) { return resolve(res); }
         roles[key].save(users.server)
         .then(res => {

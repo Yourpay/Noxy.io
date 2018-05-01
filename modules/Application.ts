@@ -26,26 +26,25 @@ export namespace Application {
   
   export function listen(port?: number): Promise<any> {
     return new Promise((resolve, reject) => {
-      console.log(__routers);
       Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) => {
-        console.log(path, router);
         Promise.all(_.map(router.stack, layer => new Promise((resolve, reject) => {
-          console.log(router.stack)
           const route = new Route({
             path:   (path + layer.route.path).replace(/\/$/, ""),
-            method: _.findKey(layer.route.methods, v => v)
+            method: _.toUpper(_.findKey(layer.route.methods, v => v))
           });
+          const route_key = `${route.path}:${route.method}`;
+          if (__routes[route_key]) { return resolve(__routes[route_key]); }
           route.validate()
           .catch(err => err.code === "404.db.select" ? route : err)
           .then(res => {
             if (res instanceof Error) { return reject(res); }
             if (res.validated) { return resolve(res); }
             res.save()
-            .then(res => resolve(res))
+            .then(res => resolve(_.set(__routes, route_key, res)))
             .catch(err => reject(err));
           });
         })))
-        .then(res => console.log(path, router) || __application.use(path, router) && resolve(res))
+        .then(res => __application.use(path, router) && resolve(res))
         .catch(err => reject(err));
       })))
       .catch(err => reject(err))
@@ -72,10 +71,10 @@ export namespace Application {
     return {
       success: object.code !== "200" && !object.message,
       content: object,
-      code: object.code || "200.server.any",
+      code:    object.code || "200.server.any",
       message: object.message || "Request performed successfully.",
-      time: Date.now()
-    }
+      time:    Date.now()
+    };
   }
   
   export function auth(request, response, next) {

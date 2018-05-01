@@ -14,6 +14,7 @@ init_chain.addPromise("user", (resolve, reject) => {
       users[key].validate()
       .catch(err => err.code === "404.db.select" ? this : reject(err))
       .then(res => {
+        if (!res) { return false; }
         if (users[key].validated && !changed) { return resolve(res); }
         users[key].save()
         .then(res => {
