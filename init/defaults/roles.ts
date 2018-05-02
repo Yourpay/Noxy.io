@@ -5,6 +5,7 @@ import * as Promise from "bluebird";
 import * as path from "path";
 import * as _ from "lodash";
 import * as fs from "fs";
+import RoleUser from "../../objects/RoleUser";
 
 init_chain.addPromise("role", (resolve, reject) => {
   Promise.all(_.map(env.roles, (role, key) =>
@@ -25,7 +26,15 @@ init_chain.addPromise("role", (resolve, reject) => {
       });
     })
   ))
-  .then(res => resolve(res))
+  .then(res =>
+    Promise.all([
+      new RoleUser({user_id: users["admin"].id, role_id: roles["admin"].id}).save(),
+      new RoleUser({user_id: users["admin"].id, role_id: roles["user"].id}).save(),
+      new RoleUser({user_id: users["server"].id, role_id: roles["admin"].id}).save(),
+      new RoleUser({user_id: users["server"].id, role_id: roles["user"].id}).save()
+    ])
+    .then(res => resolve(res))
+  )
   .catch(err => reject(err))
   .finally(() => fs.writeFileSync(path.resolve(process.cwd(), "./env.json"), JSON.stringify(env, null, 2)));
 });

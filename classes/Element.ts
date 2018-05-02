@@ -32,22 +32,22 @@ export default abstract class Element {
     return _.set(_.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || k === "uuid" || v instanceof Buffer), "id", this.uuid);
   }
   
-  // public get type() {
-  //   return this.__type;
-  // }
-  
   public get validated() {
     return this.__validated;
   }
   
-  public static retrieve(start = 0, limit = 100, user?: User): Promise<{ [key: string]: Element }> {
+  public static retrieve(start = 0, limit = 100, checks?: { [key: string]: any }): Promise<(Element | any)[]> {
     return new Promise((resolve, reject) => {
       db[env.mode].connect()
       .then(link => {
-        const where = user && this.__fields.user_created ? link.parse("??", {user_created: user.id}) : "";
-        const sql = link.parse(`SELECT * FROM ?? ${where} LIMIT ? OFFSET ?`, [this.__type, limit, start]);
+        let index = "", where = "";
+        if (checks) {
+          if (_.every(checks, (v, k) => !!this.__fields[k])) { where = link.parse("WHERE ?", checks); }
+          if (!!(index = _.findKey(this.__indexes.unique_key, index => _.difference(index, _.values(checks)).length === 0) || "")) { index = link.parse("USE INDEX (??)", index); }
+        }
+        const sql = link.parse(`SELECT * FROM ?? ${index} ${where} LIMIT ? OFFSET ?`, [this.__type, limit, start]);
         link.query(sql)
-        .then(res => resolve(_.transform(res, (r, v: any) => (v = new (<any>this)(v).toObject()) && _.set(r, v.id, v), {})))
+        .then(res => resolve(res))
         .catch(err => reject(ServerError.parseSQLError(err)))
         .finally(() => link.close());
       })

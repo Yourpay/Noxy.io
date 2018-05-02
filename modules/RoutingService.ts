@@ -14,6 +14,8 @@ import * as fs from "fs";
 import ServerError from "../classes/ServerError";
 import User from "../objects/User";
 import {roles} from "../app";
+import RoleRoute from "../objects/RoleRoute";
+import RoleUser from "../objects/RoleUser";
 
 export namespace RoutingService {
   
@@ -80,22 +82,56 @@ export namespace RoutingService {
     };
   }
   
+  function authUser(token): Promise<[User, Buffer[]]> {
+    return new Promise<[User, Buffer[]]>((resolve, reject) =>
+      new Promise<User>((resolve, reject) =>
+        jwt.verify(token || "", env.tokens.jwt, (err, decoded) =>
+          !err ? resolve(new User(decoded)) : reject(new ServerError("401.server.jwt"))
+        )
+      )
+      .then(user => user.validate().then(user => authRoleUser(user).then(res => resolve([user, res]))))
+      .catch(err => reject(err || new ServerError("401.server.any")))
+    );
+  }
+  
+  function authRoleUser(user): Promise<Buffer[]> {
+    return RoleUser.retrieve(0, 1000, {user_id: user.id}).then(res => _.map(res, v => v.role_id));
+  }
+  
+  function authRoleRoute(route): Promise<Buffer[]> {
+    return RoleRoute.retrieve(0, 1000, {route_id: route.id}).then(res => _.map(res, v => v.role_id));
+  }
+  
   export function auth(request, response, next) {
-    const route_key = `${request.method}:${request.path}`;
-    return new Promise<Route>((resolve, reject) => {
-      if (__routes[route_key]) { return resolve(__routes[route_key]); }
-      return new Route({method: request.method, path: request.baseUrl}).validate().then(res => resolve(res), err => reject(err));
-    })
-    .then(route => {
-      if (!route.flag_active) { return response.sendStatus(404); }
-      new Promise((resolve, reject) => jwt.verify(request.get("Authorization"), env.tokens.jwt, (err, decoded) => !err || !__roles[route_key] ? resolve(decoded) : reject(err)))
-      .then(res => {
-        if (res) { _.set(request, "user", new User(res)); }
-        next();
+    const key = `${request.method}:${request.originalUrl}`;
+    return new Promise<[User, Buffer[]]>((resolve, reject) =>
+      new Promise<Route>((resolve, reject) => {
+        if (__routes[key]) { return resolve(__routes[key]); }
+        new Route({method: request.method, path: request.originalUrl}).validate()
+        .then(res => resolve(res))
+        .catch(err => reject(err));
       })
-      .catch(err => response.sendStatus(401));
+      .then(route => {
+        if (!route.flag_active) {
+          return authUser(request.get("Authorization"))
+          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve(res) : reject(new ServerError("403.server.any")))
+          .catch(err => reject(err));
+        }
+        authRoleRoute(route)
+        .then(route_roles => {
+          authUser(request.get("Authorization"))
+          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve(res) : reject(new ServerError("403.server.any")))
+          .catch(err => err.code === "401.server.jwt" ? resolve([null, route_roles]) : reject(err));
+        })
+        .catch(err => reject(err));
+      })
+    )
+    .then(res => {
+      request.user = res[0];
+      request.roles = res[1];
+      next();
     })
-    .catch(() => response.sendStatus(404));
+    .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
   }
   
   export function addRoute(method: Method, path: string | Path, ...args): typeof RoutingService {
@@ -116,16 +152,17 @@ export namespace RoutingService {
     router.get(`/`, auth, (request: ElementRequest, response) => {
       if (request.query.start < 0) { request.query.start = 0; }
       if (request.query.limit < 0 || request.query.limit > 100) { request.query.limit = 100; }
-      element.retrieve(request.query.start, request.query.limit, request.user)
-      .then(res => response.status(200).json(RoutingService.response(res)))
+      element.retrieve(request.query.start, request.query.limit, {user_created: request.user.id})
+      .then(res => response.status(200).json(RoutingService.response(_.transform(res, (r, v: any) => (v = new element(v).toObject()) && _.set(r, v.id, v), {}))))
       .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
     });
     
     router.get(`/:id`, auth, (request: ElementRequest, response) => {
+      const role_check = __roles[`GET:${path}`].length === 0 || _.intersection(__roles[`GET:${path}`], request.roles).length > 0;
+      const admin_check = !element.__fields.user_created && _.includes(request.roles, roles["admin"]);
       new element(request.id).validate()
       .then(res => {
-        const owner_check = element.__fields.user_created && request.user.id === element.__fields.user_created;
-        const admin_check = !element.__fields.user_created && _.includes(request.roles, roles["admin"]);
+        const owner_check = element.__fields.user_created && request.user.id === res.user_created;
         if (!owner_check && !admin_check) { throw new ServerError("403.db.select"); }
         response.status(200).json(RoutingService.response(res.toObject()));
       })

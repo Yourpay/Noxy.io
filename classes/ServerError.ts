@@ -7,6 +7,7 @@ export default class ServerError extends Error {
   
   private static codes: { [key: string]: string } = {
     "200.server.any": "Request performed successfully",
+    "401.server.any": "Unauthorized",
     "400.db.select": "Malformed request received while selecting from database.",
     "400.db.insert": "Malformed request received while inserting into database.",
     "400.db.duplicate": "Duplicate resource request received while inserting into database.",

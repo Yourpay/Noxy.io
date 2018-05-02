@@ -1,36 +1,51 @@
+type ModeEnvironmental = "development" | "production";
+
+interface UserEnvironmental {
+  id?: string
+  username: string
+  password?: string
+  email: string
+}
+
+interface RoleEnvironmental {
+  id?: string
+  name: string
+  key: string
+}
+
+interface DatabaseEnvironmental {
+  user: string
+  password: string
+  host: string
+  database: string
+  pool?: number
+}
+
 declare module "*env.json" {
   const value: {
-    mode: "development" | "production"
+    mode: ModeEnvironmental
     databases: {
-      [key: string]: {
-        user: string
-        password: string
-        host: string
-        database: string
-        pool?: number
-      }
+      [key: string]: DatabaseEnvironmental
     },
     tables: {
       default: {
         names: {
           [key: string]: string
+          
+          user: string
+          route: string
+          role: string
+          role_user: string
+          role_route: string
         }
       }
     }
     users: {
-      [key: string]: {
-        id?: string
-        username: string
-        password?: string
-        email: string
-      }
+      [key: string]: UserEnvironmental
     }
     roles: {
-      [key: string]: {
-        id?: string
-        name: string
-        key: string
-      }
+      [key: string]: RoleEnvironmental
+      
     }
     tokens: { [key: string]: string }
     ports: {
@@ -42,9 +57,9 @@ declare module "*env.json" {
     certificates?: {
       [key: string]: string
       
-      key: string
-      cert: string
-      ca: string
+      key?: string
+      cert?: string
+      ca?: string
     }
   };
   export = value;
