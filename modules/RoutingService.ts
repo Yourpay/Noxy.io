@@ -103,32 +103,34 @@ export namespace RoutingService {
   }
   
   export function auth(request, response, next) {
-    const key = `${request.method}:${request.originalUrl}`;
-    return new Promise<[User, Buffer[]]>((resolve, reject) =>
+    const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
+    const key = `${request.method}:${path}`;
+    return new Promise<[User, Buffer[], Buffer[]]>((resolve, reject) =>
       new Promise<Route>((resolve, reject) => {
         if (__routes[key]) { return resolve(__routes[key]); }
-        new Route({method: request.method, path: request.originalUrl}).validate()
+        new Route({method: request.method, path: path}).validate()
         .then(res => resolve(res))
         .catch(err => reject(err));
       })
       .then(route => {
         if (!route.flag_active) {
           return authUser(request.get("Authorization"))
-          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve(res) : reject(new ServerError("403.server.any")))
+          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], null]) : reject(new ServerError("403.server.any")))
           .catch(err => reject(err));
         }
         authRoleRoute(route)
         .then(route_roles => {
           authUser(request.get("Authorization"))
-          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve(res) : reject(new ServerError("403.server.any")))
-          .catch(err => err.code === "401.server.jwt" ? resolve([null, route_roles]) : reject(err));
+          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], null]) : reject(new ServerError("403.server.any")))
+          .catch(err => err.code === "401.server.jwt" ? resolve([null, null, route_roles]) : reject(err));
         })
         .catch(err => reject(err));
       })
     )
     .then(res => {
       request.user = res[0];
-      request.roles = res[1];
+      request.roles_user = res[1];
+      request.roles_route = res[2];
       next();
     })
     .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
@@ -158,12 +160,17 @@ export namespace RoutingService {
     });
     
     router.get(`/:id`, auth, (request: ElementRequest, response) => {
-      const role_check = __roles[`GET:${path}`].length === 0 || _.intersection(__roles[`GET:${path}`], request.roles).length > 0;
-      const admin_check = !element.__fields.user_created && _.includes(request.roles, roles["admin"]);
+      console.log(request.id);
+      console.log(request.user);
+      console.log(request.roles_route);
+      console.log(request.roles_user);
       new element(request.id).validate()
       .then(res => {
-        const owner_check = element.__fields.user_created && request.user.id === res.user_created;
-        if (!owner_check && !admin_check) { throw new ServerError("403.db.select"); }
+        console.log("checking", res);
+        console.log(request.user);
+        console.log(request.roles_route);
+        console.log(request.roles_user);
+        if (element.__fields.user_created && request.user.id === res.user_created) { return response.status(403).json(RoutingService.response(new ServerError("403.server.any"))); }
         response.status(200).json(RoutingService.response(res.toObject()));
       })
       .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
@@ -202,7 +209,8 @@ export namespace RoutingService {
 interface ElementRequest extends express.Request {
   id?: string
   user?: User
-  roles: Role[]
+  roles_route?: Role[]
+  roles_user?: Role[]
 }
 
 type Path = { path: string, parameter: string }
