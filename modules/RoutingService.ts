@@ -19,7 +19,7 @@ import User from "../objects/User";
 
 export namespace RoutingService {
   
-  const __roles: { [key: string]: Role[] } = {};
+  const __roles: { [key: string]: Buffer[] } = {};
   const __routes: { [key: string]: Route } = {};
   const __routers: { [key: string]: express.Router } = {};
   const __servers: { [port: number]: http.Server | https.Server } = {};
@@ -94,38 +94,48 @@ export namespace RoutingService {
     );
   }
   
-  function authRoleUser(user): Promise<Buffer[]> {
-    return RoleUser.retrieve(0, 1000, {user_id: user.id}).then(res => _.map(res, v => v.role_id));
+  function authRoute(method, path, key): Promise<Route> {
+    return new Promise<Route>((resolve, reject) => {
+      if (__routes[key]) { return resolve(__routes[key]); }
+      new Route({method: method, path: path}).validate()
+      .then(res => resolve(__routes[key] = res))
+      .catch(err => reject(err));
+    });
   }
   
   function authRoleRoute(route): Promise<Buffer[]> {
-    return RoleRoute.retrieve(0, 1000, {route_id: route.id}).then(res => _.map(res, v => v.role_id));
+    return new Promise<Buffer[]>((resolve, reject) => {
+      const key = `${route.method}:${route.path}`;
+      if (__roles[key]) { return resolve(__roles[key]); }
+      RoleRoute.retrieve(0, 1000, {route_id: route.id})
+      .then(res => resolve(__roles[key] = _.map(res, v => v.role_id)))
+      .catch(err => reject(err));
+    });
+  }
+  
+  function authRoleUser(user): Promise<Buffer[]> {
+    return RoleUser.retrieve(0, 1000, {user_id: user.id}).then(res => _.map(res, v => v.role_id));
   }
   
   export function auth(request, response, next) {
     const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
     const key = `${request.method}:${path}`;
     return new Promise<[User, Buffer[], Buffer[]]>((resolve, reject) =>
-      new Promise<Route>((resolve, reject) => {
-        if (__routes[key]) { return resolve(__routes[key]); }
-        new Route({method: request.method, path: path}).validate()
-        .then(res => resolve(res))
-        .catch(err => reject(err));
-      })
+      authRoute(request.method, path, key)
       .then(route => {
         if (!route.flag_active) {
           return authUser(request.get("Authorization"))
-          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], null]) : reject(new ServerError("403.server.any")))
+          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
           .catch(err => reject(err));
         }
         authRoleRoute(route)
         .then(route_roles => {
           authUser(request.get("Authorization"))
-          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], null]) : reject(new ServerError("403.server.any")))
-          .catch(err => err.code === "401.server.jwt" ? resolve([null, null, route_roles]) : reject(err));
-        })
-        .catch(err => reject(err));
+          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
+          .catch(err => err.code === "401.server.jwt" ? resolve([null, [], route_roles]) : reject(err));
+        });
       })
+      .catch(err => reject(err))
     )
     .then(res => {
       request.user = res[0];
@@ -160,16 +170,8 @@ export namespace RoutingService {
     });
     
     router.get(`/:id`, auth, (request: ElementRequest, response) => {
-      console.log(request.id);
-      console.log(request.user);
-      console.log(request.roles_route);
-      console.log(request.roles_user);
       new element(request.id).validate()
       .then(res => {
-        console.log("checking", res);
-        console.log(request.user);
-        console.log(request.roles_route);
-        console.log(request.roles_user);
         if (element.__fields.user_created && request.user.id === res.user_created) { return response.status(403).json(RoutingService.response(new ServerError("403.server.any"))); }
         response.status(200).json(RoutingService.response(res.toObject()));
       })
