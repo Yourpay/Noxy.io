@@ -1,7 +1,3 @@
-import Element from "../classes/Element";
-import Route from "../objects/Route";
-import Role from "../objects/Role";
-
 import * as bodyParser from "body-parser";
 import * as Promise from "bluebird";
 import * as jwt from "jsonwebtoken";
@@ -11,11 +7,15 @@ import * as https from "https";
 import * as http from "http";
 import * as _ from "lodash";
 import * as fs from "fs";
-import ServerError from "../classes/ServerError";
-import User from "../objects/User";
+
 import {roles} from "../app";
+import ServerError from "../classes/ServerError";
 import RoleRoute from "../objects/RoleRoute";
 import RoleUser from "../objects/RoleUser";
+import Element from "../classes/Element";
+import Route from "../objects/Route";
+import Role from "../objects/Role";
+import User from "../objects/User";
 
 export namespace RoutingService {
   
@@ -85,7 +85,7 @@ export namespace RoutingService {
   function authUser(token): Promise<[User, Buffer[]]> {
     return new Promise<[User, Buffer[]]>((resolve, reject) =>
       new Promise<User>((resolve, reject) =>
-        jwt.verify(token || "", env.tokens.jwt, (err, decoded) =>
+        jwt.verify(token, env.tokens.jwt, (err, decoded) =>
           !err ? resolve(new User(decoded)) : reject(new ServerError("401.server.jwt"))
         )
       )
