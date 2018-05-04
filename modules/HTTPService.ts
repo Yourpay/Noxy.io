@@ -17,12 +17,13 @@ import Route from "../objects/Route";
 import Role from "../objects/Role";
 import User from "../objects/User";
 
-export namespace RoutingService {
+export namespace HTTPService {
   
   const __roles: { [key: string]: Buffer[] } = {};
   const __routes: { [key: string]: Route } = {};
   const __routers: { [key: string]: express.Router } = {};
   const __servers: { [port: number]: http.Server | https.Server } = {};
+  
   const __application: express.Application = express();
   const __certificates: { [key: string]: object } = {};
   
@@ -143,14 +144,14 @@ export namespace RoutingService {
       request.roles_route = res[2];
       next();
     })
-    .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
+    .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)));
   }
   
-  export function addRoute(method: Method, path: string | Path, ...args): typeof RoutingService {
+  export function addRoute(method: Method, path: string | Path, ...args): typeof HTTPService {
     const parsed_path = _.get(path, "path", path);
     const router = __routers[parsed_path] || (__routers[parsed_path] = express.Router());
     router[_.toLower(method)].apply(router, _.concat(_.get(path, "parameter", "/"), args));
-    return RoutingService;
+    return HTTPService;
   }
   
   export function addElementRouter(element: typeof Element | any) {
@@ -169,8 +170,8 @@ export namespace RoutingService {
         .then(res => resolve(_.transform(res, (r, v: any) => (v = new element(v).toObject()) && _.set(r, v.id, v), {})))
         .catch(err => reject(err));
       })
-      .then(res => response.json(RoutingService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)))
+      .then(res => response.json(HTTPService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)))
     );
     
     router.get(`/:id`, auth, (request: ElementRequest, response) => {
@@ -179,8 +180,8 @@ export namespace RoutingService {
         .then(res => !element.__fields.user_created || request.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerError("404.server.any")))
         .catch(err => reject(err));
       })
-      .then(res => response.json(RoutingService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
+      .then(res => response.json(HTTPService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)));
     });
     
     router.post(`/`, auth, (request: ElementRequest, response) =>
@@ -193,8 +194,8 @@ export namespace RoutingService {
         )
         .catch(err => reject(err))
       )
-      .then(res => response.json(RoutingService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)))
+      .then(res => response.json(HTTPService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)))
     );
     
     router.put(`/:id`, auth, (request: ElementRequest, response) =>
@@ -207,8 +208,8 @@ export namespace RoutingService {
         )
         .catch(err => reject(err))
       )
-      .then(res => response.json(RoutingService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)))
+      .then(res => response.json(HTTPService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)))
     );
     
     router.delete(`/:id`, auth, (request: ElementRequest, response) =>
@@ -221,12 +222,12 @@ export namespace RoutingService {
         )
         .catch(err => reject(err))
       )
-      .then(res => response.json(RoutingService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)))
+      .then(res => response.json(HTTPService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)))
     );
     
     __routers[`/api/${element.__type}`] = router;
-    return RoutingService;
+    return HTTPService;
   }
   
 }
