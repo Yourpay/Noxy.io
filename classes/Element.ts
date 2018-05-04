@@ -107,6 +107,15 @@ export default abstract class Element {
       new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
       .then(() => {
         _.each(this.__fields, (field: iObjectField, key) => field.onDelete && (this[key] = field.onDelete(this, invoker)));
+        if (!this.__exists) { return reject(new ServerError("404.db.delete", this)); }
+        db[env.mode].connect()
+        .then(link => {
+          const sql = link.parse("DELETE FROM ?? WHERE `id` = ?", [this.type, this.id]);
+          link.query(sql)
+          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__exists: true})) : reject(new ServerError("400.db.delete", sql)))
+          .catch(err => reject(ServerError.parseSQLError(err)))
+          .finally(() => link.close());
+        })
       })
       .catch(err => reject(err));
     });
