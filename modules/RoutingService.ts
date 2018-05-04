@@ -176,14 +176,14 @@ export namespace RoutingService {
     router.get(`/:id`, auth, (request: ElementRequest, response) => {
       new Promise((resolve, reject) => {
         new element(request.id).validate()
-        .then(res => !element.__fields.user_created || request.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerError("403.server.any")))
+        .then(res => !element.__fields.user_created || request.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerError("404.server.any")))
         .catch(err => reject(err));
       })
       .then(res => response.json(RoutingService.response(res)))
       .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
     });
     
-    router.post(`/`, auth, (request, response) =>
+    router.post(`/`, auth, (request: ElementRequest, response) =>
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
@@ -197,16 +197,33 @@ export namespace RoutingService {
       .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)))
     );
     
-    router.put(`/:id`, auth, (request, response) => {
-      
-      console.log("GET PATH HIT");
-      response.status(401).json({fuck: "yes"});
-    });
+    router.put(`/:id`, auth, (request: ElementRequest, response) =>
+      new Promise((resolve, reject) =>
+        new element(request.body).validate()
+        .then(res =>
+          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError("404.db.any")) : res.save()
+          .then(res => resolve(res.toObject()))
+          .catch(err => reject(err))
+        )
+        .catch(err => reject(err))
+      )
+      .then(res => response.json(RoutingService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)))
+    );
     
-    router.delete(`/:id`, auth, (request, response) => {
-      console.log("GET PATH HIT");
-      response.status(401).json({fuck: "yes"});
-    });
+    router.delete(`/:id`, auth, (request: ElementRequest, response) =>
+      new Promise((resolve, reject) =>
+        new element(request.body).validate()
+        .then(res =>
+          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError("404.db.any")) : res.save()
+          .then(res => resolve(res.toObject()))
+          .catch(err => reject(err))
+        )
+        .catch(err => reject(err))
+      )
+      .then(res => response.json(RoutingService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)))
+    );
     
     __routers[`/api/${element.__type}`] = router;
     return RoutingService;
