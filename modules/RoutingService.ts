@@ -161,39 +161,43 @@ export namespace RoutingService {
       next();
     });
     
-    router.get(`/`, auth, (request: ElementRequest, response) => {
-      if (request.query.start < 0) { request.query.start = 0; }
-      if (request.query.limit < 0 || request.query.limit > 100) { request.query.limit = 100; }
-      element.retrieve(request.query.start, request.query.limit, {user_created: request.user.id})
-      .then(res => response.status(200).json(RoutingService.response(_.transform(res, (r, v: any) => (v = new element(v).toObject()) && _.set(r, v.id, v), {}))))
-      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
-    });
+    router.get(`/`, auth, (request: ElementRequest, response) =>
+      new Promise((resolve, reject) => {
+        if (request.query.start < 0) { request.query.start = 0; }
+        if (request.query.limit < 0 || request.query.limit > 100) { request.query.limit = 100; }
+        element.retrieve(request.query.start, request.query.limit, {user_created: request.user.id})
+        .then(res => resolve(_.transform(res, (r, v: any) => (v = new element(v).toObject()) && _.set(r, v.id, v), {})))
+        .catch(err => reject(err));
+      })
+      .then(res => response.json(RoutingService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)))
+    );
     
     router.get(`/:id`, auth, (request: ElementRequest, response) => {
-      new element(request.id).validate()
-      .then(res => {
-        if (element.__fields.user_created && request.user.id === res.user_created) { return response.status(403).json(RoutingService.response(new ServerError("403.server.any"))); }
-        response.status(200).json(RoutingService.response(res.toObject()));
+      new Promise((resolve, reject) => {
+        new element(request.id).validate()
+        .then(res => !element.__fields.user_created || request.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerError("403.server.any")))
+        .catch(err => reject(err));
       })
+      .then(res => response.json(RoutingService.response(res)))
       .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)));
     });
     
-    router.post(`/`, auth, (request, response) => {
-      const $element = new element(request.body);
-      return $element.validate()
-      .catch(err => err.code === "404.db.select" ? $element : err)
-      .then(res => {
-        if (res instanceof ServerError) { throw res; }
-        if (res.validated) { throw new ServerError("400.db.duplicate"); }
-        res.save()
-        .then(res => response.json(RoutingService.response(res.toObject())))
-        .catch(err => response.status(err.code.split(".")[0]).send(err.message));
-      })
-      .catch(err => response.status(err.code.split(".")[0]).send(err.message));
-    });
+    router.post(`/`, auth, (request, response) =>
+      new Promise((resolve, reject) =>
+        new element(request.body).validate()
+        .then(res =>
+          res.exists ? reject(new ServerError("400.db.duplicate")) : res.save()
+          .then(res => resolve(res.toObject()))
+          .catch(err => reject(err))
+        )
+        .catch(err => reject(err))
+      )
+      .then(res => response.json(RoutingService.response(res)))
+      .catch(err => response.status(err.code.split(".")[0]).json(RoutingService.response(err)))
+    );
     
     router.put(`/:id`, auth, (request, response) => {
-      
       
       console.log("GET PATH HIT");
       response.status(401).json({fuck: "yes"});

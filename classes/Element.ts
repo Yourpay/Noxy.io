@@ -13,6 +13,7 @@ export default abstract class Element {
   
   public id: Buffer;
   public uuid: string;
+  protected __exists: boolean = false;
   protected __validated: boolean = false;
   protected __type: string;
   protected __fields: { [key: string]: iObjectField };
@@ -30,6 +31,10 @@ export default abstract class Element {
   
   public toObject() {
     return _.set(_.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || k === "uuid" || v instanceof Buffer), "id", this.uuid);
+  }
+  
+  public get exists() {
+    return this.__existsw;
   }
   
   public get validated() {
@@ -64,7 +69,7 @@ export default abstract class Element {
         const values = _.reduce(indexes, (r, a) => _.concat(r, _.map(a, v => this[v] || "")), []);
         const sql = link.parse(`SELECT * FROM ?? WHERE ${where}`, _.concat(this.__type, values));
         link.query(sql)
-        .then(res => res[0] ? resolve(_.assign(this, res[0], {__validated: true, uuid: Element.bufferToUuid(res[0].id)})) : reject(new ServerError("404.db.select", sql)))
+        .then(res => resolve(_.assign(this, res[0] ? new (<typeof Element | any>this.constructor)(res[0]) : {}, {__validated: true, __exists: !!res[0]})))
         .catch(err => reject(ServerError.parseSQLError(err)))
         .finally(() => link.close());
       })
@@ -75,11 +80,10 @@ export default abstract class Element {
   public save(invoker?: User): Promise<this> {
     return new Promise<this>((resolve, reject) => {
       new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
-      .catch(err => err.code === "404.db.select" ? this : reject(err))
       .then(() => {
-        const on = !this.__validated ? "onInsert" : "onUpdate";
+        const on = !this.__exists ? "onInsert" : "onUpdate";
         _.each(this.__fields, (field, key) => field[on] && (this[key] = _.invoke(field, on, this, invoker)));
-        if (!this.__validated && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerError("400.db.insert", this)); }
+        if (!this.__exists && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerError("400.db.insert", this)); }
         db[env.mode].connect()
         .then(link => {
           const values = [this.__type, this.filter(), this.id];
@@ -90,7 +94,8 @@ export default abstract class Element {
           .finally(() => link.close());
         })
         .catch(err => reject(err));
-      });
+      })
+      .catch(err => reject(err));
     });
   }
   
