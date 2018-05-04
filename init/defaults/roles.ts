@@ -13,17 +13,16 @@ init_chain.addPromise("role", (resolve, reject) => {
       roles[key] = new Role(role);
       const changed = !_.isEqual(role, roles[key].toObject());
       roles[key].validate()
-      .catch(err => err.code === "404.db.select" ? this : reject(err))
       .then(res => {
-        if (!res) { return false; }
-        if (roles[key].validated && !changed) { return resolve(res); }
+        if (roles[key].exists && !changed) { return resolve(res); }
         roles[key].save(users.server)
         .then(res => {
           env.roles[key].id = roles[key].uuid;
           resolve(res);
         })
         .catch(err => reject(err));
-      });
+      })
+      .catch(err => reject(err))
     })
   ))
   .then(res =>

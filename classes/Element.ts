@@ -69,7 +69,10 @@ export default abstract class Element {
         const values = _.reduce(indexes, (r, a) => _.concat(r, _.map(a, v => this[v] || "")), []);
         const sql = link.parse(`SELECT * FROM ?? WHERE ${where}`, _.concat(this.__type, values));
         link.query(sql)
-        .then(res => resolve(_.assign(this, res[0] ? new (<typeof Element | any>this.constructor)(res[0]) : {}, {__validated: true, __exists: !!res[0]})))
+        .then(res => {
+          const validated = !res[0] ? {} : _.pickBy(new (<typeof Element | any>this.constructor)(res[0]), (v, k) => this.__fields[k] && (this.__fields[k].protected || this.__fields[k].intermediate));
+          resolve(_.assign(this, validated, {__validated: true, __exists: !!res[0]}));
+        })
         .catch(err => reject(ServerError.parseSQLError(err)))
         .finally(() => link.close());
       })
@@ -87,13 +90,23 @@ export default abstract class Element {
         db[env.mode].connect()
         .then(link => {
           const values = [this.__type, this.filter(), this.id];
-          const sql = link.parse(!this.__validated ? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
+          const sql = link.parse(!this.__exists? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
           link.query(sql)
-          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true})) : reject(new ServerError(`400.db.${!this.__validated ? "insert" : "update"}`, sql)))
+          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true, __exists: true})) : reject(new ServerError(`400.db.${!this.__validated ? "insert" : "update"}`, sql)))
           .catch(err => reject(ServerError.parseSQLError(err)))
           .finally(() => link.close());
         })
         .catch(err => reject(err));
+      })
+      .catch(err => reject(err));
+    });
+  }
+  
+  public remove(invoker?: User): Promise<this> {
+    return new Promise<this>((resolve, reject) => {
+      new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
+      .then(() => {
+        _.each(this.__fields, (field: iObjectField, key) => field.onDelete && (this[key] = field.onDelete(this, invoker)));
       })
       .catch(err => reject(err));
     });

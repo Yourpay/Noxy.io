@@ -6,6 +6,7 @@ import * as Promise from "bluebird";
 import * as fs from "fs";
 import * as path from "path";
 import RoleUser from "../../objects/RoleUser";
+import ServerError from "../../classes/ServerError";
 
 init_chain.addPromise("user", (resolve, reject) => {
   Promise.all(_.map(env.users, (user, key) =>
@@ -13,10 +14,8 @@ init_chain.addPromise("user", (resolve, reject) => {
       users[key] = new User(user);
       const changed = !_.isEqual(user, users[key].toObject());
       users[key].validate()
-      .catch(err => err.code === "404.db.select" ? this : reject(err))
       .then(res => {
-        if (!res) { return false; }
-        if (users[key].validated && !changed) { return resolve(res); }
+        if (users[key].exists && !changed) { return resolve(res); }
         users[key].save()
         .then(res => {
           delete env.users[key].password;
@@ -24,7 +23,8 @@ init_chain.addPromise("user", (resolve, reject) => {
           resolve(res);
         })
         .catch(err => reject(err));
-      });
+      })
+      .catch(err => err);
     })
   ))
   .then(res => resolve(res))

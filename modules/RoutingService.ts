@@ -187,7 +187,7 @@ export namespace RoutingService {
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
-          res.exists ? reject(new ServerError("400.db.duplicate")) : res.save()
+          res.exists ? reject(new ServerError("400.db.duplicate")) : res.save(request.user)
           .then(res => resolve(res.toObject()))
           .catch(err => reject(err))
         )
@@ -201,7 +201,7 @@ export namespace RoutingService {
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
-          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError("404.db.any")) : res.save()
+          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError("404.db.any")) : res.save(request.user)
           .then(res => resolve(res.toObject()))
           .catch(err => reject(err))
         )
@@ -215,7 +215,7 @@ export namespace RoutingService {
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
-          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError("404.db.any")) : res.save()
+          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError("404.db.any")) : res.remove(request.user)
           .then(res => resolve(res.toObject()))
           .catch(err => reject(err))
         )
