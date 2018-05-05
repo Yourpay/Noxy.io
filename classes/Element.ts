@@ -22,7 +22,17 @@ export default abstract class Element {
   
   public static __type: string;
   public static __fields: { [key: string]: iObjectField } = {
-    id:   {type: "binary(16)", protected: true, required: true, onCreate: (t, v) => Element.isUuid(v) ? Element.uuidToBuffer(t.uuid = v) : Element.uuidToBuffer(t.uuid = uuid.v4())},
+    id:   {
+      type: "binary(16)", protected: true, required: true, onCreate: (t, v): Buffer => {
+        if (Element.isUuid(v)) { return Element.uuidToBuffer(t.uuid = v); }
+        if (typeof v === "object") {
+          if (typeof v.uuid === "string" && Element.isUuid(v.uuid)) { return Element.uuidToBuffer(t.uuid = v.uuid); }
+          if (v.id instanceof Buffer && Element.isUuid(Element.bufferToUuid(v.id))) { return Element.uuidToBuffer(t.uuid = Element.bufferToUuid(v)); }
+        }
+        if (v instanceof Buffer && Element.isUuid(Element.bufferToUuid(v))) { return Element.uuidToBuffer(t.uuid = Element.bufferToUuid(v)) }
+        return Element.uuidToBuffer(t.uuid = uuid.v4());
+      }
+    },
     uuid: {intermediate: true}
   };
   public static __primary: string[] = ["id"];
@@ -34,7 +44,7 @@ export default abstract class Element {
   }
   
   public get exists() {
-    return this.__existsw;
+    return this.__exists;
   }
   
   public get validated() {
@@ -70,8 +80,10 @@ export default abstract class Element {
         const sql = link.parse(`SELECT * FROM ?? WHERE ${where}`, _.concat(this.__type, values));
         link.query(sql)
         .then(res => {
-          const validated = !res[0] ? {} : _.pickBy(new (<typeof Element | any>this.constructor)(res[0]), (v, k) => this.__fields[k] && (this.__fields[k].protected || this.__fields[k].intermediate));
-          resolve(_.assign(this, validated, {__validated: true, __exists: !!res[0]}));
+          if (!res[0]) { return resolve(_.assign(this, {__validated: true, __exists: false})); }
+          const object = new (<typeof Element | any>this.constructor)(res[0]);
+          const merges = _.pickBy(object, (v, k) => this.__fields[k] && (this.__fields[k].protected || this.__fields[k].intermediate || !this[k]));
+          resolve(_.assign(this, merges, {__validated: true, __exists: true}));
         })
         .catch(err => reject(ServerError.parseSQLError(err)))
         .finally(() => link.close());
@@ -90,7 +102,7 @@ export default abstract class Element {
         db[env.mode].connect()
         .then(link => {
           const values = [this.__type, this.filter(), this.id];
-          const sql = link.parse(!this.__exists? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
+          const sql = link.parse(!this.__exists ? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
           link.query(sql)
           .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true, __exists: true})) : reject(new ServerError(`400.db.${!this.__validated ? "insert" : "update"}`, sql)))
           .catch(err => reject(ServerError.parseSQLError(err)))
@@ -115,7 +127,7 @@ export default abstract class Element {
           .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__exists: true})) : reject(new ServerError("400.db.delete", sql)))
           .catch(err => reject(ServerError.parseSQLError(err)))
           .finally(() => link.close());
-        })
+        });
       })
       .catch(err => reject(err));
     });
@@ -130,7 +142,6 @@ export default abstract class Element {
     if (typeof object === "string") { return this.id = this.__fields.id.onCreate(this, object); }
     _.each(this.__fields, (value, key) => (!value.protected || value.onCreate) && (object[key] || key === "id") && (this[key] = value.onCreate ? value.onCreate(this, object[key]) : object[key]) || true);
     _.each(this, (value, key) => this[key] === null ? delete this[key] : true);
-    if (object.id instanceof Buffer && !object.uuid && Element.isUuid(Element.bufferToUuid(object.id))) { return _.set(this, "uuid", Element.bufferToUuid(this.id = object.id)); }
     return this;
   }
   
