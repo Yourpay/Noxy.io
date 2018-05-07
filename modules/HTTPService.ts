@@ -1,4 +1,5 @@
 import * as bodyParser from "body-parser";
+import * as SocketIO from "socket.io";
 import * as Promise from "bluebird";
 import * as jwt from "jsonwebtoken";
 import * as env from "../env.json";
@@ -19,19 +20,20 @@ import User from "../objects/User";
 
 export namespace HTTPService {
   
-  const __roles: { [key: string]: Buffer[] } = {};
-  const __routes: { [key: string]: Route } = {};
-  const __routers: { [key: string]: express.Router } = {};
+  const __roles: { [id: string]: Buffer[] } = {};
+  const __routes: { [path: string]: Route } = {};
+  const __routers: { [path: string]: express.Router } = {};
   const __servers: { [port: number]: http.Server | https.Server } = {};
+  const __sockets: { [port: number]: SocketIO.Server } = {};
   const __application: express.Application = express();
   const __certificates: { [key: string]: object } = {};
   
   __application.use(bodyParser.urlencoded({extended: false}));
   __application.use(bodyParser.json());
   
-  export function listen(port?: number): Promise<any> {
+  export function listen(): Promise<any> {
     return new Promise((resolve, reject) => {
-      Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) => {
+      Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) =>
         Promise.all(_.map(router.stack, layer => new Promise((resolve, reject) => {
           const route_path = (path + layer.route.path).replace(/\/$/, "");
           const route_method = _.toUpper(_.findKey(layer.route.methods, v => v));
@@ -44,23 +46,45 @@ export namespace HTTPService {
           );
         })))
         .then(res => __application.use(path, router) && resolve(res))
-        .catch(err => reject(err));
-      })))
+        .catch(err => reject(err)))))
       .catch(err => reject(err))
       .then(res => {
-        if (!port && !__servers[env.ports.http]) {
-          __servers[env.ports.http] = http.createServer(__application).listen(env.ports.http);
-        }
-        if (!port && !__servers[env.ports.https]) {
+  
+        if (env.ports.https && !__servers[env.ports.https]) {
           try {
             _.merge(__certificates, _.mapValues(env.certificates, path => fs.readFileSync(path)));
-            __servers[env.ports.http] = https.createServer(__certificates, __application).listen(env.ports.https);
+            __servers[env.ports.http] = https.createServer(__certificates, __application);
+            if (env.websockets) { __sockets[env.ports.https] = SocketIO(__servers[env.ports.https]); }
+            __servers[env.ports.https].listen(env.ports.https);
           }
           catch (e) {
             console.error("Could not initialize https server. Following error given:");
             console.error(e);
           }
         }
+        if (env.ports.http && !__servers[env.ports.http]) {
+          if (__servers[env.ports.https]) {
+            const application = express();
+            application.all("*", (request, response) => {
+              response.redirect('https://' + request.hostname + request.url);
+            });
+            __servers[env.ports.http] = http.createServer(application);
+          }
+          else {
+            __servers[env.ports.http] = http.createServer(__application);
+          }
+          if (env.websockets) { __sockets[env.ports.http] = SocketIO(__servers[env.ports.http]); }
+          __servers[env.ports.http].listen(env.ports.http);
+          
+        }
+  
+        // io.on('connection', function (socket) {
+        //   socket.emit('news', { hello: 'world' });
+        //   socket.on('my other event', function (data) {
+        //     console.log(data);
+        //   });
+        // });
+        
         resolve(res);
       });
     });

@@ -24,6 +24,7 @@ interface DatabaseEnvironmental {
 declare module "*env.json" {
   const value: {
     mode: ModeEnvironmental
+    websockets: boolean
     databases: {
       [key: string]: DatabaseEnvironmental
     },
