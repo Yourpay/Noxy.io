@@ -131,7 +131,6 @@ export namespace HTTPService {
     return new Promise<[User, Buffer[], Buffer[]]>((resolve, reject) =>
       authRoute(request.method, path, key)
       .then(route => {
-        console.log(route);
         if (!route.flag_active) {
           return authUser(request.get("Authorization"))
           .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
@@ -141,7 +140,7 @@ export namespace HTTPService {
         .then(route_roles => {
           authUser(request.get("Authorization"))
           .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
-          .catch(err => console.log(err) || err.code === "401.server.jwt" ? resolve([null, [], route_roles]) : reject(err));
+          .catch(err => err.code === "401.server.jwt" ? resolve([null, [], route_roles]) : reject(err));
         });
       })
       .catch(err => reject(err))

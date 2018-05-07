@@ -98,7 +98,7 @@ export default abstract class Element {
       .then(() => {
         const on = !this.__exists ? "onInsert" : "onUpdate";
         _.each(this.__fields, (field, key) => field[on] && (this[key] = _.invoke(field, on, this, invoker)));
-        if (!this.__exists && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerError("400.db.insert", this)); }
+        if (!this.__exists && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerError("400.db.insert")); }
         db[env.mode].connect()
         .then(link => {
           const values = [this.__type, this.filter(), this.id];

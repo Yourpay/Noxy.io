@@ -19,7 +19,7 @@ init_chain.addPromise("route", resolve => {
       .then(res =>
         new User(res).validate()
         .then(res => {
-          if (request.body.password && !User.generateHash(request.body.password, res.salt).equals(res.hash)) { return reject(new ServerError("401.server.any"));}
+          if (!res.exists || request.body.password && !User.generateHash(request.body.password, res.salt).equals(res.hash)) { return reject(new ServerError("401.server.any"));}
           res.time_login = Date.now();
           res.save()
           .then(res => resolve(jwt.sign(res.toObject(), env.tokens.jwt, {expiresIn: "7d"})))
