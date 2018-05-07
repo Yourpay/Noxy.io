@@ -20,11 +20,11 @@ import User from "../objects/User";
 
 export namespace HTTPService {
   
-  const __roles: { [id: string]: Buffer[] } = {};
-  const __routes: { [path: string]: Route } = {};
-  const __routers: { [path: string]: express.Router } = {};
+  const __roles: { [key: string]: Buffer[] } = {};
+  const __routes: { [key: string]: Route } = {};
+  const __routers: { [key: string]: express.Router } = {};
   const __servers: { [port: number]: http.Server | https.Server } = {};
-  const __sockets: { [port: number]: SocketIO.Server } = {};
+  const __websockets: { [namespace: string]: SocketIO.Server } = {};
   const __application: express.Application = express();
   const __certificates: { [key: string]: object } = {};
   
@@ -32,62 +32,52 @@ export namespace HTTPService {
   __application.use(bodyParser.json());
   
   export function listen(): Promise<any> {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) =>
       Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) =>
         Promise.all(_.map(router.stack, layer => new Promise((resolve, reject) => {
-          const route_path = (path + layer.route.path).replace(/\/$/, "");
-          const route_method = _.toUpper(_.findKey(layer.route.methods, v => v));
-          const route_key = `${route_path}:${route_method}`;
+          const route = new Route({
+            path:   (path + layer.route.path).replace(/\/$/, ""),
+            method: _.toUpper(_.findKey(layer.route.methods, v => v))
+          });
+          const route_key = `${route.path}:${route.method}`;
           if (__routes[route_key]) { return resolve(__routes[route_key]); }
-          new Route({path: route_path, method: route_method}).validate()
+          route.validate()
           .then(res => res.exists ? resolve(res) : res.save()
             .then(res => resolve(_.set(__routes, route_key, res)))
             .catch(err => reject(err))
-          );
+          )
+          .catch(err => reject(err));
         })))
         .then(res => __application.use(path, router) && resolve(res))
         .catch(err => reject(err)))))
       .catch(err => reject(err))
       .then(res => {
-  
         if (env.ports.https && !__servers[env.ports.https]) {
-          try {
-            _.merge(__certificates, _.mapValues(env.certificates, path => fs.readFileSync(path)));
-            __servers[env.ports.http] = https.createServer(__certificates, __application);
-            if (env.websockets) { __sockets[env.ports.https] = SocketIO(__servers[env.ports.https]); }
+          Promise.all(_.map(env.certificates, (path, key) => new Promise((resolve, reject) => fs.readFile(path, (err, data) => err ? reject(err) : resolve({[key]: data})))))
+          .then(res => {
+            _.each(res, v => _.merge(__certificates, v));
+            if (!__certificates.pfx || (!__certificates.key && !__certificates.cert)) { throw new Error("HTTPS server port enabled, but no valid certificates were provided."); }
+            __servers[env.ports.https] = https.createServer(__certificates, __application);
+            __websockets["/"] = SocketIO(__servers[env.ports.https]);
             __servers[env.ports.https].listen(env.ports.https);
-          }
-          catch (e) {
-            console.error("Could not initialize https server. Following error given:");
-            console.error(e);
-          }
+          })
+          .catch(err => console.error(err));
         }
         if (env.ports.http && !__servers[env.ports.http]) {
           if (__servers[env.ports.https]) {
-            const application = express();
-            application.all("*", (request, response) => {
-              response.redirect('https://' + request.hostname + request.url);
-            });
-            __servers[env.ports.http] = http.createServer(application);
+            const __application = express();
+            __application.all("*", (request, response) => response.redirect("https://" + request.hostname + request.url));
+            __servers[env.ports.http] = http.createServer(__application).listen(env.ports.http);
           }
           else {
             __servers[env.ports.http] = http.createServer(__application);
+            __websockets["/"] = SocketIO(__servers[env.ports.http]);
+            __servers[env.ports.http].listen(env.ports.http);
           }
-          if (env.websockets) { __sockets[env.ports.http] = SocketIO(__servers[env.ports.http]); }
-          __servers[env.ports.http].listen(env.ports.http);
-          
         }
-  
-        // io.on('connection', function (socket) {
-        //   socket.emit('news', { hello: 'world' });
-        //   socket.on('my other event', function (data) {
-        //     console.log(data);
-        //   });
-        // });
-        
         resolve(res);
-      });
-    });
+      })
+    );
   }
   
   export function response(object) {
@@ -141,17 +131,18 @@ export namespace HTTPService {
     return new Promise<[User, Buffer[], Buffer[]]>((resolve, reject) =>
       authRoute(request.method, path, key)
       .then(route => {
+        console.log(route);
         if (!route.flag_active) {
           return authUser(request.get("Authorization"))
           .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
           .catch(err => reject(err));
         }
         authRoleRoute(route)
-        .then(route_roles =>
+        .then(route_roles => {
           authUser(request.get("Authorization"))
-          .catch(err => err.code === "401.server.jwt" ? [null, []] : reject(err))
-          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], route_roles]) : reject(new ServerError("403.server.any")))
-        );
+          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
+          .catch(err => console.log(err) || err.code === "401.server.jwt" ? resolve([null, [], route_roles]) : reject(err));
+        });
       })
       .catch(err => reject(err))
     )
@@ -194,7 +185,7 @@ export namespace HTTPService {
     router.get(`/:id`, auth, (request: ElementRequest, response) => {
       new Promise((resolve, reject) => {
         new element(request.id).validate()
-        .then(res => res.exists && !element.__fields.user_created || request.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerError("404.server.any")))
+        .then(res => !element.__fields.user_created || request.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerError("404.server.any")))
         .catch(err => reject(err));
       })
       .then(res => response.json(HTTPService.response(res)))
