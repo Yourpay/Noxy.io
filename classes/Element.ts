@@ -70,8 +70,10 @@ export default abstract class Element {
         const sql = link.parse(`SELECT * FROM ?? WHERE ${where}`, _.concat(this.__type, values));
         link.query(sql)
         .then(res => {
-          const validated = !res[0] ? {} : _.pickBy(new (<typeof Element | any>this.constructor)(res[0]), (v, k) => this.__fields[k] && (this.__fields[k].protected || this.__fields[k].intermediate));
-          resolve(_.assign(this, validated, {__validated: true, __exists: !!res[0]}));
+          if (!res[0]) { return resolve(_.assign(this, res, {__validated: true, __exists: false})); }
+          const object = new (<typeof Element | any>this.constructor)(res[0]);
+          const validated = !res[0] ? {} : _.pickBy(object, (v, k) => this.__fields[k] && (this.__fields[k].protected || this.__fields[k].intermediate));
+          resolve(_.assign(this, validated, {__validated: true, __exists: true}));
         })
         .catch(err => reject(ServerError.parseSQLError(err)))
         .finally(() => link.close());
@@ -90,7 +92,7 @@ export default abstract class Element {
         db[env.mode].connect()
         .then(link => {
           const values = [this.__type, this.filter(), this.id];
-          const sql = link.parse(!this.__exists? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
+          const sql = link.parse(!this.__exists ? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
           link.query(sql)
           .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true, __exists: true})) : reject(new ServerError(`400.db.${!this.__validated ? "insert" : "update"}`, sql)))
           .catch(err => reject(ServerError.parseSQLError(err)))
@@ -115,7 +117,7 @@ export default abstract class Element {
           .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__exists: true})) : reject(new ServerError("400.db.delete", sql)))
           .catch(err => reject(ServerError.parseSQLError(err)))
           .finally(() => link.close());
-        })
+        });
       })
       .catch(err => reject(err));
     });

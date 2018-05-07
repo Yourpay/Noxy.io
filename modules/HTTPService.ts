@@ -32,8 +32,8 @@ export namespace HTTPService {
   __application.use(bodyParser.json());
   
   export function listen(): Promise<any> {
-    return new Promise((resolve, reject) => {
-      Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) => {
+    return new Promise((resolve, reject) =>
+      Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) =>
         Promise.all(_.map(router.stack, layer => new Promise((resolve, reject) => {
           const route = new Route({
             path:   (path + layer.route.path).replace(/\/$/, ""),
@@ -42,38 +42,31 @@ export namespace HTTPService {
           const route_key = `${route.path}:${route.method}`;
           if (__routes[route_key]) { return resolve(__routes[route_key]); }
           route.validate()
-          .catch(err => err.code === "404.db.select" ? route : err)
-          .then(res => {
-            if (res instanceof Error) { return reject(res); }
-            if (res.validated) { return resolve(res); }
-            res.save()
+          .then(res => res.exists ? resolve(res) : res.save()
             .then(res => resolve(_.set(__routes, route_key, res)))
-            .catch(err => reject(err));
-          });
+            .catch(err => reject(err))
+          )
+          .catch(err => reject(err));
         })))
         .then(res => __application.use(path, router) && resolve(res))
-        .catch(err => reject(err));
-      })))
+        .catch(err => reject(err)))))
       .catch(err => reject(err))
       .then(res => {
         if (env.ports.https && !__servers[env.ports.https]) {
-          try {
-            _.merge(__certificates, _.mapValues(env.certificates, path => fs.readFileSync(path)));
+          Promise.all(_.map(env.certificates, (path, key) => new Promise((resolve, reject) => fs.readFile(path, (err, data) => err ? reject(err) : resolve({[key]: data})))))
+          .then(res => {
+            _.each(res, v => _.merge(__certificates, v));
+            if (!__certificates.pfx || (!__certificates.key && !__certificates.cert)) { throw new Error("HTTPS server port enabled, but no valid certificates were provided."); }
             __servers[env.ports.https] = https.createServer(__certificates, __application);
             __websockets["/"] = SocketIO(__servers[env.ports.https]);
             __servers[env.ports.https].listen(env.ports.https);
-          }
-          catch (e) {
-            console.error("Could not initialize https server. Following error given:");
-            console.error(e);
-          }
+          })
+          .catch(err => console.error(err));
         }
         if (env.ports.http && !__servers[env.ports.http]) {
           if (__servers[env.ports.https]) {
             const __application = express();
-            __application.all("*", (request, response) => {
-              response.redirect("https://" + request.hostname + request.url);
-            });
+            __application.all("*", (request, response) => response.redirect("https://" + request.hostname + request.url));
             __servers[env.ports.http] = http.createServer(__application).listen(env.ports.http);
           }
           else {
@@ -83,8 +76,8 @@ export namespace HTTPService {
           }
         }
         resolve(res);
-      });
-    });
+      })
+    );
   }
   
   export function response(object) {
@@ -138,6 +131,7 @@ export namespace HTTPService {
     return new Promise<[User, Buffer[], Buffer[]]>((resolve, reject) =>
       authRoute(request.method, path, key)
       .then(route => {
+        console.log(route);
         if (!route.flag_active) {
           return authUser(request.get("Authorization"))
           .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
@@ -147,7 +141,7 @@ export namespace HTTPService {
         .then(route_roles => {
           authUser(request.get("Authorization"))
           .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
-          .catch(err => err.code === "401.server.jwt" ? resolve([null, [], route_roles]) : reject(err));
+          .catch(err => console.log(err) || err.code === "401.server.jwt" ? resolve([null, [], route_roles]) : reject(err));
         });
       })
       .catch(err => reject(err))

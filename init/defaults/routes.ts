@@ -9,9 +9,11 @@ import * as _ from "lodash";
 init_chain.addPromise("route", resolve => {
   
   HTTPService.addRoute("POST", {path: "/api/user", parameter: "/login"}, HTTPService.auth, (request, response) => {
+    console.log("Test1", request.body);
     new Promise((resolve, reject) => {
-      if (request.get("Authorization")) { return jwt.verify(request.get("Authorization"), env.tokens.jwt, (err, decoded) => !err ? resolve(decoded) : reject(err)); }
+      console.log("Test2", request.body);
       if (request.body.password) { return resolve(request.body); }
+      if (request.get("Authorization")) { return jwt.verify(request.get("Authorization"), env.tokens.jwt, (err, decoded) => !err ? resolve(decoded) : reject(err)); }
       reject();
     })
     .then(res => {
