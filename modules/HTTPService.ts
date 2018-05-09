@@ -10,6 +10,7 @@ import * as _ from "lodash";
 import * as fs from "fs";
 
 import {roles} from "../app";
+import {WebSocketService} from "./WebSocketService";
 import ServerError from "../classes/ServerError";
 import RoleRoute from "../objects/RoleRoute";
 import RoleUser from "../objects/RoleUser";
@@ -24,7 +25,6 @@ export namespace HTTPService {
   const __routes: { [key: string]: Route } = {};
   const __routers: { [key: string]: express.Router } = {};
   const __servers: { [port: number]: http.Server | https.Server } = {};
-  const __websockets: { [namespace: string]: SocketIO.Server } = {};
   const __application: express.Application = express();
   const __certificates: { [key: string]: object } = {};
   
@@ -58,7 +58,7 @@ export namespace HTTPService {
             _.each(res, v => _.merge(__certificates, v));
             if (!__certificates.pfx || (!__certificates.key && !__certificates.cert)) { throw new Error("HTTPS server port enabled, but no valid certificates were provided."); }
             __servers[env.ports.https] = https.createServer(__certificates, __application);
-            __websockets["/"] = SocketIO(__servers[env.ports.https]);
+            WebSocketService.register(__servers[env.ports.https]);
             __servers[env.ports.https].listen(env.ports.https);
           })
           .catch(err => console.error(err));
@@ -71,10 +71,11 @@ export namespace HTTPService {
           }
           else {
             __servers[env.ports.http] = http.createServer(__application);
-            __websockets["/"] = SocketIO(__servers[env.ports.http]);
+            WebSocketService.register(__servers[env.ports.https]);
             __servers[env.ports.http].listen(env.ports.http);
           }
         }
+        
         resolve(res);
       })
     );
