@@ -1,5 +1,4 @@
 import * as bodyParser from "body-parser";
-import * as SocketIO from "socket.io";
 import * as Promise from "bluebird";
 import * as jwt from "jsonwebtoken";
 import * as env from "../env.json";
@@ -10,7 +9,6 @@ import * as _ from "lodash";
 import * as fs from "fs";
 
 import {roles} from "../app";
-import {WebSocketService} from "./WebSocketService";
 import ServerError from "../classes/ServerError";
 import RoleRoute from "../objects/RoleRoute";
 import RoleUser from "../objects/RoleUser";
@@ -52,13 +50,14 @@ export namespace HTTPService {
         .catch(err => reject(err)))))
       .catch(err => reject(err))
       .then(res => {
+        __application.all("*", (request, response) => response.sendStatus(404));
         if (env.ports.https && !__servers[env.ports.https]) {
           Promise.all(_.map(env.certificates, (path, key) => new Promise((resolve, reject) => fs.readFile(path, (err, data) => err ? reject(err) : resolve({[key]: data})))))
           .then(res => {
             _.each(res, v => _.merge(__certificates, v));
             if (!__certificates.pfx || (!__certificates.key && !__certificates.cert)) { throw new Error("HTTPS server port enabled, but no valid certificates were provided."); }
             __servers[env.ports.https] = https.createServer(__certificates, __application);
-            WebSocketService.register(__servers[env.ports.https]);
+            // WebSocketService.register(__servers[env.ports.https]);
             __servers[env.ports.https].listen(env.ports.https);
           })
           .catch(err => console.error(err));
@@ -71,7 +70,7 @@ export namespace HTTPService {
           }
           else {
             __servers[env.ports.http] = http.createServer(__application);
-            WebSocketService.register(__servers[env.ports.https]);
+            // WebSocketService.register(__servers[env.ports.https]);
             __servers[env.ports.http].listen(env.ports.http);
           }
         }

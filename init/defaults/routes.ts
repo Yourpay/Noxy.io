@@ -14,7 +14,7 @@ init_chain.addPromise("route", resolve => {
       new Promise((resolve, reject) => {
         if ((request.body.username || request.body.email) && request.body.password) { return resolve(request.body); }
         if (request.get("Authorization")) { return jwt.verify(request.get("Authorization"), env.tokens.jwt, (err, decoded) => !err ? resolve(decoded) : reject(new ServerError("401.server.jwt"))); }
-        reject(reject(new ServerError("401.server.any")));
+        reject(new ServerError("401.server.any"));
       })
       .then(res =>
         new User(res).validate()
@@ -32,6 +32,7 @@ init_chain.addPromise("route", resolve => {
   });
   
   _.each(elements, v => { HTTPService.addElementRouter(v); });
+  
   resolve();
   
 });

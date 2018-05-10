@@ -1,4 +1,3 @@
-import * as _ from "lodash";
 import * as SocketIO from "socket.io";
 import * as Promise from "bluebird";
 
@@ -28,15 +27,6 @@ export default class WebSocket {
     });
   };
   
-  
-  
 }
 
-interface iSQLError {
-  code: string,
-  errno: number,
-  sqlMessage: string,
-  sqlState: string,
-  index: number,
-  sql: string
-}
+
