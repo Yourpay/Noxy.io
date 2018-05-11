@@ -6,11 +6,13 @@ import * as env from "./env.json";
 import Role from "./objects/Role";
 import User from "./objects/User";
 import Element from "./classes/Element";
+import {Include} from "./modules/Include";
+import * as Promise from "bluebird";
 
-export const db: { [key: string]: DBPool } = _.mapValues(env.databases, env_db => new DB(env_db));
-export const users: { [key: string]: User } = {};
-export const roles: { [key: string]: Role } = {};
-export const elements: { [key: string]: typeof Element } = _.transform(requireAll(__dirname + "/objects"), (r, v: { [key: string]: typeof Element }) => _.set(r, v.default.__type, v.default), {});
+export const db: {[key: string]: DBPool} = _.mapValues(env.databases, env_db => new DB(env_db));
+export const users: {[key: string]: User} = {};
+export const roles: {[key: string]: Role} = {};
+export const elements: {[key: string]: typeof Element} = _.transform(requireAll(__dirname + "/objects"), (r, v: {[key: string]: typeof Element}) => _.set(r, v.default.__type, v.default), {});
 export const init_chain = new PromiseChain([
   "pre-db", "db", "post-db",
   "pre-table", "table", "post-table",
@@ -20,16 +22,18 @@ export const init_chain = new PromiseChain([
   "pre-publicize", "publicize", "post-publicize"
 ]);
 
-requireAll(__dirname + "/init");
-requireAll({
-  dirname: __dirname + "/plugins",
-  filter:  /init\.js/
-});
-
-init_chain.cycle()
+new Promise((resolve, reject) =>
+  Include({path: __dirname + "/init"})
+  .then(() =>
+    Include({path: __dirname + "/plugins", filter: /^[\w\d\s]+\\init\.js/})
+    .then(() =>
+      init_chain.cycle()
+      .then(() => resolve())
+      .catch(err => reject(err))
+    ).catch(err => reject(err))
+  ).catch(err => reject(err))
+)
 .catch(err => {
   console.error(err);
   process.exitCode = 1;
 });
-
-

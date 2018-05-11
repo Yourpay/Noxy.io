@@ -10,6 +10,7 @@
       <option name="IMPORTS_WRAP" value="0" />
       <option name="UNION_TYPES_WRAP" value="0" />
       <option name="INDENT_CHAINED_CALLS" value="false" />
+      <option name="SPACES_WITHIN_OBJECT_TYPE_BRACES" value="false" />
     </TypeScriptCodeStyleSettings>
     <codeStyleSettings language="TypeScript">
       <option name="RIGHT_MARGIN" value="220" />
