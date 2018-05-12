@@ -2,30 +2,47 @@ import * as _ from "lodash";
 
 export default class ServerError extends Error {
   
-  public code: string;
+  public code: number;
+  public type: string;
   public item: string;
   
-  private static codes: { [key: string]: string } = {
-    "200.server.any": "Request performed successfully",
-    "401.server.any": "Unauthorized",
-    "400.db.select": "Malformed request received while selecting from database.",
-    "400.db.insert": "Malformed request received while inserting into database.",
-    "400.db.duplicate": "Duplicate resource request received while inserting into database.",
-    "404.db.select": "Resource not found while selecting from database.",
-    "500.db.select": "Server error occured while selecting from database."
+  private static codes: {[status: number]: {[type: string]: string}} = {
+    200: {
+      "any": "Request performed successfully"
+    },
+    400: {
+      "any":       "Bad request received",
+      "get":       "Could not retrieve data due to missing or errorful data.",
+      "post":      "Could not create or change resource due to missing or errorful data.",
+      "update":    "Could not update resource due to missing or errorful data.",
+      "duplicate": "Resource already exists and no duplicates are allowed."
+    },
+    401: {
+      "any": "Unauthorized",
+      "jwt": "Could not authorize user token."
+    },
+    404: {
+      "any": "Resource not found.",
+      "get": "Could not get non-existant resource."
+    },
+    500: {
+      "any": "Unexpected server error occurred"
+    }
   };
   
-  constructor(code: string, item?: any) {
-    super(ServerError.codes[code]);
-    this.code = code.match(/^[1-9][0-9]{2}\.[-a-z]{2,}\.[0-9a-z]+$/) ? code : "500.server.unknown";
+  constructor(code: number, type: string, item?: any) {
+    super(ServerError.codes[code][type]);
+    this.code = ServerError.codes[code] ? code : 500;
+    this.type = ServerError.codes[code][type] ? type : "any";
+    this.message = ServerError.codes[code][type];
     this.item = item || {};
   }
   
   public static parseSQLError(error: iSQLError) {
     const cleaned = _.omit(error, "error");
-    const type = error.sql.slice(0, 6).toLowerCase() === "select" ? "select" : error.sql.slice(0, 6).toLowerCase() === "insert" ? "insert" : "update";
-    if (error.errno === 1064) { return new ServerError(`400.db.${type}`, cleaned); }
-    return new ServerError(`500.db.unknown`, cleaned);
+    const type = error.sql.slice(0, 6).toLowerCase() === "select" ? "get" : error.sql.slice(0, 6).toLowerCase() === "insert" ? "post" : "put";
+    if (error.errno === 1064) { return new ServerError(400, type, cleaned); }
+    return new ServerError(500, "any", cleaned);
   }
   
 }

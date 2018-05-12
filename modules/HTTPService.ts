@@ -19,12 +19,12 @@ import User from "../objects/User";
 
 export namespace HTTPService {
   
-  const __roles: { [key: string]: Buffer[] } = {};
-  const __routes: { [key: string]: Route } = {};
-  const __routers: { [key: string]: express.Router } = {};
-  const __servers: { [port: number]: http.Server | https.Server } = {};
+  const __roles: {[key: string]: Buffer[]} = {};
+  const __routes: {[key: string]: Route} = {};
+  const __routers: {[key: string]: express.Router} = {};
+  const __servers: {[port: number]: http.Server | https.Server} = {};
   const __application: express.Application = express();
-  const __certificates: { [key: string]: object } = {};
+  const __certificates: {[key: string]: object} = {};
   
   __application.use(bodyParser.urlencoded({extended: false}));
   __application.use(bodyParser.json());
@@ -94,11 +94,11 @@ export namespace HTTPService {
     return new Promise<[User, Buffer[]]>((resolve, reject) =>
       new Promise<User>((resolve, reject) =>
         jwt.verify(token, env.tokens.jwt, (err, decoded) =>
-          !err ? resolve(new User(decoded)) : reject(new ServerError("401.server.jwt"))
+          !err ? resolve(new User(decoded)) : reject(new ServerError(401, "jwt"))
         )
       )
       .then(user => user.validate().then(user => authRoleUser(user).then(res => resolve([user, res]))))
-      .catch(err => reject(err || new ServerError("401.server.any")))
+      .catch(err => reject(err || new ServerError(401, "any")))
     );
   }
   
@@ -133,14 +133,14 @@ export namespace HTTPService {
       .then(route => {
         if (!route.flag_active) {
           return authUser(request.get("Authorization"))
-          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
-          .catch(err => reject(err));
+          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
+          .catch(err => reject(err.code === "401" && err.type === "jwt" ? new ServerError(404, "any") : err));
         }
         authRoleRoute(route)
         .then(route_roles => {
           authUser(request.get("Authorization"))
-          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
-          .catch(err => err.code === "401.server.jwt" ? resolve([null, [], route_roles]) : reject(err));
+          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
+          .catch(err => err.code === "401" && err.type === "jwt" ? resolve([null, [], route_roles]) : reject(err));
         });
       })
       .catch(err => reject(err))
@@ -158,6 +158,12 @@ export namespace HTTPService {
     const parsed_path = _.get(path, "path", path);
     const router = __routers[parsed_path] || (__routers[parsed_path] = express.Router());
     router[_.toLower(method)].apply(router, _.concat(_.get(path, "parameter", "/"), args));
+    return HTTPService;
+  }
+  
+  export function addParam(param: string, path: string | Path = "*", cb: (request: express.Request, response: express.Response, next: express.NextFunction, value: string) => void): typeof HTTPService {
+    const parsed_path = _.get(path, "path", path);
+    (__routers[parsed_path] || (__routers[parsed_path] = express.Router())).param(param, cb);
     return HTTPService;
   }
   
@@ -184,7 +190,7 @@ export namespace HTTPService {
     router.get(`/:id`, auth, (request: ElementRequest, response) => {
       new Promise((resolve, reject) => {
         new element(request.id).validate()
-        .then(res => !element.__fields.user_created || request.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerError("404.server.any")))
+        .then(res => !element.__fields.user_created || request.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerError(404, "any")))
         .catch(err => reject(err));
       })
       .then(res => response.json(HTTPService.response(res)))
@@ -195,7 +201,7 @@ export namespace HTTPService {
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
-          res.exists ? reject(new ServerError("400.db.duplicate")) : res.save(request.user)
+          res.exists ? reject(new ServerError(400, "duplicate")) : res.save(request.user)
           .then(res => resolve(res.toObject()))
           .catch(err => reject(err))
         )
@@ -209,7 +215,7 @@ export namespace HTTPService {
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
-          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError("404.db.any")) : res.save(request.user)
+          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError(404, "any")) : res.save(request.user)
           .then(res => resolve(res.toObject()))
           .catch(err => reject(err))
         )
@@ -223,7 +229,7 @@ export namespace HTTPService {
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
-          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError("404.db.any")) : res.remove(request.user)
+          !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError(404, "any")) : res.remove(request.user)
           .then(res => resolve(res.toObject()))
           .catch(err => reject(err))
         )
@@ -246,5 +252,5 @@ interface ElementRequest extends express.Request {
   roles_user?: Role[]
 }
 
-type Path = { path: string, parameter: string }
+type Path = {path: string, parameter: string}
 type Method = "GET" | "POST" | "PUT" | "DELETE"
