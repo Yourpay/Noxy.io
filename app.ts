@@ -30,8 +30,10 @@ new Promise((resolve, reject) =>
       init_chain.cycle()
       .then(() => resolve())
       .catch(err => reject(err))
-    ).catch(err => reject(err))
-  ).catch(err => reject(err))
+    )
+    .catch(err => reject(err))
+  )
+  .catch(err => reject(err))
 )
 .catch(err => {
   console.error(err);
