@@ -84,7 +84,7 @@ export namespace HTTPService {
     return {
       success: !(object instanceof ServerError),
       content: object,
-      code:    object.code || "200.server.any",
+      code:    object.code || "200.any",
       message: object.message || "Request performed successfully.",
       time:    Date.now()
     };
@@ -94,11 +94,11 @@ export namespace HTTPService {
     return new Promise<[User, Buffer[]]>((resolve, reject) =>
       new Promise<User>((resolve, reject) =>
         jwt.verify(token, env.tokens.jwt, (err, decoded) =>
-          !err ? resolve(new User(decoded)) : reject(new ServerError("401.server.jwt"))
+          !err ? resolve(new User(decoded)) : reject(new ServerError("401.jwt"))
         )
       )
       .then(user => user.validate().then(user => authRoleUser(user).then(res => resolve([user, res]))))
-      .catch(err => reject(err || new ServerError("401.server.any")))
+      .catch(err => reject(err || new ServerError("401.any")))
     );
   }
   
@@ -140,7 +140,7 @@ export namespace HTTPService {
         .then(route_roles => {
           authUser(request.get("Authorization"))
           .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError("403.server.any")))
-          .catch(err => err.code === "401.server.jwt" ? resolve([null, [], route_roles]) : reject(err));
+          .catch(err => err.code === "401.jwt" ? resolve([null, [], route_roles]) : reject(err));
         });
       })
       .catch(err => reject(err))
@@ -195,7 +195,7 @@ export namespace HTTPService {
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
-          res.exists ? reject(new ServerError("400.db.duplicate")) : res.save(request.user)
+          res.exists ? reject(new ServerError("400.duplicate")) : res.save(request.user)
           .then(res => resolve(res.toObject()))
           .catch(err => reject(err))
         )

@@ -6,18 +6,19 @@ export default class ServerError extends Error {
   public item: string;
   
   private static codes: { [key: string]: string } = {
-    "200.server.any": "Request performed successfully",
-    "401.server.any": "Unauthorized",
-    "400.db.select": "Malformed request received while selecting from database.",
-    "400.db.insert": "Malformed request received while inserting into database.",
-    "400.db.duplicate": "Duplicate resource request received while inserting into database.",
-    "404.db.select": "Resource not found while selecting from database.",
-    "500.db.select": "Server error occured while selecting from database."
+    "200.any": "Request performed successfully",
+    "400.get": "Malformed request received while selecting from database.",
+    "400.post": "Malformed request received while inserting into database.",
+    "400.duplicate": "Duplicate resource request received while inserting into database.",
+    "401.any": "Unauthorized",
+    "401.jwt": "Could not validate authorization token.",
+    "404.get": "Resource not found while selecting from database.",
+    "500.get": "Server error occured while selecting from database."
   };
   
   constructor(code: string, item?: any) {
     super(ServerError.codes[code]);
-    this.code = code.match(/^[1-9][0-9]{2}\.[-a-z]{2,}\.[0-9a-z]+$/) ? code : "500.server.unknown";
+    this.code = code.match(/^[1-9][0-9]{2}\.[\w]{3,}$/) ? code : "500.any";
     this.item = item || {};
   }
   

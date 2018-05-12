@@ -5,7 +5,6 @@ import * as Promise from "bluebird";
 import * as _ from "lodash";
 
 init_chain.addPromise("publicize", (resolve, reject) => {
-  
   Promise.all(_.map(["/api/user", "/api/user/login"], path =>
     new Promise((resolve, reject) =>
       new Route({method: "POST", path: path, flag_active: 1}).validate()

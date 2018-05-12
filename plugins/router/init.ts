@@ -2,6 +2,7 @@ import {HTTPService} from "../../modules/HTTPService";
 import {init_chain} from "../../app";
 import ServerError from "../../classes/ServerError";
 import * as rp from "request-promise";
+import Route from "../../objects/Route";
 
 console.log("router init");
 
@@ -16,6 +17,23 @@ init_chain.addPromise("route", resolve => {
     .then(res => response.send(res))
     .catch(err => response.status(400).json(new ServerError("400.server.any", err)));
   });
+
+  // Promise.all(_.map(["/api/user", "/api/user/login"], path =>
+  //   new Promise((resolve, reject) =>
+  //     new Route({method: "POST", path: path, flag_active: 1}).validate()
+  //     .then(res =>
+  //       res.exists ? resolve(res) : res.save()
+  //       .then(res => resolve(res))
+  //       .catch(err => reject(err))
+  //     )
+  //     .catch(err => reject(err))
+  //   )))
+  // .then(() => {
+  //   HTTPService.listen()
+  //   .then(res => resolve(res))
+  //   .catch(err => reject(err));
+  // })
+  // .catch(err => reject(err));
   
   resolve();
   
