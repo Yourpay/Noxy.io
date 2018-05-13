@@ -1,0 +1,44 @@
+http://192.168.0.1/wlcfg.wl
+Host: 192.168.0.1
+Referer: http://192.168.0.1/wlcfg.html
+
+
+wlSsidIdx: 0
+wlEnbl: 1
+wlHide: 0
+wlAPIsolation: 0
+wlSsid: The Silence of the WLANs
+wlCountry: E0
+wlMaxAssoc: 50
+wlDisableWme: 0
+wlNReqd: 0
+wlEnableWmf: 0
+wlEnbl_wl1v1: 0
+wlSsid_wl1v1: The_Silence_of_the_WLANs_1
+wlHide_wl1v1: 0
+wlAPIsolation_wl1v1: 0
+wlDisableWme_wl1v1: 0
+wlEnableWmf_wl1v1: 0
+wlMaxAssoc_wl1v1: 50
+wlNReqd_wl1v1: 0
+wlEnableGuestNetwork_wl1v1: 0
+wlEnbl_wl1v2: 0
+wlSsid_wl1v2: The_Silence_of_the_WLANs_2
+wlHide_wl1v2: 0
+wlAPIsolation_wl1v2: 0
+wlDisableWme_wl1v2: 0
+wlEnableWmf_wl1v2: 0
+wlMaxAssoc_wl1v2: 50
+wlNReqd_wl1v2: 0
+wlEnableGuestNetwork_wl1v2: 0
+wlEnbl_wl1v3: 0
+wlSsid_wl1v3: The_Silence_of_the_WLANs_3
+wlHide_wl1v3: 0
+wlAPIsolation_wl1v3: 0
+wlDisableWme_wl1v3: 0
+wlEnableWmf_wl1v3: 0
+wlMaxAssoc_wl1v3: 50
+wlNReqd_wl1v3: 0
+wlEnableGuestNetwork_wl1v3: 0
+wlSyncNvram: 1
+sessionKey: 1687423400

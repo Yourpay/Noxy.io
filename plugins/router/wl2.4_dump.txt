@@ -1,0 +1,865 @@
+<html>
+   <head>
+      <meta HTTP-EQUIV='Pragma' CONTENT='no-cache'>
+      <link rel="stylesheet" href='stylemain.css' type='text/css'>
+         <link rel="stylesheet" href='colors.css' type='text/css'>
+            <script language="javascript" src="util.js"></script>
+             <script src="jquery-2.0.3.min.js"></script>
+            <script language="javascript">
+<!-- hide
+if (localStorage.getItem("radio0") == null) {
+  localStorage.setItem("radio0", '1');
+  localStorage.setItem("radio1", '1');
+}
+var radio0 = localStorage.getItem("radio0");
+var radio1 = localStorage.getItem("radio1");
+var radioEnable0 = '1';
+var radioEnable1 = '1';
+if ((radioEnable0 != radio0) || (radioEnable1 != radio1)) {
+   radio0 = radioEnable0;
+   radio1 = radioEnable1; 
+   localStorage.setItem("radio0", radio0);
+   localStorage.setItem("radio1", radio1);  
+   localStorage.setItem("prevUrl", 'info.html'); 
+   localStorage.setItem("lev1", 1);
+   localStorage.setItem("lev2", null);
+   window.parent.document.getElementById('basefrm').setAttribute('src', 'info.html');   
+   parent.location.reload();
+};
+
+var syncNvram = '1';
+var unitNum = '0';
+/*LegacyGuest*/
+var ssid_2 = 'The_Promised_WLAN_1';
+var enbl_2 = '0';
+
+var ssid = 'The Promised WLAN';
+var enbl = '1';
+var hide = '0';
+var apIsolation= '0';
+var maxAssoc = '50';
+var disableWme = '0';
+var enableWmf = '0';
+var country = 'E0';
+var wlRefresh = '0';
+var band = '2';
+var supportMbss = '1'
+var wme = '1';
+var wmf = '0';
+var wlInfo = 'ap sta wet wet_tunnel toe led wme 802.11d 802.11h rm cqa ccx cac mbss8 ampdu ampdu_tx ampdu_rx amsdurx amsdutx rxchain_pwrsave radio_pwrsave bcm_dcs proptxstatus psta psr wds dwds traffic-mgmt traffic-mgmt-dwm p2po anqpo vht-prop-rates multi-user-be';
+var pattern_1ssid = /1ssid/i;
+var globalmaxassoc= '50';
+var WscMode = 'enabled';
+var WscVer2 = 'enabled';
+var auth_mode = 'psk2';
+var enableUre = '0';
+var nreqd = '0';
+var numUserControl = '8';
+var bridgingMode = '0';
+
+if ( wlRefresh == '1' ) {
+   var code = 'location="wlcfgrefresh.wl?wlRefresh=0"';
+   eval(code);   
+}
+
+function removeBSSField(col) {
+	var myTD=document.getElementById('wlBSSTbl').getElementsByTagName('tr')[0].getElementsByTagName('td')[col];
+	myTD.parentNode.removeChild(myTD);
+}
+
+function hideWlSecInfo(tohide) {
+
+   with ( document.forms[0] ) {        
+      if ( tohide == 1 ) {
+         //wlHide.disabled = 1;
+         //wlSsid.disabled = 1;
+         wlCountry.disabled = 1;
+         wlAPIsolation.disabled = 1;         
+      } else {
+         wlHide.disabled = 0;
+         wlSsid.disabled = 0;
+         wlAPIsolation.disabled = 0;           
+      }
+      //showhide("wlSecInfo", (!tohide));
+      showhide("wlLegacyGuestInfo", ((!tohide)&&((supportMbss==0)&&!(pattern_1ssid.test(wlInfo)))));
+      showhide("wlMBSSInfo", ((supportMbss!=0)&&(bridgingMode==0 || bridgingMode==1)));
+   } 
+}
+
+function wlSecCbClick(cb) {
+   if ( cb.checked == true )
+      hideWlSecInfo(0);
+   else
+      hideWlSecInfo(1);
+}
+
+function wlLoadCountryList()
+{
+   var phytype = "b";
+   var cur = 0;
+   var sel = 0;
+   var i = 0;
+
+   if (band == "1") { // 5G
+      document.forms[0].wlCountry[0] = new Option("E0", "E0");
+
+   } else {
+      document.forms[0].wlCountry[0] = new Option("#a", "#a");
+document.forms[0].wlCountry[1] = new Option("#h", "#h");
+document.forms[0].wlCountry[2] = new Option("#r", "#r");
+document.forms[0].wlCountry[3] = new Option("#u", "#u");
+document.forms[0].wlCountry[4] = new Option("0A", "0A");
+document.forms[0].wlCountry[5] = new Option("0B", "0B");
+document.forms[0].wlCountry[6] = new Option("0C", "0C");
+document.forms[0].wlCountry[7] = new Option("ANDORRA", "AD");
+document.forms[0].wlCountry[8] = new Option("UNITED ARAB EMIRATES", "AE");
+document.forms[0].wlCountry[9] = new Option("AFGHANISTAN", "AF");
+document.forms[0].wlCountry[10] = new Option("ANTIGUA AND BARBUDA", "AG");
+document.forms[0].wlCountry[11] = new Option("ANGUILLA", "AI");
+document.forms[0].wlCountry[12] = new Option("ALBANIA", "AL");
+document.forms[0].wlCountry[13] = new Option("ARMENIA", "AM");
+document.forms[0].wlCountry[14] = new Option("NETHERLANDS ANTILLES", "AN");
+document.forms[0].wlCountry[15] = new Option("ANGOLA", "AO");
+document.forms[0].wlCountry[16] = new Option("ARGENTINA", "AR");
+document.forms[0].wlCountry[17] = new Option("AMERICAN SAMOA", "AS");
+document.forms[0].wlCountry[18] = new Option("AUSTRIA", "AT");
+document.forms[0].wlCountry[19] = new Option("AUSTRALIA", "AU");
+document.forms[0].wlCountry[20] = new Option("ARUBA", "AW");
+document.forms[0].wlCountry[21] = new Option("AZERBAIJAN", "AZ");
+document.forms[0].wlCountry[22] = new Option("BOSNIA AND HERZEGOVINA", "BA");
+document.forms[0].wlCountry[23] = new Option("BARBADOS", "BB");
+document.forms[0].wlCountry[24] = new Option("BANGLADESH", "BD");
+document.forms[0].wlCountry[25] = new Option("BELGIUM", "BE");
+document.forms[0].wlCountry[26] = new Option("BURKINA FASO", "BF");
+document.forms[0].wlCountry[27] = new Option("BULGARIA", "BG");
+document.forms[0].wlCountry[28] = new Option("BAHRAIN", "BH");
+document.forms[0].wlCountry[29] = new Option("BURUNDI", "BI");
+document.forms[0].wlCountry[30] = new Option("BENIN", "BJ");
+document.forms[0].wlCountry[31] = new Option("BERMUDA", "BM");
+document.forms[0].wlCountry[32] = new Option("BRUNEI DARUSSALAM", "BN");
+document.forms[0].wlCountry[33] = new Option("BOLIVIA", "BO");
+document.forms[0].wlCountry[34] = new Option("BRAZIL", "BR");
+document.forms[0].wlCountry[35] = new Option("BAHAMAS", "BS");
+document.forms[0].wlCountry[36] = new Option("BHUTAN", "BT");
+document.forms[0].wlCountry[37] = new Option("BOTSWANA", "BW");
+document.forms[0].wlCountry[38] = new Option("BELARUS", "BY");
+document.forms[0].wlCountry[39] = new Option("BELIZE", "BZ");
+document.forms[0].wlCountry[40] = new Option("CANADA", "CA");
+document.forms[0].wlCountry[41] = new Option("CONGO, THE DEMOCRATIC REPUBLIC OF THE", "CD");
+document.forms[0].wlCountry[42] = new Option("CENTRAL AFRICAN REPUBLIC", "CF");
+document.forms[0].wlCountry[43] = new Option("CONGO", "CG");
+document.forms[0].wlCountry[44] = new Option("SWITZERLAND", "CH");
+document.forms[0].wlCountry[45] = new Option("COTE D'IVOIRE", "CI");
+document.forms[0].wlCountry[46] = new Option("COOK ISLANDS", "CK");
+document.forms[0].wlCountry[47] = new Option("CHILE", "CL");
+document.forms[0].wlCountry[48] = new Option("CAMEROON", "CM");
+document.forms[0].wlCountry[49] = new Option("CHINA", "CN");
+document.forms[0].wlCountry[50] = new Option("COLOMBIA", "CO");
+document.forms[0].wlCountry[51] = new Option("COSTA RICA", "CR");
+document.forms[0].wlCountry[52] = new Option("CUBA", "CU");
+document.forms[0].wlCountry[53] = new Option("CAPE VERDE", "CV");
+document.forms[0].wlCountry[54] = new Option("CHRISTMAS ISLAND", "CX");
+document.forms[0].wlCountry[55] = new Option("CYPRUS", "CY");
+document.forms[0].wlCountry[56] = new Option("CZECH REPUBLIC", "CZ");
+document.forms[0].wlCountry[57] = new Option("GERMANY", "DE");
+document.forms[0].wlCountry[58] = new Option("DJIBOUTI", "DJ");
+document.forms[0].wlCountry[59] = new Option("DENMARK", "DK");
+document.forms[0].wlCountry[60] = new Option("DOMINICA", "DM");
+document.forms[0].wlCountry[61] = new Option("DOMINICAN REPUBLIC", "DO");
+document.forms[0].wlCountry[62] = new Option("ALGERIA", "DZ");
+document.forms[0].wlCountry[63] = new Option("E0", "E0");
+document.forms[0].wlCountry[64] = new Option("ECUADOR", "EC");
+document.forms[0].wlCountry[65] = new Option("ESTONIA", "EE");
+document.forms[0].wlCountry[66] = new Option("EGYPT", "EG");
+document.forms[0].wlCountry[67] = new Option("WESTERN SAHARA", "EH");
+document.forms[0].wlCountry[68] = new Option("ERITREA", "ER");
+document.forms[0].wlCountry[69] = new Option("SPAIN", "ES");
+document.forms[0].wlCountry[70] = new Option("ETHIOPIA", "ET");
+document.forms[0].wlCountry[71] = new Option("EU", "EU");
+document.forms[0].wlCountry[72] = new Option("FINLAND", "FI");
+document.forms[0].wlCountry[73] = new Option("FIJI", "FJ");
+document.forms[0].wlCountry[74] = new Option("FALKLAND ISLANDS (MALVINAS)", "FK");
+document.forms[0].wlCountry[75] = new Option("MICRONESIA, FEDERATED STATES OF", "FM");
+document.forms[0].wlCountry[76] = new Option("FAROE ISLANDS", "FO");
+document.forms[0].wlCountry[77] = new Option("FRANCE", "FR");
+document.forms[0].wlCountry[78] = new Option("GABON", "GA");
+document.forms[0].wlCountry[79] = new Option("UNITED KINGDOM", "GB");
+document.forms[0].wlCountry[80] = new Option("GRENADA", "GD");
+document.forms[0].wlCountry[81] = new Option("GEORGIA", "GE");
+document.forms[0].wlCountry[82] = new Option("FRENCH GUIANA", "GF");
+document.forms[0].wlCountry[83] = new Option("GUERNSEY", "GG");
+document.forms[0].wlCountry[84] = new Option("GHANA", "GH");
+document.forms[0].wlCountry[85] = new Option("GIBRALTAR", "GI");
+document.forms[0].wlCountry[86] = new Option("GAMBIA", "GM");
+document.forms[0].wlCountry[87] = new Option("GUINEA", "GN");
+document.forms[0].wlCountry[88] = new Option("GUADELOUPE", "GP");
+document.forms[0].wlCountry[89] = new Option("EQUATORIAL GUINEA", "GQ");
+document.forms[0].wlCountry[90] = new Option("GREECE", "GR");
+document.forms[0].wlCountry[91] = new Option("GUATEMALA", "GT");
+document.forms[0].wlCountry[92] = new Option("GUAM", "GU");
+document.forms[0].wlCountry[93] = new Option("GUINEA-BISSAU", "GW");
+document.forms[0].wlCountry[94] = new Option("GUYANA", "GY");
+document.forms[0].wlCountry[95] = new Option("HONG KONG", "HK");
+document.forms[0].wlCountry[96] = new Option("HONDURAS", "HN");
+document.forms[0].wlCountry[97] = new Option("CROATIA", "HR");
+document.forms[0].wlCountry[98] = new Option("HAITI", "HT");
+document.forms[0].wlCountry[99] = new Option("HUNGARY", "HU");
+document.forms[0].wlCountry[100] = new Option("INDONESIA", "ID");
+document.forms[0].wlCountry[101] = new Option("IRELAND", "IE");
+document.forms[0].wlCountry[102] = new Option("ISRAEL", "IL");
+document.forms[0].wlCountry[103] = new Option("MAN, ISLE OF", "IM");
+document.forms[0].wlCountry[104] = new Option("INDIA", "IN");
+document.forms[0].wlCountry[105] = new Option("BRITISH INDIAN OCEAN TERRITORY", "IO");
+document.forms[0].wlCountry[106] = new Option("IRAQ", "IQ");
+document.forms[0].wlCountry[107] = new Option("IRAN, ISLAMIC REPUBLIC OF", "IR");
+document.forms[0].wlCountry[108] = new Option("ICELAND", "IS");
+document.forms[0].wlCountry[109] = new Option("ITALY", "IT");
+document.forms[0].wlCountry[110] = new Option("J0", "J0");
+document.forms[0].wlCountry[111] = new Option("JERSEY", "JE");
+document.forms[0].wlCountry[112] = new Option("JAMAICA", "JM");
+document.forms[0].wlCountry[113] = new Option("JORDAN", "JO");
+document.forms[0].wlCountry[114] = new Option("JAPAN", "JP");
+document.forms[0].wlCountry[115] = new Option("KA", "KA");
+document.forms[0].wlCountry[116] = new Option("KC", "KC");
+document.forms[0].wlCountry[117] = new Option("KD", "KD");
+document.forms[0].wlCountry[118] = new Option("KENYA", "KE");
+document.forms[0].wlCountry[119] = new Option("KYRGYZSTAN", "KG");
+document.forms[0].wlCountry[120] = new Option("CAMBODIA", "KH");
+document.forms[0].wlCountry[121] = new Option("KIRIBATI", "KI");
+document.forms[0].wlCountry[122] = new Option("KK", "KK");
+document.forms[0].wlCountry[123] = new Option("COMOROS", "KM");
+document.forms[0].wlCountry[124] = new Option("SAINT KITTS AND NEVIS", "KN");
+document.forms[0].wlCountry[125] = new Option("KOREA, REPUBLIC OF", "KR");
+document.forms[0].wlCountry[126] = new Option("KUWAIT", "KW");
+document.forms[0].wlCountry[127] = new Option("KX", "KX");
+document.forms[0].wlCountry[128] = new Option("CAYMAN ISLANDS", "KY");
+document.forms[0].wlCountry[129] = new Option("KAZAKHSTAN", "KZ");
+document.forms[0].wlCountry[130] = new Option("LAO PEOPLE'S DEMOCRATIC REPUBLIC", "LA");
+document.forms[0].wlCountry[131] = new Option("LEBANON", "LB");
+document.forms[0].wlCountry[132] = new Option("SAINT LUCIA", "LC");
+document.forms[0].wlCountry[133] = new Option("LIECHTENSTEIN", "LI");
+document.forms[0].wlCountry[134] = new Option("SRI LANKA", "LK");
+document.forms[0].wlCountry[135] = new Option("LIBERIA", "LR");
+document.forms[0].wlCountry[136] = new Option("LESOTHO", "LS");
+document.forms[0].wlCountry[137] = new Option("LITHUANIA", "LT");
+document.forms[0].wlCountry[138] = new Option("LUXEMBOURG", "LU");
+document.forms[0].wlCountry[139] = new Option("LATVIA", "LV");
+document.forms[0].wlCountry[140] = new Option("LIBYAN ARAB JAMAHIRIYA", "LY");
+document.forms[0].wlCountry[141] = new Option("MOROCCO", "MA");
+document.forms[0].wlCountry[142] = new Option("MONACO", "MC");
+document.forms[0].wlCountry[143] = new Option("MOLDOVA, REPUBLIC OF", "MD");
+document.forms[0].wlCountry[144] = new Option("MONTENEGRO", "ME");
+document.forms[0].wlCountry[145] = new Option("MF", "MF");
+document.forms[0].wlCountry[146] = new Option("MADAGASCAR", "MG");
+document.forms[0].wlCountry[147] = new Option("MACEDONIA, THE FORMER YUGOSLAV REPUBLIC OF", "MK");
+document.forms[0].wlCountry[148] = new Option("MALI", "ML");
+document.forms[0].wlCountry[149] = new Option("MYANMAR", "MM");
+document.forms[0].wlCountry[150] = new Option("MONGOLIA", "MN");
+document.forms[0].wlCountry[151] = new Option("MACAO", "MO");
+document.forms[0].wlCountry[152] = new Option("NORTHERN MARIANA ISLANDS", "MP");
+document.forms[0].wlCountry[153] = new Option("MARTINIQUE", "MQ");
+document.forms[0].wlCountry[154] = new Option("MAURITANIA", "MR");
+document.forms[0].wlCountry[155] = new Option("MONTSERRAT", "MS");
+document.forms[0].wlCountry[156] = new Option("MALTA", "MT");
+document.forms[0].wlCountry[157] = new Option("MAURITIUS", "MU");
+document.forms[0].wlCountry[158] = new Option("MALDIVES", "MV");
+document.forms[0].wlCountry[159] = new Option("MALAWI", "MW");
+document.forms[0].wlCountry[160] = new Option("MEXICO", "MX");
+document.forms[0].wlCountry[161] = new Option("MALAYSIA", "MY");
+document.forms[0].wlCountry[162] = new Option("MOZAMBIQUE", "MZ");
+document.forms[0].wlCountry[163] = new Option("NAMIBIA", "NA");
+document.forms[0].wlCountry[164] = new Option("NEW CALEDONIA", "NC");
+document.forms[0].wlCountry[165] = new Option("NIGER", "NE");
+document.forms[0].wlCountry[166] = new Option("NORFOLK ISLAND", "NF");
+document.forms[0].wlCountry[167] = new Option("NIGERIA", "NG");
+document.forms[0].wlCountry[168] = new Option("NICARAGUA", "NI");
+document.forms[0].wlCountry[169] = new Option("NETHERLANDS", "NL");
+document.forms[0].wlCountry[170] = new Option("NORWAY", "NO");
+document.forms[0].wlCountry[171] = new Option("NEPAL", "NP");
+document.forms[0].wlCountry[172] = new Option("NAURU", "NR");
+document.forms[0].wlCountry[173] = new Option("NIUE", "NU");
+document.forms[0].wlCountry[174] = new Option("NEW ZEALAND", "NZ");
+document.forms[0].wlCountry[175] = new Option("OMAN", "OM");
+document.forms[0].wlCountry[176] = new Option("PANAMA", "PA");
+document.forms[0].wlCountry[177] = new Option("PERU", "PE");
+document.forms[0].wlCountry[178] = new Option("FRENCH POLYNESIA", "PF");
+document.forms[0].wlCountry[179] = new Option("PAPUA NEW GUINEA", "PG");
+document.forms[0].wlCountry[180] = new Option("PHILIPPINES", "PH");
+document.forms[0].wlCountry[181] = new Option("PAKISTAN", "PK");
+document.forms[0].wlCountry[182] = new Option("POLAND", "PL");
+document.forms[0].wlCountry[183] = new Option("SAINT PIERRE AND MIQUELON", "PM");
+document.forms[0].wlCountry[184] = new Option("PUERTO RICO", "PR");
+document.forms[0].wlCountry[185] = new Option("PORTUGAL", "PT");
+document.forms[0].wlCountry[186] = new Option("PALAU", "PW");
+document.forms[0].wlCountry[187] = new Option("PARAGUAY", "PY");
+document.forms[0].wlCountry[188] = new Option("Q1", "Q1");
+document.forms[0].wlCountry[189] = new Option("Q2", "Q2");
+document.forms[0].wlCountry[190] = new Option("QATAR", "QA");
+document.forms[0].wlCountry[191] = new Option("REUNION", "RE");
+document.forms[0].wlCountry[192] = new Option("ROMANIA", "RO");
+document.forms[0].wlCountry[193] = new Option("SERBIA", "RS");
+document.forms[0].wlCountry[194] = new Option("RUSSIAN FEDERATION", "RU");
+document.forms[0].wlCountry[195] = new Option("RWANDA", "RW");
+document.forms[0].wlCountry[196] = new Option("SAUDI ARABIA", "SA");
+document.forms[0].wlCountry[197] = new Option("SOLOMON ISLANDS", "SB");
+document.forms[0].wlCountry[198] = new Option("SEYCHELLES", "SC");
+document.forms[0].wlCountry[199] = new Option("SUDAN", "SD");
+document.forms[0].wlCountry[200] = new Option("SWEDEN", "SE");
+document.forms[0].wlCountry[201] = new Option("SINGAPORE", "SG");
+document.forms[0].wlCountry[202] = new Option("SLOVENIA", "SI");
+document.forms[0].wlCountry[203] = new Option("SLOVAKIA", "SK");
+document.forms[0].wlCountry[204] = new Option("SIERRA LEONE", "SL");
+document.forms[0].wlCountry[205] = new Option("SAN MARINO", "SM");
+document.forms[0].wlCountry[206] = new Option("SENEGAL", "SN");
+document.forms[0].wlCountry[207] = new Option("SOMALIA", "SO");
+document.forms[0].wlCountry[208] = new Option("SURINAME", "SR");
+document.forms[0].wlCountry[209] = new Option("SAO TOME AND PRINCIPE", "ST");
+document.forms[0].wlCountry[210] = new Option("EL SALVADOR", "SV");
+document.forms[0].wlCountry[211] = new Option("SWAZILAND", "SZ");
+document.forms[0].wlCountry[212] = new Option("TURKS AND CAICOS ISLANDS", "TC");
+document.forms[0].wlCountry[213] = new Option("CHAD", "TD");
+document.forms[0].wlCountry[214] = new Option("FRENCH SOUTHERN TERRITORIES", "TF");
+document.forms[0].wlCountry[215] = new Option("TOGO", "TG");
+document.forms[0].wlCountry[216] = new Option("THAILAND", "TH");
+document.forms[0].wlCountry[217] = new Option("TAJIKISTAN", "TJ");
+document.forms[0].wlCountry[218] = new Option("TIMOR-LESTE (EAST TIMOR)", "TL");
+document.forms[0].wlCountry[219] = new Option("TURKMENISTAN", "TM");
+document.forms[0].wlCountry[220] = new Option("TUNISIA", "TN");
+document.forms[0].wlCountry[221] = new Option("TONGA", "TO");
+document.forms[0].wlCountry[222] = new Option("TURKEY", "TR");
+document.forms[0].wlCountry[223] = new Option("TRINIDAD AND TOBAGO", "TT");
+document.forms[0].wlCountry[224] = new Option("TUVALU", "TV");
+document.forms[0].wlCountry[225] = new Option("TAIWAN, PROVINCE OF CHINA", "TW");
+document.forms[0].wlCountry[226] = new Option("TANZANIA, UNITED REPUBLIC OF", "TZ");
+document.forms[0].wlCountry[227] = new Option("UKRAINE", "UA");
+document.forms[0].wlCountry[228] = new Option("UGANDA", "UG");
+document.forms[0].wlCountry[229] = new Option("UNITED STATES MINOR OUTLYING ISLANDS", "UM");
+document.forms[0].wlCountry[230] = new Option("UNITED STATES", "US");
+document.forms[0].wlCountry[231] = new Option("URUGUAY", "UY");
+document.forms[0].wlCountry[232] = new Option("UZBEKISTAN", "UZ");
+document.forms[0].wlCountry[233] = new Option("HOLY SEE (VATICAN CITY STATE)", "VA");
+document.forms[0].wlCountry[234] = new Option("SAINT VINCENT AND THE GRENADINES", "VC");
+document.forms[0].wlCountry[235] = new Option("VENEZUELA", "VE");
+document.forms[0].wlCountry[236] = new Option("VIRGIN ISLANDS, BRITISH", "VG");
+document.forms[0].wlCountry[237] = new Option("VIRGIN ISLANDS, U.S.", "VI");
+document.forms[0].wlCountry[238] = new Option("VIET NAM", "VN");
+document.forms[0].wlCountry[239] = new Option("VANUATU", "VU");
+document.forms[0].wlCountry[240] = new Option("WALLIS AND FUTUNA", "WF");
+document.forms[0].wlCountry[241] = new Option("SAMOA", "WS");
+document.forms[0].wlCountry[242] = new Option("X0", "X0");
+document.forms[0].wlCountry[243] = new Option("X1", "X1");
+document.forms[0].wlCountry[244] = new Option("X2", "X2");
+document.forms[0].wlCountry[245] = new Option("X3", "X3");
+document.forms[0].wlCountry[246] = new Option("XA", "XA");
+document.forms[0].wlCountry[247] = new Option("XB", "XB");
+document.forms[0].wlCountry[248] = new Option("XK", "XK");
+document.forms[0].wlCountry[249] = new Option("XR", "XR");
+document.forms[0].wlCountry[250] = new Option("XS", "XS");
+document.forms[0].wlCountry[251] = new Option("XT", "XT");
+document.forms[0].wlCountry[252] = new Option("XU", "XU");
+document.forms[0].wlCountry[253] = new Option("XV", "XV");
+document.forms[0].wlCountry[254] = new Option("XW", "XW");
+document.forms[0].wlCountry[255] = new Option("XX", "XX");
+document.forms[0].wlCountry[256] = new Option("XY", "XY");
+document.forms[0].wlCountry[257] = new Option("XZ", "XZ");
+document.forms[0].wlCountry[258] = new Option("Y1", "Y1");
+document.forms[0].wlCountry[259] = new Option("Y2", "Y2");
+document.forms[0].wlCountry[260] = new Option("Y3", "Y3");
+document.forms[0].wlCountry[261] = new Option("Y4", "Y4");
+document.forms[0].wlCountry[262] = new Option("Y5", "Y5");
+document.forms[0].wlCountry[263] = new Option("Y6", "Y6");
+document.forms[0].wlCountry[264] = new Option("Y7", "Y7");
+document.forms[0].wlCountry[265] = new Option("YEMEN", "YE");
+document.forms[0].wlCountry[266] = new Option("MAYOTTE", "YT");
+document.forms[0].wlCountry[267] = new Option("SOUTH AFRICA", "ZA");
+document.forms[0].wlCountry[268] = new Option("ZAMBIA", "ZM");
+document.forms[0].wlCountry[269] = new Option("ZIMBABWE", "ZW");
+
+   }
+
+   for (i=0; i< document.forms[0].wlCountry.options.length; i++) {
+      if (document.forms[0].wlCountry.options[i].value == country) {
+         document.forms[0].wlCountry.options[i].selected = true;
+         break;
+      }
+   }
+
+   /* set to all(the last one) if not found */
+   if( i == document.forms[0].wlCountry.options.length)   
+      document.forms[0].wlCountry.options[i-1].selected = true;
+   
+   document.forms[0].wlCountry.disabled = 1;
+}
+
+function frmLoad() {
+  
+   wlLoadCountryList();
+
+   with ( document.forms[0] ) {
+      setCheck(wlEnbl, enbl);
+      if ( enbl == '1' ) {
+         hideWlSecInfo(0);
+      } else {
+         hideWlSecInfo(1);
+      }
+      setCheck(wlHide, hide);
+      setCheck(wlAPIsolation, apIsolation);
+      setCheck(wlDisableWme, disableWme);
+      setCheck(wlEnableWmf, enableWmf);
+      wlMaxAssoc.value = maxAssoc;
+      
+      //remove wlDisableWme (Disable WMM Advertise) from webui if the product does not use MBSS driver</td>
+      wlDisableWme.disabled=1;
+      if(supportMbss == '1' && wme != '0' )
+           wlDisableWme.disabled=0;   
+
+      wlEnableWmf.disabled=1;
+      if(wmf != '0' )
+           wlEnableWmf.disabled=0;
+                               
+      wlSsid.value = ssid;
+      setCheck(wlEnbl_2, enbl_2);
+      wlSsid_2.value = ssid_2;
+      document.forms[0].wlNReqd.value = nreqd;
+      if(numUserControl < 8)
+         showhide("enable_wireless", 0);
+      else
+         showhide("enable_wireless", 1);
+   }
+}
+
+function invalidCheck()
+{
+   var duplicated = false;
+   var invalid = false;
+   var ssidArray = new Array();
+   var idx=0;
+
+   with ( document.forms[0] ) {
+      ssidArray[idx++]=wlSsid.value;
+         
+      if(supportMbss==0) {	 
+         /*LegacyGuest*/
+         if (wlSsid.value == wlSsid_2.value)
+            invalid = duplicated = true;
+            
+      } else {
+         /* MBSS */         
+         for (var i=0; i < document.forms[0].elements.length; i++){      
+            /* SSID check */
+            if(document.forms[0].elements[i].name.search('wlSsid_wl'+unitNum+'v') != -1) {
+               ssidArray[idx]=document.forms[0].elements[i].value;
+               if(ssidArray[idx] == ''|| ssidArray[idx].length > 32) {
+                  alert('SSID should not be empty or longer than 32 characters');
+                  invalid = true;
+                  break;               
+               }
+               for(var j = 0; j < idx; j++) {
+                  if (ssidArray[idx] == ssidArray[j]) { 
+                     invalid = duplicated = true;
+                     break;
+                  }                     
+               }
+               idx++;
+            }
+            if (duplicated)
+               break;
+            
+            /* end of SSID check */   
+            /* max assoc check */
+            if(document.forms[0].elements[i].name.search('wlMaxAssoc_wl'+unitNum+'v') != -1) {
+               var assocNum = parseInt(document.forms[0].elements[i].value);
+               if ( isNaN(assocNum) == true || assocNum <= 0 || assocNum > globalmaxassoc ) {
+                  alert('Max Clients "' + wlMaxAssoc.value + '" should be between 1 and "' + globalmaxassoc);
+                  invalid = true;
+                  break;
+               }
+            }
+            /* end of  max assoc check */
+         }
+      }
+
+      if ((enableUre == '0') && duplicated) {
+         alert('Duplicated SSID found, each SSID must be unique\nPlease correct it before clicking Apply/Save again');
+      } else
+         invalid = false; /* URE (Range Extender) allows duplicated SSID */
+      
+      return invalid;
+   }
+}
+
+
+function btnScanAps() {
+   var options;
+   options = 'menubar=yes,resizable=yes,scrollbars=yes,titlebar=yes,toolbar=no,width=1000,height=600';
+
+   mywindow = window.open('wlscanresults.html', 'Scan Results', options);
+   mywindow.moveTo(100, 100);
+}
+
+function btnApply(reset) {
+   var loc = 'wlcfg.wl?';
+   var hide_checked = false;
+    
+   if(invalidCheck())
+      return;
+   
+   with ( document.forms[0] ) {
+      loc += 'wlSsidIdx=0';
+      
+      if ( wlEnbl.checked == false ) {
+         loc += '&wlEnbl=0';
+         loc += submitCheck(wlHide);
+         hide_checked = wlHide.checked;
+         loc += '&wlAPIsolation=' + apIsolation;   
+         if ( wlSsid.value == '' ) {
+            alert('SSID should not be empty.');
+            return;
+         }      
+         var str = new String();
+         str = wlSsid.value;
+         if ( str.length > 32 ) {
+            alert('SSID "' + wlSsid.value + '" should not be longer than 32 characters.');
+            return;
+         }
+         loc += '&wlSsid=' + encodeUrl(wlSsid.value);
+         loc += '&wlCountry=' + country;
+      } else {
+         if ( wlSsid.value == '' ) {
+            alert('SSID should not be empty.');
+            return;
+         }
+
+         var str = new String();
+         str = wlSsid.value;
+         if ( str.length > 32 ) {
+            alert('SSID "' + wlSsid.value + '" should not be longer than 32 characters.');
+            return;
+         }
+
+         var assocNum = parseInt(wlMaxAssoc.value);
+         if ( isNaN(assocNum) == true || assocNum <= 0 || assocNum > globalmaxassoc ) {
+            alert('Max Clients "' + wlMaxAssoc.value + '" should be between 1 and "' + globalmaxassoc);
+            return;
+         }
+               
+         loc += '&wlEnbl=1';
+         loc += submitCheck(wlHide);
+         hide_checked = wlHide.checked;
+         loc += submitCheck(wlAPIsolation);         
+         loc += '&wlSsid=' + encodeUrl(wlSsid.value);
+         loc += submitSelect(wlCountry);
+         loc += '&wlMaxAssoc=' + encodeUrl(wlMaxAssoc.value);
+         loc += submitCheck(wlDisableWme);
+         loc += '&wlNReqd=' + wlNReqd.value;
+         loc += submitCheck(wlEnableWmf);
+      }
+	 if(supportMbss==0 && !(pattern_1ssid.test(wlInfo))) {	 
+	    /*LegacyGuest*/
+	    if ( wlSsid_2.value == '' ) {
+               alert('Guest SSID should not be empty.');
+               return;
+            }            
+            loc += submitCheck(wlEnbl_2);
+            loc += '&wlSsid_2=' + encodeUrl(wlSsid_2.value);
+         } else {
+            /* MBSS */           
+            for (var i=0; i < document.forms[0].elements.length; i++){
+               if(document.forms[0].elements[i].name.search('_wl'+unitNum+'v') != -1) {
+                  if (document.forms[0].elements[i].type == 'checkbox') {
+                     loc += submitCheck(document.forms[0].elements[i]);
+                     //alert(submitCheck(document.forms[0].elements[i]));
+                     /* Find checked Hidden box */
+                     if (hide_checked == false)	{
+                         //alert(document.forms[0].elements[i].name);
+                         if ((document.forms[0].elements[i].name.search('wlEnbl_wl'+unitNum+'v') != -1)	&&
+                             (document.forms[0].elements[i].checked == true)) {
+                             /* Get hidden box */
+                             for (var j=i+1; j < document.forms[0].elements.length; j++) {
+                                if((document.forms[0].elements[j].name.search('wlHide_wl'+unitNum+'v') != -1) &&				
+                                   (document.forms[0].elements[j].checked == true)) {
+                                   hide_checked = document.forms[0].elements[j].checked;
+                                   //alert(document.forms[0].elements[j].checked);
+                                   break;
+                                }
+                             }						
+                         }
+                     }
+                  }
+                  if (document.forms[0].elements[i].type == 'text') {
+                     loc += '&'+document.forms[0].elements[i].name + '=' + encodeUrl(document.forms[0].elements[i].value);
+                     //alert('&'+document.forms[0].elements[i].name + '=' + encodeUrl(document.forms[0].elements[i].value));
+                  }
+                  if (document.forms[0].elements[i].type == 'select-one') {
+                     loc += '&'+document.forms[0].elements[i].name + '=' + document.forms[0].elements[i].value;
+                  }
+               }            
+            }
+         }
+   }
+
+   if ((hide_checked == true) && (WscVer2 == 'enabled') && (WscMode == 'enabled')) {
+      if (confirm("WPS will be disabled if you choose to Hide Access Point") == false )
+         return;
+      else
+         loc += '&wl_wsc_mode=disabled';
+   }
+
+   loc += '&wlSyncNvram=1';
+
+   if (reset) {
+       loc += 'wlRestoreDefault=1';
+   }
+
+   loc += '&sessionKey=717776021';
+   var code = 'location="' + loc + '"';
+   eval(code);
+}
+
+// done hiding -->
+      </script>
+   </head>
+   <body onLoad='frmLoad()'>
+      <blockquote>
+         <form onSubmit='return false'>
+            <b>Wireless -- Basic</b><br>
+            <br>
+            This page allows you to configure basic features of the wireless LAN interface. 
+            You can enable or disable the wireless LAN interface, hide the network from 
+            active scans and set the wireless network name (also known as SSID)<br>
+            Click "Apply/Save" to configure the basic wireless options.<br>
+            <br>
+            <div id='enable_wireless'>
+	            <table border="0" cellpadding="4" cellspacing="0">
+	               <tr>
+	                  <td valign="middle" align="center" width="30" height="30">
+	                     <input type='checkbox' name='wlEnbl' onClick='wlSecCbClick(this)' value="ON"></td>
+	                  <td> Enable Primary Network</td>
+	               </tr>
+	            </table>
+            </div>
+            <div id='wlSecInfo'>
+               <table border="0" cellpadding="4" cellspacing="0">
+                  <tr>
+                     <td valign="middle" align="center" width="30" height="30">
+                        <input type='checkbox' name='wlHide' value="ON"></td>
+                     <td>Disable SSID Broadcasting</td>
+                  </tr>
+               <tr hidden class="hidden">
+                     <td valign="middle" align="center" width="30" height="30">
+                        <input type='checkbox' name='wlAPIsolation' value="ON"></td>
+                     <td>Clients Isolation</td>
+               </tr>
+               <tr hidden class="hidden">
+                     <td valign="middle" align="center" width="30" height="30">
+                        <input type='checkbox' name='wlDisableWme' value="ON"></td>
+                     <td>Disable WMM Advertise</td>
+               </tr>
+               <tr hidden class="hidden">
+                   <td valign="middle" align="center" width="30" height="30">
+                       <input type='checkbox' name='wlEnableWmf' value="ON">
+                   </td>
+                   <td>Enable Wireless Multicast Forwarding (WMF)</td>
+               </tr>
+               </table>              
+               <table border="0" cellpadding="4" cellspacing="0">
+                  <tr>
+                     <td width="50">SSID:</td>
+                     <td>
+                        <input type='text' name='wlSsid' maxlength="32" size="32"></td>
+                  </tr>
+                  <tr>
+                     <td width="50">BSSID:</td>
+                     <td>
+                        D8:D7:75:5E:70:55
+                     </td>
+                  </tr>
+                  <tr>
+                  <tr hidden class="hidden">
+                     <td>Country:</td>
+                     <td><select name='wlCountry' size="1">
+                        </select></td>
+                  </tr>
+                  <tr hidden class="hidden">
+                     <td width="60">Country Rev:</td>
+                     <td>
+                        830
+                     </td>
+                  </tr>
+
+                  <tr hidden class="hidden">
+                     <td>Max Clients:</td>
+                     <td>
+                        <input type='text' name='wlMaxAssoc' maxlength="3" size="3"></td>
+                  </tr>
+                  <tr>
+                  <tr hidden class="hidden">
+                     <td width="60"> Mode Required:</td>
+                     <td><select name="wlNReqd" size="1">
+                           <option value="0">
+                           None
+                           <option value="1">
+                           ERP
+                           <option value="2">
+                           HT
+                           <option value="3">
+                           VHT
+                         </select></td>
+                  </tr> <td>&nbsp;</td> <td>&nbsp;</td> </tr>
+                </table>
+            </div>
+            <div id="wlLegacyGuestInfo">
+               <table border="0" cellpadding="4" cellspacing="0">
+                  <tr>
+                     <td valign="middle" align="center" width="30" height="30">
+                        <input type='checkbox' name='wlEnbl_2' value="ON"></td>
+                     <td>Enable Wireless Guest Network</td>
+                  </tr>
+               </table>
+               <table border="0" cellpadding="4" cellspacing="0">
+                  <tr>
+                     <td width="100">Guest SSID:</td>
+                     <td>
+                        <input type='text' name='wlSsid_2' maxlength="32" size="32"></td>
+                  </tr>
+               </table>
+               <br>
+               <br>
+            </div>            
+           <div id="wlMBSSInfo">
+              <br><b>Wireless - Guest/Virtual Access Points:</b><br>
+              <table id="wlBSSTbl" border="0" cellpadding="4" cellspacing="0">
+                 <tr> <td>
+                 <table border='1' cellpadding='2' cellspacing='0' align="left" id="wirelesstab">
+                    <tr>
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >Enabled</td>                    
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >SSID</td>
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >Hidden</td>                       
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >Isolate Clients</td>
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >Disable WMM Advertise</td>
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >Enable WMF</td>
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >Max Clients</td>                                            
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >Mode Required</td>
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >Guest Or LAN</td>
+                       <td class='hd' valign="middle" align="center" width="30" height="30" >BSSID</td>
+                    </tr>
+                       <tr><td><input type='checkbox' name='wlEnbl_wl0v1' value='ON' ></td> 
+<td><input type='text' name='wlSsid_wl0v1' maxlength='32' size='32' value='The_Promised_WLAN_1'></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlHide_wl0v1' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlAPIsolation_wl0v1' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlDisableWme_wl0v1' value='ON'  ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlEnableWmf_wl0v1' value='ON'  DISABLED></td> 
+<td><input type='text' valign='middle' align='center' name='wlMaxAssoc_wl0v1' maxlength='3' size='3' value='50'></td> 
+<td><select name='wlNReqd_wl0v1' size='1'> <option value='0' selected>None<option value='1'>ERP<option value='2' >HT<option value='3' >VHT </select></td> 
+<td><select name='wlEnableGuestNetwork_wl0v1' size='1'> <option value='0' selected>LAN<option value='1'>Guest</select></td> 
+<td>N/A</td></tr> 
+<tr><td><input type='checkbox' name='wlEnbl_wl0v2' value='ON' ></td> 
+<td><input type='text' name='wlSsid_wl0v2' maxlength='32' size='32' value='The_Promised_WLAN_2'></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlHide_wl0v2' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlAPIsolation_wl0v2' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlDisableWme_wl0v2' value='ON'  ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlEnableWmf_wl0v2' value='ON'  DISABLED></td> 
+<td><input type='text' valign='middle' align='center' name='wlMaxAssoc_wl0v2' maxlength='3' size='3' value='50'></td> 
+<td><select name='wlNReqd_wl0v2' size='1'> <option value='0' selected>None<option value='1'>ERP<option value='2' >HT<option value='3' >VHT </select></td> 
+<td><select name='wlEnableGuestNetwork_wl0v2' size='1'> <option value='0' selected>LAN<option value='1'>Guest</select></td> 
+<td>N/A</td></tr> 
+<tr><td><input type='checkbox' name='wlEnbl_wl0v3' value='ON' ></td> 
+<td><input type='text' name='wlSsid_wl0v3' maxlength='32' size='32' value='The_Promised_WLAN_3'></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlHide_wl0v3' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlAPIsolation_wl0v3' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlDisableWme_wl0v3' value='ON'  ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlEnableWmf_wl0v3' value='ON'  DISABLED></td> 
+<td><input type='text' valign='middle' align='center' name='wlMaxAssoc_wl0v3' maxlength='3' size='3' value='50'></td> 
+<td><select name='wlNReqd_wl0v3' size='1'> <option value='0' selected>None<option value='1'>ERP<option value='2' >HT<option value='3' >VHT </select></td> 
+<td><select name='wlEnableGuestNetwork_wl0v3' size='1'> <option value='0' selected>LAN<option value='1'>Guest</select></td> 
+<td>N/A</td></tr> 
+<tr><td><input type='checkbox' name='wlEnbl_wl0v4' value='ON' ></td> 
+<td><input type='text' name='wlSsid_wl0v4' maxlength='32' size='32' value='CableBox-7050_0_4'></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlHide_wl0v4' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlAPIsolation_wl0v4' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlDisableWme_wl0v4' value='ON'  ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlEnableWmf_wl0v4' value='ON'  DISABLED></td> 
+<td><input type='text' valign='middle' align='center' name='wlMaxAssoc_wl0v4' maxlength='3' size='3' value='50'></td> 
+<td><select name='wlNReqd_wl0v4' size='1'> <option value='0' selected>None<option value='1'>ERP<option value='2' >HT<option value='3' >VHT </select></td> 
+<td><select name='wlEnableGuestNetwork_wl0v4' size='1'> <option value='0' selected>LAN<option value='1'>Guest</select></td> 
+<td>N/A</td></tr> 
+<tr><td><input type='checkbox' name='wlEnbl_wl0v5' value='ON' ></td> 
+<td><input type='text' name='wlSsid_wl0v5' maxlength='32' size='32' value='CableBox-7050_0_5'></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlHide_wl0v5' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlAPIsolation_wl0v5' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlDisableWme_wl0v5' value='ON'  ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlEnableWmf_wl0v5' value='ON'  DISABLED></td> 
+<td><input type='text' valign='middle' align='center' name='wlMaxAssoc_wl0v5' maxlength='3' size='3' value='50'></td> 
+<td><select name='wlNReqd_wl0v5' size='1'> <option value='0' selected>None<option value='1'>ERP<option value='2' >HT<option value='3' >VHT </select></td> 
+<td><select name='wlEnableGuestNetwork_wl0v5' size='1'> <option value='0' selected>LAN<option value='1'>Guest</select></td> 
+<td>N/A</td></tr> 
+<tr><td><input type='checkbox' name='wlEnbl_wl0v6' value='ON' ></td> 
+<td><input type='text' name='wlSsid_wl0v6' maxlength='32' size='32' value='CableBox-7050_0_6'></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlHide_wl0v6' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlAPIsolation_wl0v6' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlDisableWme_wl0v6' value='ON'  ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlEnableWmf_wl0v6' value='ON'  DISABLED></td> 
+<td><input type='text' valign='middle' align='center' name='wlMaxAssoc_wl0v6' maxlength='3' size='3' value='50'></td> 
+<td><select name='wlNReqd_wl0v6' size='1'> <option value='0' selected>None<option value='1'>ERP<option value='2' >HT<option value='3' >VHT </select></td> 
+<td><select name='wlEnableGuestNetwork_wl0v6' size='1'> <option value='0' selected>LAN<option value='1'>Guest</select></td> 
+<td>N/A</td></tr> 
+<tr><td><input type='checkbox' name='wlEnbl_wl0v7' value='ON' ></td> 
+<td><input type='text' name='wlSsid_wl0v7' maxlength='32' size='32' value='CableBox-7050_0_7'></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlHide_wl0v7' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlAPIsolation_wl0v7' value='ON' ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlDisableWme_wl0v7' value='ON'  ></td> 
+<td><input type='checkbox' valign='middle' align='center' name='wlEnableWmf_wl0v7' value='ON'  DISABLED></td> 
+<td><input type='text' valign='middle' align='center' name='wlMaxAssoc_wl0v7' maxlength='3' size='3' value='50'></td> 
+<td><select name='wlNReqd_wl0v7' size='1'> <option value='0' selected>None<option value='1'>ERP<option value='2' >HT<option value='3' >VHT </select></td> 
+<td><select name='wlEnableGuestNetwork_wl0v7' size='1'> <option value='0' selected>LAN<option value='1'>Guest</select></td> 
+<td>N/A</td></tr> 
+
+                  <script type="text/javascript">
+                         $('#wirelesstab tr td:nth-child(4)').hide();
+                         $('#wirelesstab tr td:nth-child(5)').hide();
+                         $('#wirelesstab tr td:nth-child(6)').hide();
+                         $('#wirelesstab tr td:nth-child(7)').hide();
+                         $('#wirelesstab tr td:nth-child(8)').hide();
+                         for (var i = 0; i < 4; i++) {
+                            var el = document.getElementById('wirelesstab').getElementsByTagName("tr")[4]
+                            el.parentElement.removeChild(el);
+                         };
+                  </script>
+                 </table>
+                 </td></tr>
+              </table>
+           <br>
+           <br>            
+           </div>
+           <div id="divApplyandRestore">
+              <table border="0" cellpadding="4" cellspacing="0">
+               <tr> <td align="center">
+               <input type='button' onClick='btnApply(0)' value='Apply/Save'>
+               </td> </tr>
+              </table>
+           </div>
+           <div id="divScanAp">
+              <table border="0" cellpadding="4" cellspacing="0">
+               <tr> 
+                  <td align="center">
+                     <input id="ScanButton" type='button' onClick='btnScanAps(0)' value='Scan Wireless APs'>
+                  </td>
+                  <td>
+                     <div id='scanMessage' style="display:none">
+                        Scan not possible (DFS channel currently in use)
+                     </div>
+                  </td>  
+               </tr>
+              </table>
+           </div>
+           <script type="text/javascript">
+               var CurrentChannel = parseInt('11');
+               if ((CurrentChannel >= 52) && (CurrentChannel <= 144)){
+                  document.getElementById('ScanButton').disabled = true;
+                  document.getElementById('scanMessage').style.display = 'block';
+               }
+           </script>
+         </form>
+      </blockquote>
+   </body>
+</html>

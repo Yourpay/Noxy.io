@@ -62,6 +62,7 @@ declare module "*env.json" {
       cert?: string
       ca?: string
     }
+    plugin: any
   };
   export = value;
 }

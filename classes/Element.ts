@@ -16,12 +16,12 @@ export default abstract class Element {
   protected __exists: boolean = false;
   protected __validated: boolean = false;
   protected __type: string;
-  protected __fields: { [key: string]: iObjectField };
+  protected __fields: {[key: string]: iObjectField};
   protected __indexes: iObjectIndex;
   protected __primary: string[];
   
   public static __type: string;
-  public static __fields: { [key: string]: iObjectField } = {
+  public static __fields: {[key: string]: iObjectField} = {
     id:   {
       type: "binary(16)", protected: true, required: true, onCreate: (t, v): Buffer => {
         if (Element.isUuid(v)) { return Element.uuidToBuffer(t.uuid = v); }
@@ -29,7 +29,7 @@ export default abstract class Element {
           if (typeof v.uuid === "string" && Element.isUuid(v.uuid)) { return Element.uuidToBuffer(t.uuid = v.uuid); }
           if (v.id instanceof Buffer && Element.isUuid(Element.bufferToUuid(v.id))) { return Element.uuidToBuffer(t.uuid = Element.bufferToUuid(v)); }
         }
-        if (v instanceof Buffer && Element.isUuid(Element.bufferToUuid(v))) { return Element.uuidToBuffer(t.uuid = Element.bufferToUuid(v)) }
+        if (v instanceof Buffer && Element.isUuid(Element.bufferToUuid(v))) { return Element.uuidToBuffer(t.uuid = Element.bufferToUuid(v)); }
         return Element.uuidToBuffer(t.uuid = uuid.v4());
       }
     },
@@ -51,7 +51,7 @@ export default abstract class Element {
     return this.__validated;
   }
   
-  public static retrieve(start = 0, limit = 100, checks?: { [key: string]: any }): Promise<(Element | any)[]> {
+  public static retrieve(start = 0, limit = 100, checks?: {[key: string]: any}): Promise<(Element | any)[]> {
     return new Promise((resolve, reject) => {
       db[env.mode].connect()
       .then(link => {
@@ -98,13 +98,13 @@ export default abstract class Element {
       .then(() => {
         const on = !this.__exists ? "onInsert" : "onUpdate";
         _.each(this.__fields, (field, key) => field[on] && (this[key] = _.invoke(field, on, this, invoker)));
-        if (!this.__exists && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerError("400.post")); }
+        if (!this.__exists && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerError(400, "post")); }
         db[env.mode].connect()
         .then(link => {
           const values = [this.__type, this.filter(), this.id];
           const sql = link.parse(!this.__exists ? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
           link.query(sql)
-          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true, __exists: true})) : reject(new ServerError(`400.db.${!this.__validated ? "insert" : "update"}`, sql)))
+          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true, __exists: true})) : reject(new ServerError(400, !this.__validated ? "post" : "put", sql)))
           .catch(err => reject(ServerError.parseSQLError(err)))
           .finally(() => link.close());
         })
@@ -119,12 +119,12 @@ export default abstract class Element {
       new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
       .then(() => {
         _.each(this.__fields, (field: iObjectField, key) => field.onDelete && (this[key] = field.onDelete(this, invoker)));
-        if (!this.__exists) { return reject(new ServerError("404.db.delete", this)); }
+        if (!this.__exists) { return reject(new ServerError(404, "delete", this)); }
         db[env.mode].connect()
         .then(link => {
           const sql = link.parse("DELETE FROM ?? WHERE `id` = ?", [this.type, this.id]);
           link.query(sql)
-          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__exists: true})) : reject(new ServerError("400.db.delete", sql)))
+          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__exists: true})) : reject(new ServerError(400, "delete", sql)))
           .catch(err => reject(ServerError.parseSQLError(err)))
           .finally(() => link.close());
         });
@@ -133,7 +133,7 @@ export default abstract class Element {
     });
   }
   
-  protected init(object: string | { [key: string]: any } = {}): this {
+  protected init(object: string | {[key: string]: any} = {}): this {
     const base = (<typeof Element>this.constructor);
     this.__type = base.__type;
     this.__fields = base.__fields;
@@ -199,8 +199,8 @@ export default abstract class Element {
     ));
   }
   
-  protected static generateTimeFields(created: boolean = true, updated: boolean = true, deleted: boolean = false): { [key: string]: iObjectField } {
-    const fields: { [key: string]: iObjectField } = {};
+  protected static generateTimeFields(created: boolean = true, updated: boolean = true, deleted: boolean = false): {[key: string]: iObjectField} {
+    const fields: {[key: string]: iObjectField} = {};
     if (created) { fields.time_created = {type: "bigint(14)", default: null, protected: true, onInsert: o => o.time_created = Date.now()}; }
     if (updated) { fields.time_updated = {type: "bigint(14)", default: null, protected: true, onUpdate: o => o.time_updated = Date.now()}; }
     if (deleted) { fields.time_deleted = {type: "bigint(14)", default: null, protected: true, onDelete: o => o.time_deleted = Date.now()}; }
@@ -215,8 +215,8 @@ export default abstract class Element {
     return indexes;
   }
   
-  protected static generateUserFields(created: boolean = true, updated: boolean = false, deleted: boolean = false): { [key: string]: iObjectField } {
-    const fields: { [key: string]: iObjectField } = {};
+  protected static generateUserFields(created: boolean = true, updated: boolean = false, deleted: boolean = false): {[key: string]: iObjectField} {
+    const fields: {[key: string]: iObjectField} = {};
     if (created) { fields.user_created = {type: "binary(16)", default: null, protected: true, onInsert: (o, v) => _.get(v, "id", _.get(users, "server.id", null))}; }
     if (updated) { fields.user_updated = {type: "binary(16)", default: null, protected: true, onUpdate: (o, v) => _.get(v, "id", _.get(users, "server.id", null))}; }
     if (deleted) { fields.user_deleted = {type: "binary(16)", default: null, protected: true, onDelete: (o, v) => _.get(v, "id", _.get(users, "server.id", null))}; }
@@ -252,12 +252,12 @@ export interface iObjectRelation {
 }
 
 export interface iObjectIndex {
-  [key: string]: { [key: string]: string[] }
+  [key: string]: {[key: string]: string[]}
   
-  key?: { [key: string]: string[] }
-  unique_key?: { [key: string]: string[] }
-  fulltext?: { [key: string]: string[] }
-  spatial?: { [key: string]: string[] }
+  key?: {[key: string]: string[]}
+  unique_key?: {[key: string]: string[]}
+  fulltext?: {[key: string]: string[]}
+  spatial?: {[key: string]: string[]}
 }
 
 export interface iObjectField {

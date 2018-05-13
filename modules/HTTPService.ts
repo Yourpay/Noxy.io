@@ -84,7 +84,8 @@ export namespace HTTPService {
     return {
       success: !(object instanceof ServerError),
       content: object,
-      code:    object.code || "200.server.any",
+      code:    object.code || 200,
+      type:    object.type || "any",
       message: object.message || "Request performed successfully.",
       time:    Date.now()
     };
@@ -134,13 +135,13 @@ export namespace HTTPService {
         if (!route.flag_active) {
           return authUser(request.get("Authorization"))
           .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
-          .catch(err => reject(err.code === "401" && err.type === "jwt" ? new ServerError(404, "any") : err));
+          .catch(err => reject(err.code === 401 && err.type === "jwt" ? new ServerError(404, "any") : err));
         }
         authRoleRoute(route)
         .then(route_roles => {
           authUser(request.get("Authorization"))
           .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
-          .catch(err => err.code === "401" && err.type === "jwt" ? resolve([null, [], route_roles]) : reject(err));
+          .catch(err => err.code === 401 && err.type === "jwt" ? resolve([null, [], route_roles]) : reject(err));
         });
       })
       .catch(err => reject(err))
@@ -151,7 +152,7 @@ export namespace HTTPService {
       request.roles_route = res[2];
       next();
     })
-    .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)));
+    .catch(err => response.status(err.code).json(HTTPService.response(err)));
   }
   
   export function addRoute(method: Method, path: string | Path, ...args): typeof HTTPService {
@@ -184,7 +185,7 @@ export namespace HTTPService {
         .catch(err => reject(err));
       })
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)))
+      .catch(err => response.status(err.code).json(HTTPService.response(err)))
     );
     
     router.get(`/:id`, auth, (request: ElementRequest, response) => {
@@ -194,7 +195,7 @@ export namespace HTTPService {
         .catch(err => reject(err));
       })
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)));
+      .catch(err => response.status(err.code).json(HTTPService.response(err)));
     });
     
     router.post(`/`, auth, (request: ElementRequest, response) =>
@@ -208,7 +209,7 @@ export namespace HTTPService {
         .catch(err => reject(err))
       )
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)))
+      .catch(err => response.status(err.code).json(HTTPService.response(err)))
     );
     
     router.put(`/:id`, auth, (request: ElementRequest, response) =>
@@ -222,7 +223,7 @@ export namespace HTTPService {
         .catch(err => reject(err))
       )
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)))
+      .catch(err => response.status(err.code).json(HTTPService.response(err)))
     );
     
     router.delete(`/:id`, auth, (request: ElementRequest, response) =>
@@ -236,7 +237,7 @@ export namespace HTTPService {
         .catch(err => reject(err))
       )
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)))
+      .catch(err => response.status(err.code).json(HTTPService.response(err)))
     );
     
     __routers[`/api/${element.__type}`] = router;

@@ -13,13 +13,13 @@ init_chain.addPromise("route", resolve => {
     new Promise((resolve, reject) =>
       new Promise((resolve, reject) => {
         if ((request.body.username || request.body.email) && request.body.password) { return resolve(request.body); }
-        if (request.get("Authorization")) { return jwt.verify(request.get("Authorization"), env.tokens.jwt, (err, decoded) => !err ? resolve(decoded) : reject(new ServerError("401.jwt"))); }
-        reject(new ServerError("401.any"));
+        if (request.get("Authorization")) { return jwt.verify(request.get("Authorization"), env.tokens.jwt, (err, decoded) => !err ? resolve(decoded) : reject(new ServerError(401, "jwt"))); }
+        reject(new ServerError(401, "any"));
       })
       .then(res =>
         new User(res).validate()
         .then(res => {
-          if (!res.exists || request.body.password && !User.generateHash(request.body.password, res.salt).equals(res.hash)) { return reject(new ServerError("401.any"));}
+          if (!res.exists || request.body.password && !User.generateHash(request.body.password, res.salt).equals(res.hash)) { return reject(new ServerError(401, "any"));}
           res.time_login = Date.now();
           res.save()
           .then(res => resolve(jwt.sign(res.toObject(), env.tokens.jwt, {expiresIn: "7d"})))
@@ -28,7 +28,7 @@ init_chain.addPromise("route", resolve => {
         .catch(err => reject(err)))
       .catch(err => reject(err)))
     .then(res => response.json(HTTPService.response(res)))
-    .catch(err => response.status(err.code.split(".")[0]).json(HTTPService.response(err)));
+    .catch(err => response.status(err.code).json(HTTPService.response(err)));
   });
   
   _.each(elements, v => { HTTPService.addElementRouter(v); });
