@@ -1,0 +1,45 @@
+http://192.168.0.1/wlsecurity.wl
+Host: 192.168.0.1
+Referer: http://192.168.0.1/wlsecrefresh.wl?wlRefresh=0
+
+wl_wsc_mode: enabled
+wl_wsc_reg: enabled
+wsc_config_state: 1
+wlAuthMode: psk2
+wlAuth: 0
+wlWpaPsk: udz4mzn2gt
+wlWpaGtkRekey: 0
+wlNetReauth: 3600
+wlWep: disabled
+wlWpa: aes
+wlKeyBit: 0
+wlPmf: 0
+wlPreauth: 0
+wlPasspointOSEN: 0
+wlSsidIdx: 0
+wlSyncNvram: 1
+sessionKey: 2125492401
+
+
+
+http://192.168.0.1/wlsecurity.wl
+Host: 192.168.0.1
+Referer: http://192.168.0.1/wlsecurity.html
+
+wl_wsc_mode: enabled
+wl_wsc_reg: enabled
+wsc_config_state: 1
+wlAuthMode: psk2
+wlAuth: 0
+wlWpaPsk: udz4mzn2gt
+wlWpaGtkRekey: 0
+wlNetReauth: 3600
+wlWep: disabled
+wlWpa: aes
+wlKeyBit: 0
+wlPmf: 0
+wlPreauth: 0
+wlPasspointOSEN: 0
+wlSsidIdx: 0
+wlSyncNvram: 1
+sessionKey: 199216136
