@@ -5,7 +5,6 @@ import * as env from "../../env.json";
 import * as rp from "request-promise";
 import * as xregexp from "xregexp";
 import * as Promise from "bluebird";
-import * as _ from "lodash";
 
 init_chain.addPromise("route", resolve => {
   
@@ -58,6 +57,12 @@ init_chain.addPromise("route", resolve => {
     return `${+value}` === value ? +value : value;
   }
   
+  function routerLogin(request, response, next) {
+    rp({uri: host, auth: env.plugin.router.auth})
+    .then(() => next())
+    .catch(() => response.status(500).json(HTTPService.response(new ServerError(500, "any"))));
+  }
+  
   HTTPService.addParam("type", "/api/router", (request, response, next, value) => {
     request.params.type = value;
     return next();
@@ -83,18 +88,22 @@ init_chain.addPromise("route", resolve => {
           xregexp.forEach(res, /^var ([\w\d_]+) ?= ?'((?:[^']*)|\/[\w\d]*\/[\w]*)';?\n/gm, match => data.wifi_50ghz[key(match[1])] = value(match[2]));
           xregexp.forEach(res, /<input[\w\s\d=']*?name='([\w\d\s-]*)'[\w\s\d=']*?value='(?!ON)([\w\d\s-]*)'>/g, match => data.wifi_50ghz[key(match[1])] = value(match[2]));
         }),
-        rp({uri: host + "/wlsecrefresh.wl", headers: {referer: host}, auth: env.plugin.router.auth})
+        rp({uri: host + "/wlsecurity.html", headers: {referer: host}, auth: env.plugin.router.auth})
         .then(res => {
-          xregexp.forEach(res, /^var ([\w\d_]+) ?= ?'((?:[^']*)|\/[\w\d]*\/[\w]*)';?\n/gm, match => data.security_24ghz[key(match[1])] = value(match[2]));
-        }),
-        rp({uri: host + "/wlsecurity.wl", headers: {referer: host}, auth: env.plugin.router.auth})
-        .then(res => {
+          
           xregexp.forEach(res, /^var ([\w\d_]+) ?= ?'((?:[^']*)|\/[\w\d]*\/[\w]*)';?\n/gm, match => data.security_24ghz[key(match[1])] = value(match[2]));
         })
       ])
       .then(() => response.json(HTTPService.response(data)))
       .catch(() => response.status(500).json(HTTPService.response(new ServerError(500, "any"))))
     );
+  });
+  
+  HTTPService.addRoute("GET", "/api/router/:type", HTTPService.auth, routerLogin, (request, response) => {
+    const data = {};
+    update[request.params.type](data).then(res => {
+    
+    });
   });
   
   HTTPService.addRoute("PUT", "/api/router/:type", HTTPService.auth, (request, response) => {
@@ -104,31 +113,35 @@ init_chain.addPromise("route", resolve => {
       rp({uri: host + type[request.params.type], auth: env.plugin.router.auth})
       .then(res => {
         const sessionkey = xregexp.exec(res, /var\s*sessionKey\s*=\s*'([\d]+)';\n`?/g)[1];
-        update[request.params.type](_.merge(request.body, {session_key: sessionkey}));
+        // update[request.params.type](_.merge(request.body, {session_key: sessionkey}));
       })
       .then(() => response.json(HTTPService.response(new ServerError(200, "any"))))
       .catch(() => response.status(500).json(HTTPService.response(new ServerError(500, "any"))))
     );
   });
   
-  const update = {};
-  
-  // Promise.all(_.map(["/api/user", "/api/user/login"], path =>
-  //   new Promise((resolve, reject) =>
-  //     new Route({method: "POST", path: path, flag_active: 1}).validate()
-  //     .then(res =>
-  //       res.exists ? resolve(res) : res.save()
-  //       .then(res => resolve(res))
-  //       .catch(err => reject(err))
-  //     )
-  //     .catch(err => reject(err))
-  //   )))
-  // .then(() => {
-  //   HTTPService.listen()
-  //   .then(res => resolve(res))
-  //   .catch(err => reject(err));
-  // })
-  // .catch(err => reject(err));
+  const update: {[key: string]: (data) => Promise<void>} = {
+    general:      data => rp({uri: host + "/wlswitchinterface0.wl", headers: {referer: host}, auth: env.plugin.router.auth})
+    .then(res => {
+      rp({uri: host + "/info.html", headers: {referer: host}, auth: env.plugin.router.auth})
+      .then(res => {
+        xregexp.forEach(res, /<tr>(?:.|\n)*?<td[\w\d\s'=]*>(?:<b>)?([^<]*)(?:<\/b>)?<\/td>(?:.|\n)*?<td[\w\d\s'=]*>(?:<b>)?([^<]*)<\/td>(?:.|\n)*?<\/tr>/g, match => data.general[key(match[1])] = value(match[2]));
+        return data;
+      });
+    }),
+    "wifi_24ghz": data => rp({uri: host + "/wlswitchinterface0.wl", headers: {referer: host}, auth: env.plugin.router.auth})
+    .then(res => {
+      xregexp.forEach(res, /^var ([\w\d_]+) ?= ?'((?:[^']*)|\/[\w\d]*\/[\w]*)';?\n/gm, match => data[key(match[1])] = value(match[2]));
+      xregexp.forEach(res, /<input[\w\s\d=']*?name='([\w\d\s-]*)'[\w\s\d=']*?value='(?!ON)([\w\d\s-]*)'>/g, match => data[key(match[1])] = value(match[2]));
+      Promise.all([
+        rp({uri: host + "/wlsecurity.html", headers: {referer: host}, auth: env.plugin.router.auth})
+        .then(res => xregexp.forEach(res, /^var ([\w\d_]+) ?= ?'((?:[^']*)|\/[\w\d]*\/[\w]*)';?\n/gm, match => data[key(match[1])] = value(match[2]))),
+        rp({uri: host + "/wlmacflt.cmd?action=view", headers: {referer: host}, auth: env.plugin.router.auth})
+        .then(res => xregexp.forEach(res, /^var ([\w\d_]+) ?= ?'((?:[^']*)|\/[\w\d]*\/[\w]*)';?\n/gm, match => data[key(match[1])] = value(match[2]))),
+        
+      ]);
+    })
+  };
   
   resolve();
   
