@@ -17,17 +17,54 @@ import Route from "../objects/Route";
 import Role from "../objects/Role";
 import User from "../objects/User";
 
+
+type ExpressFunction = (request: express.Request, response: express.Response, next: express.NextFunction, value: string) => void
+
+interface IRoutes {
+  [subdomain: string]: {
+    [route: string]: {
+      [subroute: string]: {
+        [method: string]: (request: express.Request, response: express.Response, next: express.NextFunction) => void
+      }
+    }
+  }
+}
+
+interface IParams {
+  [subdomain: string]: ExpressFunction | {
+    [route: string]: ExpressFunction
+  }
+}
+
+
 export namespace HTTPService {
   
   const __roles: {[key: string]: Buffer[]} = {};
-  const __routes: {[key: string]: Route} = {};
-  const __routers: {[key: string]: express.Router} = {};
+  const __routes: IRoutes = {"*": {}};
+  const __params: IParams = {"*": {}};
   const __servers: {[port: number]: http.Server | https.Server} = {};
   const __application: express.Application = express();
   const __certificates: {[key: string]: object} = {};
+  const __methods = ["GET", "POST", "PUT", "DELETE", "PATCH"];
+  
+  // const __routes: {[key: string]: Route} = {};
+  // const __routers: {[key: string]: express.Router} = {};
+  // const __subdomains: {[key: string]: express.Router} = {};
   
   __application.use(bodyParser.urlencoded({extended: false}));
   __application.use(bodyParser.json());
+  
+  export function addRoute(subdomain: string = "*", method: string, route: string | Path, callback: ExpressFunction) {
+    if (!/^(?:\*|[a-z][\w]*)\.[a-z][\w]{0,7}$/.test(subdomain)) { throw new ServerError(500, "test", {test_message: "Subdomain does not follow the standard.", test: subdomain}); }
+    if (!_.includes(__methods, method)) { throw new ServerError(500, "test", {test_message: `Specified method is not allowed when adding a route.`, test: method}); }
+    if (_.get(route, "route", route) === "") { throw new ServerError(500, "test", {test_message: `Route must be specified and be a proper route.`, test: route}); }
+    const path = _.get(route, "path", route) + _.get(route, "subroute", "/");
+    if (_.get(__routes, [subdomain, method, path])) { return _.get(__routes, [subdomain, method, path]); }
+    _.set(__routes, [subdomain, method, path], callback);
+    return HTTPService;
+  }
+  
+  
   
   export function listen(): Promise<any> {
     return new Promise((resolve, reject) =>
@@ -155,14 +192,14 @@ export namespace HTTPService {
     .catch(err => response.status(err.code).json(HTTPService.response(err)));
   }
   
-  export function addRoute(method: Method, path: string | Path, ...args): typeof HTTPService {
-    const parsed_path = _.get(path, "path", path);
-    const router = __routers[parsed_path] || (__routers[parsed_path] = express.Router());
-    router[_.toLower(method)].apply(router, _.concat(_.get(path, "parameter", "/"), args));
-    return HTTPService;
-  }
+  // export function addRoute(subdomain: string = "", method: Method = "GET", path: string | Path = "/", ...args): typeof HTTPService {
+  //   const parsed_path = _.get(path, "path", path);
+  //   const router = __routers[parsed_path] || (__routers[parsed_path] = express.Router());
+  //   router[_.toLower(method)].apply(router, _.concat(_.get(path, "parameter", "/"), args));
+  //   return HTTPService;
+  // }
   
-  export function addParam(param: string, path: string | Path = "*", cb: (request: express.Request, response: express.Response, next: express.NextFunction, value: string) => void): typeof HTTPService {
+  export function addParam(param: string, subdomain: string = "", path: string | Path = "*", cb: (request: express.Request, response: express.Response, next: express.NextFunction, value: string) => void): typeof HTTPService {
     const parsed_path = _.get(path, "path", path);
     (__routers[parsed_path] || (__routers[parsed_path] = express.Router())).param(param, cb);
     return HTTPService;
@@ -253,5 +290,5 @@ interface ElementRequest extends express.Request {
   roles_user?: Role[]
 }
 
-type Path = {path: string, parameter: string}
+type Path = {route?: string, subroute?: string}
 type Method = "GET" | "POST" | "PUT" | "DELETE"

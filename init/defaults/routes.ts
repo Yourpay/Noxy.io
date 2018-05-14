@@ -31,6 +31,7 @@ init_chain.addPromise("route", resolve => {
     .catch(err => response.status(err.code).json(HTTPService.response(err)));
   });
   
+  
   _.each(elements, v => { HTTPService.addElementRouter(v); });
   
   resolve();
