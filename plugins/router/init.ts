@@ -5,12 +5,14 @@ import * as env from "../../env.json";
 import * as rp from "request-promise";
 import * as xregexp from "xregexp";
 import * as Promise from "bluebird";
-
-console.log("router init");
+import * as _ from "lodash";
 
 init_chain.addPromise("route", resolve => {
   
   const host = "http://192.168.0.1";
+  const type = {
+    "password_24ghz": "/wlsecrefresh.wl"
+  };
   const key_map = {
     "Board ID:":                                "board_id",
     "Symmetric CPU Threads:":                   "symmetric_cpu_threads",
@@ -53,7 +55,6 @@ init_chain.addPromise("route", resolve => {
   }
   
   function value(value: string): number | string {
-    console.log(value, +value, typeof +value, typeof value);
     return `${+value}` === value ? +value : value;
   }
   
@@ -63,7 +64,7 @@ init_chain.addPromise("route", resolve => {
   });
   
   HTTPService.addRoute("GET", "/api/router", HTTPService.auth, (request, response) => {
-    const data = {general: {}, wifi_24ghz: {}, wifi_50ghz: {}};
+    const data = {general: {}, wifi_24ghz: {}, wifi_50ghz: {}, security_24ghz: {}, security_50ghz: {}};
     return rp({uri: host, auth: env.plugin.router.auth})
     .catch(err => err)
     .then(() =>
@@ -81,12 +82,36 @@ init_chain.addPromise("route", resolve => {
         .then(res => {
           xregexp.forEach(res, /^var ([\w\d_]+) ?= ?'((?:[^']*)|\/[\w\d]*\/[\w]*)';?\n/gm, match => data.wifi_50ghz[key(match[1])] = value(match[2]));
           xregexp.forEach(res, /<input[\w\s\d=']*?name='([\w\d\s-]*)'[\w\s\d=']*?value='(?!ON)([\w\d\s-]*)'>/g, match => data.wifi_50ghz[key(match[1])] = value(match[2]));
+        }),
+        rp({uri: host + "/wlsecrefresh.wl", headers: {referer: host}, auth: env.plugin.router.auth})
+        .then(res => {
+          xregexp.forEach(res, /^var ([\w\d_]+) ?= ?'((?:[^']*)|\/[\w\d]*\/[\w]*)';?\n/gm, match => data.security_24ghz[key(match[1])] = value(match[2]));
+        }),
+        rp({uri: host + "/wlsecurity.wl", headers: {referer: host}, auth: env.plugin.router.auth})
+        .then(res => {
+          xregexp.forEach(res, /^var ([\w\d_]+) ?= ?'((?:[^']*)|\/[\w\d]*\/[\w]*)';?\n/gm, match => data.security_24ghz[key(match[1])] = value(match[2]));
         })
       ])
       .then(() => response.json(HTTPService.response(data)))
       .catch(() => response.status(500).json(HTTPService.response(new ServerError(500, "any"))))
     );
   });
+  
+  HTTPService.addRoute("PUT", "/api/router/:type", HTTPService.auth, (request, response) => {
+    return rp({uri: host, auth: env.plugin.router.auth})
+    .catch(err => err)
+    .then(() =>
+      rp({uri: host + type[request.params.type], auth: env.plugin.router.auth})
+      .then(res => {
+        const sessionkey = xregexp.exec(res, /var\s*sessionKey\s*=\s*'([\d]+)';\n`?/g)[1];
+        update[request.params.type](_.merge(request.body, {session_key: sessionkey}));
+      })
+      .then(() => response.json(HTTPService.response(new ServerError(200, "any"))))
+      .catch(() => response.status(500).json(HTTPService.response(new ServerError(500, "any"))))
+    );
+  });
+  
+  const update = {};
   
   // Promise.all(_.map(["/api/user", "/api/user/login"], path =>
   //   new Promise((resolve, reject) =>
