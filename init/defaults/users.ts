@@ -5,8 +5,6 @@ import * as _ from "lodash";
 import * as Promise from "bluebird";
 import * as fs from "fs";
 import * as path from "path";
-import RoleUser from "../../objects/RoleUser";
-import ServerError from "../../classes/ServerError";
 
 init_chain.addPromise("user", (resolve, reject) => {
   Promise.all(_.map(env.users, (user, key) =>

@@ -4,7 +4,7 @@ import * as mysql from "mysql";
 import {db, users} from "../app";
 import * as Promise from "bluebird";
 import * as env from "../env.json";
-import ServerError from "./ServerError";
+import ServerMessage from "./ServerMessage";
 import User from "../objects/User";
 
 export default abstract class Element {
@@ -63,7 +63,7 @@ export default abstract class Element {
         const sql = link.parse(`SELECT * FROM ?? ${index} ${where} LIMIT ? OFFSET ?`, [this.__type, limit, start]);
         link.query(sql)
         .then(res => resolve(res))
-        .catch(err => reject(ServerError.parseSQLError(err)))
+        .catch(err => reject(ServerMessage.parseSQLError(err)))
         .finally(() => link.close());
       })
       .catch(err => reject(err));
@@ -85,7 +85,7 @@ export default abstract class Element {
           const merges = _.pickBy(object, (v, k) => this.__fields[k] && (this.__fields[k].protected || this.__fields[k].intermediate || !this[k]));
           resolve(_.assign(this, merges, {__validated: true, __exists: true}));
         })
-        .catch(err => reject(ServerError.parseSQLError(err)))
+        .catch(err => reject(ServerMessage.parseSQLError(err)))
         .finally(() => link.close());
       })
       .catch(err => reject(err));
@@ -98,14 +98,14 @@ export default abstract class Element {
       .then(() => {
         const on = !this.__exists ? "onInsert" : "onUpdate";
         _.each(this.__fields, (field, key) => field[on] && (this[key] = _.invoke(field, on, this, invoker)));
-        if (!this.__exists && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerError(400, "post")); }
+        if (!this.__exists && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerMessage(400, "post")); }
         db[env.mode].connect()
         .then(link => {
           const values = [this.__type, this.filter(), this.id];
           const sql = link.parse(!this.__exists ? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
           link.query(sql)
-          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true, __exists: true})) : reject(new ServerError(400, !this.__validated ? "post" : "put", sql)))
-          .catch(err => reject(ServerError.parseSQLError(err)))
+          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true, __exists: true})) : reject(new ServerMessage(400, !this.__validated ? "post" : "put", sql)))
+          .catch(err => reject(ServerMessage.parseSQLError(err)))
           .finally(() => link.close());
         })
         .catch(err => reject(err));
@@ -119,13 +119,13 @@ export default abstract class Element {
       new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
       .then(() => {
         _.each(this.__fields, (field: iObjectField, key) => field.onDelete && (this[key] = field.onDelete(this, invoker)));
-        if (!this.__exists) { return reject(new ServerError(404, "delete", this)); }
+        if (!this.__exists) { return reject(new ServerMessage(404, "delete", this)); }
         db[env.mode].connect()
         .then(link => {
           const sql = link.parse("DELETE FROM ?? WHERE `id` = ?", [this.type, this.id]);
           link.query(sql)
-          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__exists: true})) : reject(new ServerError(400, "delete", sql)))
-          .catch(err => reject(ServerError.parseSQLError(err)))
+          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__exists: true})) : reject(new ServerMessage(400, "delete", sql)))
+          .catch(err => reject(ServerMessage.parseSQLError(err)))
           .finally(() => link.close());
         });
       })

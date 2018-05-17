@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 
-export default class ServerError extends Error {
+export default class ServerMessage extends Error {
   
   public code: number;
   public type: string;
@@ -31,18 +31,18 @@ export default class ServerError extends Error {
   };
   
   constructor(code: number, type: string, item?: any) {
-    super(ServerError.codes[code][type]);
-    this.code = ServerError.codes[code] ? code : 500;
-    this.type = ServerError.codes[code][type] ? type : "any";
-    this.message = ServerError.codes[code][type];
+    super(ServerMessage.codes[code][type]);
+    this.code = ServerMessage.codes[code] ? code : 500;
+    this.type = ServerMessage.codes[code][type] ? type : "any";
+    this.message = ServerMessage.codes[code][type];
     this.item = item || {};
   }
   
   public static parseSQLError(error: iSQLError) {
     const cleaned = _.omit(error, "error");
     const type = error.sql.slice(0, 6).toLowerCase() === "select" ? "get" : error.sql.slice(0, 6).toLowerCase() === "insert" ? "post" : "put";
-    if (error.errno === 1064) { return new ServerError(400, type, cleaned); }
-    return new ServerError(500, "any", cleaned);
+    if (error.errno === 1064) { return new ServerMessage(400, type, cleaned); }
+    return new ServerMessage(500, "any", cleaned);
   }
   
 }

@@ -7,7 +7,7 @@ import * as jwt from "jsonwebtoken";
 import * as vhost from "vhost";
 import * as _ from "lodash";
 import * as env from "../env.json";
-import ServerError from "../classes/ServerError";
+import ServerMessage from "../classes/ServerMessage";
 import User from "../objects/User";
 import Route from "../objects/Route";
 import RoleRoute from "../objects/RoleRoute";
@@ -31,7 +31,7 @@ export namespace HTTPService {
   __application.use(body_parser.json());
   
   export function subdomain(subdomain: string) {
-    if (!/^(?:\*|[a-z][\w]{1,7})(?:\.[a-z][\w]{1,7})?$|^$/.test(subdomain)) { throw new ServerError(500, "test", {test_message: "Subdomain does not follow the standard.", test: subdomain}); }
+    if (!/^(?:\*|[a-z][\w]{1,7})(?:\.[a-z][\w]{1,7})?$|^$/.test(subdomain)) { throw new ServerMessage(500, "test", {test_message: "Subdomain does not follow the standard.", test: subdomain}); }
     return __subdomains[subdomain] || (__subdomains[subdomain] = new HTTPSubdomain(subdomain));
   }
   
@@ -80,7 +80,7 @@ export namespace HTTPService {
   
   export function response(object) {
     return {
-      success: !(object instanceof ServerError),
+      success: !(object instanceof ServerMessage),
       content: object,
       code:    object.code || 200,
       type:    object.type || "any",
@@ -146,6 +146,7 @@ export namespace HTTPService {
         _.each(this.__endpoints, (endpoint, path) =>
           _.each(endpoint, (middlewares, method) =>
             promises.push(new Promise((resolve, reject) => {
+              //TODO: Store route
               const route = new Route({
                 path:      this.__path + _.trimEnd(path, "/"),
                 method:    _.toUpper(method),
@@ -160,7 +161,7 @@ export namespace HTTPService {
                 .catch(err => reject(err))
               )
               .catch(err => reject(err));
-              application[_.toLower(method)].apply(application, _.concat(<any>route.path, middlewares));
+              application[_.toLower(method)].apply(application, _.concat(<any>path, middlewares));
             }))
           )
         );
@@ -171,21 +172,21 @@ export namespace HTTPService {
     }
   }
   
-  export function auth(request: express.Request, response: express.Response, next: express.NextFunction) {
+  export function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
     const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
-    const key = `${request.method}:${path}`;
+    const subdomain = request.vhost ? request.vhost.host.replace(/\.\w*$/, "") : "www";
     return new Promise<[User, Buffer[], Buffer[]]>((resolve, reject) =>
-      authRoute(request.method, path, key)
+      authRoute(request.method, subdomain, path)
       .then(route => {
         if (!route.flag_active) {
           return authUser(request.get("Authorization"))
-          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
-          .catch(err => reject(err.code === 401 && err.type === "jwt" ? new ServerError(404, "any") : err));
+          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerMessage(403, "any")))
+          .catch(err => reject(err.code === 401 && err.type === "jwt" ? new ServerMessage(404, "any") : err));
         }
         authRoleRoute(route)
         .then(route_roles => {
           authUser(request.get("Authorization"))
-          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
+          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerMessage(403, "any")))
           .catch(err => err.code === 401 && err.type === "jwt" ? resolve([null, [], route_roles]) : reject(err));
         });
       })
@@ -203,18 +204,19 @@ export namespace HTTPService {
     return new Promise<[User, Buffer[]]>((resolve, reject) =>
       new Promise<User>((resolve, reject) =>
         jwt.verify(token, env.tokens.jwt, (err, decoded) =>
-          !err ? resolve(new User(decoded)) : reject(new ServerError(401, "jwt"))
+          !err ? resolve(new User(decoded)) : reject(new ServerMessage(401, "jwt"))
         )
       )
       .then(user => user.validate().then(user => authRoleUser(user).then(res => resolve([user, res]))))
-      .catch(err => reject(err || new ServerError(401, "any")))
+      .catch(err => reject(err || new ServerMessage(401, "any")))
     );
   }
   
-  function authRoute(method, path, key): Promise<Route> {
+  function authRoute(method, subdomain, path): Promise<Route> {
     return new Promise<Route>((resolve, reject) => {
+      const key = `${method}:${subdomain}:${path}`;
       if (__routes[key]) { return resolve(__routes[key]); }
-      new Route({method: method, path: path}).validate()
+      new Route({method: method, subdomain: subdomain, path: path}).validate()
       .then(res => resolve(__routes[key] = res))
       .catch(err => reject(err));
     });
@@ -256,96 +258,3 @@ interface IParams {
   }
 }
 
-//
-
-//
-//   // export function addRoute(subdomain: string = "", method: Method = "GET", path: string | Path = "/", ...args): typeof HTTPService {
-//   //   const parsed_path = _.get(path, "path", path);
-//   //   const router = __routers[parsed_path] || (__routers[parsed_path] = express.Router());
-//   //   router[_.toLower(method)].apply(router, _.concat(_.get(path, "parameter", "/"), args));
-//   //   return HTTPService;
-//   // }
-//
-//   export function addParam(param: string, subdomain: string = "", path: string | Path = "*", cb: (request: express.Request, response: express.Response, next: express.NextFunction, value: string) => void): typeof HTTPService {
-//     const parsed_path = _.get(path, "path", path);
-//     (__routers[parsed_path] || (__routers[parsed_path] = express.Router())).param(param, cb);
-//     return HTTPService;
-//   }
-//
-//   export function addElementRouter(element: typeof Element | any) {
-//     const path = `/api/${element.__type}`;
-//     const router = __routers[path] || (__routers[path] = express.Router());
-//     router.param("id", (request: ElementRequest, response, next, id) => {
-//       request.id = id;
-//       next();
-//     });
-//
-//     router.get(`/`, auth, (request: ElementRequest, response) =>
-//       new Promise((resolve, reject) => {
-//         if (request.query.start < 0) { request.query.start = 0; }
-//         if (request.query.limit < 0 || request.query.limit > 100) { request.query.limit = 100; }
-//         element.retrieve(request.query.start, request.query.limit, {user_created: request.user.id})
-//         .then(res => resolve(_.transform(res, (r, v: any) => (v = new element(v).toObject()) && _.set(r, v.id, v), {})))
-//         .catch(err => reject(err));
-//       })
-//       .then(res => response.json(HTTPService.response(res)))
-//       .catch(err => response.status(err.code).json(HTTPService.response(err)))
-//     );
-//
-//     router.get(`/:id`, auth, (request: ElementRequest, response) => {
-//       new Promise((resolve, reject) => {
-//         new element(request.id).validate()
-//         .then(res => !element.__fields.user_created || request.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerError(404, "any")))
-//         .catch(err => reject(err));
-//       })
-//       .then(res => response.json(HTTPService.response(res)))
-//       .catch(err => response.status(err.code).json(HTTPService.response(err)));
-//     });
-//
-//     router.post(`/`, auth, (request: ElementRequest, response) =>
-//       new Promise((resolve, reject) =>
-//         new element(request.body).validate()
-//         .then(res =>
-//           res.exists ? reject(new ServerError(400, "duplicate")) : res.save(request.user)
-//           .then(res => resolve(res.toObject()))
-//           .catch(err => reject(err))
-//         )
-//         .catch(err => reject(err))
-//       )
-//       .then(res => response.json(HTTPService.response(res)))
-//       .catch(err => response.status(err.code).json(HTTPService.response(err)))
-//     );
-//
-//     router.put(`/:id`, auth, (request: ElementRequest, response) =>
-//       new Promise((resolve, reject) =>
-//         new element(request.body).validate()
-//         .then(res =>
-//           !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError(404, "any")) : res.save(request.user)
-//           .then(res => resolve(res.toObject()))
-//           .catch(err => reject(err))
-//         )
-//         .catch(err => reject(err))
-//       )
-//       .then(res => response.json(HTTPService.response(res)))
-//       .catch(err => response.status(err.code).json(HTTPService.response(err)))
-//     );
-//
-//     router.delete(`/:id`, auth, (request: ElementRequest, response) =>
-//       new Promise((resolve, reject) =>
-//         new element(request.body).validate()
-//         .then(res =>
-//           !res.exists || (element.__fields.user_created && request.user.id === res.user_created) ? reject(new ServerError(404, "any")) : res.remove(request.user)
-//           .then(res => resolve(res.toObject()))
-//           .catch(err => reject(err))
-//         )
-//         .catch(err => reject(err))
-//       )
-//       .then(res => response.json(HTTPService.response(res)))
-//       .catch(err => response.status(err.code).json(HTTPService.response(err)))
-//     );
-//
-//     __routers[`/api/${element.__type}`] = router;
-//     return HTTPService;
-//   }
-//
-// }

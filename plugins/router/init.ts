@@ -1,10 +1,4 @@
-import {HTTPService} from "../../modules/HTTPService";
 import {init_chain} from "../../app";
-import ServerError from "../../classes/ServerError";
-import * as env from "../../env.json";
-import * as rp from "request-promise";
-import * as xregexp from "xregexp";
-import * as Promise from "bluebird";
 
 init_chain.addPromise("route", resolve => {
   
@@ -60,7 +54,7 @@ init_chain.addPromise("route", resolve => {
   // function routerLogin(request, response, next) {
   //   rp({uri: host, auth: env.plugin.router.auth})
   //   .then(() => next())
-  //   .catch(() => response.status(500).json(HTTPService.response(new ServerError(500, "any"))));
+  //   .catch(() => response.status(500).json(HTTPService.response(new ServerMessage(500, "any"))));
   // }
   //
   // HTTPService.addParam("type", "/api/router", (request, response, next, value) => {
@@ -95,7 +89,7 @@ init_chain.addPromise("route", resolve => {
   //       })
   //     ])
   //     .then(() => response.json(HTTPService.response(data)))
-  //     .catch(() => response.status(500).json(HTTPService.response(new ServerError(500, "any"))))
+  //     .catch(() => response.status(500).json(HTTPService.response(new ServerMessage(500, "any"))))
   //   );
   // });
   //
@@ -115,8 +109,8 @@ init_chain.addPromise("route", resolve => {
   //       const sessionkey = xregexp.exec(res, /var\s*sessionKey\s*=\s*'([\d]+)';\n`?/g)[1];
   //       // update[request.params.type](_.merge(request.body, {session_key: sessionkey}));
   //     })
-  //     .then(() => response.json(HTTPService.response(new ServerError(200, "any"))))
-  //     .catch(() => response.status(500).json(HTTPService.response(new ServerError(500, "any"))))
+  //     .then(() => response.json(HTTPService.response(new ServerMessage(200, "any"))))
+  //     .catch(() => response.status(500).json(HTTPService.response(new ServerMessage(500, "any"))))
   //   );
   // });
   //
