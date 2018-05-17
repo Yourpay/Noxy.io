@@ -18,7 +18,7 @@ export namespace HTTPService {
   
   const __roles: {[key: string]: Buffer[]} = {};
   const __params: IParams = {"*": {}};
-  const __routes: any = {};
+  const __routes: {[key: string]: Route} = {};
   const __servers: {[port: number]: http.Server | https.Server} = {};
   const __subdomains: {[subdomain: string]: HTTPSubdomain} = {};
   const __application: express.Application = express();
@@ -29,8 +29,138 @@ export namespace HTTPService {
   __application.use(bodyParser.json());
   
   export function subdomain(subdomain: string) {
-    if (!/^(?:\*|[a-z][\w]*)\.[a-z][\w]{0,7}$/.test(subdomain)) { throw new ServerError(500, "test", {test_message: "Subdomain does not follow the standard.", test: subdomain}); }
+    if (!/^(?:\*|[a-z][\w]{1,7})(?:\.[a-z][\w]{1,7})?$|^$/.test(subdomain)) { throw new ServerError(500, "test", {test_message: "Subdomain does not follow the standard.", test: subdomain}); }
     return __subdomains[subdomain] || (__subdomains[subdomain] = new HTTPSubdomain(subdomain));
+  }
+  
+  export function listen() {
+    const application = express();
+    return new Promise((resolve, reject) => {
+      Promise.all(_.map(__subdomains, (subdomain, path) => subdomain.listen().then(res => ({path: path, router: res}))))
+      .then(res => console.log(res[1].router.stack) || resolve())
+      .catch(err => console.error(err));
+    });
+  }
+  
+  export function response(object) {
+    return {
+      success: !(object instanceof ServerError),
+      content: object,
+      code:    object.code || 200,
+      type:    object.type || "any",
+      message: object.message || "Request performed successfully.",
+      time:    Date.now()
+    };
+  }
+  
+  class HTTPSubdomain {
+    
+    private __subdomain: string;
+    private __routers: {[path: string]: HTTPRouter};
+    
+    constructor(subdomain: string) {
+      this.__subdomain = subdomain;
+      this.__routers = {};
+    }
+    
+    public router(path: string): HTTPRouter {
+      if (this.__routers[path]) { return this.__routers[path]; }
+      return this.__routers[path] = new HTTPRouter(path);
+    }
+    
+    public listen(): Promise<express.Router> {
+      const application = express.Router();
+      return new Promise((resolve, reject) =>
+        Promise.all(_.map(this.__routers, (router, path) => router.listen(this.__subdomain).then(res => application.use(path, res))))
+        .then(() => resolve(application))
+        .catch(err => reject(err))
+      );
+    }
+    
+  }
+  
+  class HTTPRouter {
+    
+    private __path: string;
+    private __endpoints: {[endpoint: string]: {[method: string]: ExpressFunction[]}};
+    private __params: {[param: string]: ExpressFunction};
+    
+    constructor(path: string) {
+      this.__path = path;
+      this.__endpoints = {};
+      this.__params = {};
+    }
+    
+    public param(param: string, handler: ExpressFunction) {
+      if (!this.__params[param]) { this.__params[param] = handler; }
+      return this;
+    }
+    
+    public endpoint(method: Method, endpoint: string, ...middlewares: ExpressFunction[]): this {
+      if (!this.__endpoints[endpoint]) { this.__endpoints[endpoint] = {}; }
+      if (!this.__endpoints[endpoint][method]) { this.__endpoints[endpoint][method] = middlewares; }
+      return this;
+    }
+    
+    public listen(subdomain: string): Promise<express.Router> {
+      const application = express.Router();
+      const promises = [];
+      return new Promise((resolve, reject) => {
+        _.each(this.__params, (middleware, identifier) => application.param(identifier, middleware));
+        _.each(this.__endpoints, (endpoint, path) =>
+          _.each(endpoint, (middlewares, method) =>
+            promises.push(new Promise((resolve, reject) => {
+              const route = new Route({
+                path:      _.trimEnd(this.__path + path, "/"),
+                method:    _.toUpper(method),
+                subdomain: subdomain
+              });
+              const key = `${route.method}:${route.subdomain}:${route.path}`;
+              
+              if (__routes[key]) { return resolve(__routes[key]); }
+              route.validate()
+              .then(res => res.exists ? resolve(res) : res.save()
+                .then(res => resolve(__routes[key] = res))
+                .catch(err => reject(err))
+              )
+              .catch(err => reject(err));
+              application[_.toLower(method)].apply(application, _.concat(<any>route.path, middlewares));
+            }))
+          )
+        );
+        Promise.all(promises)
+        .then(() => resolve(application))
+        .catch(err => reject(err));
+      });
+    }
+  }
+  
+  export function auth(request: express.Request, response: express.Response, next: express.NextFunction) {
+    const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
+    const key = `${request.method}:${path}`;
+    return new Promise<[User, Buffer[], Buffer[]]>((resolve, reject) =>
+      authRoute(request.method, path, key)
+      .then(route => {
+        if (!route.flag_active) {
+          return authUser(request.get("Authorization"))
+          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
+          .catch(err => reject(err.code === 401 && err.type === "jwt" ? new ServerError(404, "any") : err));
+        }
+        authRoleRoute(route)
+        .then(route_roles => {
+          authUser(request.get("Authorization"))
+          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
+          .catch(err => err.code === 401 && err.type === "jwt" ? resolve([null, [], route_roles]) : reject(err));
+        });
+      })
+      .catch(err => reject(err))
+    )
+    .then(res => {
+      response.locals.user = res[0];
+      response.locals.roles = {user: res[1], route: res[2]};
+      next();
+    })
+    .catch(err => response.status(err.code).json(HTTPService.response(err)));
   }
   
   function authUser(token): Promise<[User, Buffer[]]> {
@@ -68,86 +198,6 @@ export namespace HTTPService {
     return RoleUser.retrieve(0, 1000, {user_id: user.id}).then(res => _.map(res, v => v.role_id));
   }
   
-  export function auth(request, response, next) {
-    const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
-    const key = `${request.method}:${path}`;
-    return new Promise<[User, Buffer[], Buffer[]]>((resolve, reject) =>
-      authRoute(request.method, path, key)
-      .then(route => {
-        if (!route.flag_active) {
-          return authUser(request.get("Authorization"))
-          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
-          .catch(err => reject(err.code === 401 && err.type === "jwt" ? new ServerError(404, "any") : err));
-        }
-        authRoleRoute(route)
-        .then(route_roles => {
-          authUser(request.get("Authorization"))
-          .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerError(403, "any")))
-          .catch(err => err.code === 401 && err.type === "jwt" ? resolve([null, [], route_roles]) : reject(err));
-        });
-      })
-      .catch(err => reject(err))
-    )
-    .then(res => {
-      request.user = res[0];
-      request.roles_user = res[1];
-      request.roles_route = res[2];
-      next();
-    })
-    .catch(err => response.status(err.code).json(HTTPService.response(err)));
-  }
-  
-  export function response(object) {
-    return {
-      success: !(object instanceof ServerError),
-      content: object,
-      code:    object.code || 200,
-      type:    object.type || "any",
-      message: object.message || "Request performed successfully.",
-      time:    Date.now()
-    };
-  }
-  
-}
-
-class HTTPSubdomain {
-  
-  private __subdomain: string;
-  private __routers: {[path: string]: HTTPRouter} = {};
-  
-  constructor(subdomain: string) {
-    this.__subdomain = subdomain;
-    this.__routers = {};
-  }
-  
-  public router(path: string): HTTPRouter {
-    if (this.__routers[path]) { return this.__routers[path]; }
-    return this.__routers[path] = new HTTPRouter(path);
-  }
-  
-}
-
-class HTTPRouter {
-  
-  private __path: string;
-  private __endpoints: {[endpoint: string]: {[method: string]: ExpressFunction[]}};
-  private __params: {[param: string]: ExpressFunction};
-  
-  constructor(path: string) {
-    this.__path = path;
-  }
-  
-  public param(param: string, handler: ExpressFunction) {
-    if (!this.__params[param]) { this.__params[param] = handler; }
-    return this;
-  }
-  
-  public endpoint(method: Method, endpoint: string, ...middlewares: ExpressFunction[]): this {
-    if (!this.__endpoints[endpoint]) { this.__endpoints[endpoint] = {}; }
-    if (!this.__endpoints[endpoint][method]) { this.__endpoints[endpoint][method] = middlewares; }
-    return this;
-  }
-  
 }
 
 type Path = {route?: string, subroute?: string}
@@ -162,13 +212,6 @@ interface IRoutes {
       }
     }
   }
-}
-
-interface ElementRequest extends express.Request {
-  id?: string
-  user?: User
-  roles_route?: Role[]
-  roles_user?: Role[]
 }
 
 interface IParams {
