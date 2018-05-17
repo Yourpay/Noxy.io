@@ -10,8 +10,14 @@ import ServerError from "../../classes/ServerError";
 
 init_chain.addPromise("route", resolve => {
   
-  const base = HTTPService.subdomain("");
+  const base = HTTPService.subdomain("www");
   const api = HTTPService.subdomain("api");
+  
+  base.router("/").endpoint("GET", "/", (request, response, next) => {
+    console.log(request);
+    console.log("THIS IS A PATH?");
+    response.sendStatus(200);
+  });
   
   _.each(elements, (element: typeof Element | any) =>
     api.router("/" + element.__type)
@@ -99,7 +105,11 @@ init_chain.addPromise("route", resolve => {
     .catch(err => response.status(err.code).json(HTTPService.response(err)));
   });
   
+  api.router("/").endpoint("GET", "/", (request, response, next) => {
+    console.log("THIS IS A PARTH?");
+    response.sendStatus(200);
+  });
+  
   resolve();
   
-})
-
+});

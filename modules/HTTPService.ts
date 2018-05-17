@@ -1,18 +1,19 @@
-import * as bodyParser from "body-parser";
+import * as body_parser from "body-parser";
 import * as express from "express";
 import * as Promise from "bluebird";
 import * as https from "https";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
+import * as vhost from "vhost";
 import * as _ from "lodash";
 import * as env from "../env.json";
 import ServerError from "../classes/ServerError";
-import Role from "../objects/Role";
 import User from "../objects/User";
 import Route from "../objects/Route";
 import RoleRoute from "../objects/RoleRoute";
 import RoleUser from "../objects/RoleUser";
 import {roles} from "../app";
+import * as fs from "fs";
 
 export namespace HTTPService {
   
@@ -22,11 +23,12 @@ export namespace HTTPService {
   const __servers: {[port: number]: http.Server | https.Server} = {};
   const __subdomains: {[subdomain: string]: HTTPSubdomain} = {};
   const __application: express.Application = express();
+  
   const __certificates: {[key: string]: object} = {};
   const __methods = ["GET", "POST", "PUT", "DELETE", "PATCH"];
   
-  __application.use(bodyParser.urlencoded({extended: false}));
-  __application.use(bodyParser.json());
+  __application.use(body_parser.urlencoded({extended: false}));
+  __application.use(body_parser.json());
   
   export function subdomain(subdomain: string) {
     if (!/^(?:\*|[a-z][\w]{1,7})(?:\.[a-z][\w]{1,7})?$|^$/.test(subdomain)) { throw new ServerError(500, "test", {test_message: "Subdomain does not follow the standard.", test: subdomain}); }
@@ -34,11 +36,45 @@ export namespace HTTPService {
   }
   
   export function listen() {
-    const application = express();
     return new Promise((resolve, reject) => {
       Promise.all(_.map(__subdomains, (subdomain, path) => subdomain.listen().then(res => ({path: path, router: res}))))
-      .then(res => console.log(res[1].router.stack) || resolve())
-      .catch(err => console.error(err));
+      .then((res: {path: string, router: express.Router}[]) => {
+        const subdomains = _.reject(res, v => v.path === "www");
+        const base = _.find(res, v => v.path === "www");
+        
+        _.each(subdomains, subdomain => __application.use(vhost(`${subdomain.path}.localhost`, subdomain.router)));
+        __application.use("/", base.router);
+        __application.all("*", (request, response) => response.sendStatus(404));
+        
+        if (env.ports.https && !__servers[env.ports.https]) {
+          Promise.all(_.map(env.certificates, (path, key) => new Promise((resolve, reject) => fs.readFile(path, (err, data) => err ? reject(err) : resolve({[key]: data})))))
+          .then(res => {
+            _.each(res, v => _.merge(__certificates, v));
+            if (!__certificates.pfx || (!__certificates.key && !__certificates.cert)) { throw new Error("HTTPS server port enabled, but no valid certificates were provided."); }
+            __servers[env.ports.https] = https.createServer(__certificates, __application);
+            // WebSocketService.register(__servers[env.ports.https]);
+            __servers[env.ports.https].listen(env.ports.https);
+          })
+          .catch(err => console.error("ERROR", err));
+        }
+        
+        if (env.ports.http && !__servers[env.ports.http]) {
+          if (__servers[env.ports.https]) {
+            const __application = express();
+            __application.all("*", (request, response) => response.redirect("https://" + request.hostname + request.url));
+            __servers[env.ports.http] = http.createServer(__application).listen(env.ports.http);
+          }
+          else {
+            __servers[env.ports.http] = __application.listen(env.ports.http);
+            // __servers[env.ports.http] = http.createServer(__application);
+            // WebSocketService.register(__servers[env.ports.https]);
+            // __servers[env.ports.http].listen(env.ports.http);
+          }
+        }
+        
+        resolve();
+      })
+      .catch(err => console.error("EWWOR", err));
     });
   }
   
@@ -111,7 +147,7 @@ export namespace HTTPService {
           _.each(endpoint, (middlewares, method) =>
             promises.push(new Promise((resolve, reject) => {
               const route = new Route({
-                path:      _.trimEnd(this.__path + path, "/"),
+                path:      this.__path + _.trimEnd(path, "/"),
                 method:    _.toUpper(method),
                 subdomain: subdomain
               });
@@ -219,58 +255,6 @@ interface IParams {
     [route: string]: ExpressFunction
   }
 }
-
-//   export function listen(): Promise<any> {
-//     return new Promise((resolve, reject) =>
-//       Promise.all(_.map(__routers, (router, path) => new Promise((resolve, reject) =>
-//         Promise.all(_.map(router.stack, layer => new Promise((resolve, reject) => {
-//           const route = new Route({
-//             path:   (path + layer.route.path).replace(/\/$/, ""),
-//             method: _.toUpper(_.findKey(layer.route.methods, v => v))
-//           });
-//           const route_key = `${route.path}:${route.method}`;
-//           if (__routes[route_key]) { return resolve(__routes[route_key]); }
-//           route.validate()
-//           .then(res => res.exists ? resolve(res) : res.save()
-//             .then(res => resolve(_.set(__routes, route_key, res)))
-//             .catch(err => reject(err))
-//           )
-//           .catch(err => reject(err));
-//         })))
-//         .then(res => __application.use(path, router) && resolve(res))
-//         .catch(err => reject(err)))))
-//       .catch(err => reject(err))
-//       .then(res => {
-//         __application.all("*", (request, response) => response.sendStatus(404));
-//         if (env.ports.https && !__servers[env.ports.https]) {
-//           Promise.all(_.map(env.certificates, (path, key) => new Promise((resolve, reject) => fs.readFile(path, (err, data) => err ? reject(err) : resolve({[key]: data})))))
-//           .then(res => {
-//             _.each(res, v => _.merge(__certificates, v));
-//             if (!__certificates.pfx || (!__certificates.key && !__certificates.cert)) { throw new Error("HTTPS server port enabled, but no valid certificates were provided."); }
-//             __servers[env.ports.https] = https.createServer(__certificates, __application);
-//             // WebSocketService.register(__servers[env.ports.https]);
-//             __servers[env.ports.https].listen(env.ports.https);
-//           })
-//           .catch(err => console.error(err));
-//         }
-//         if (env.ports.http && !__servers[env.ports.http]) {
-//           if (__servers[env.ports.https]) {
-//             const __application = express();
-//             __application.all("*", (request, response) => response.redirect("https://" + request.hostname + request.url));
-//             __servers[env.ports.http] = http.createServer(__application).listen(env.ports.http);
-//           }
-//           else {
-//             __servers[env.ports.http] = http.createServer(__application);
-//             // WebSocketService.register(__servers[env.ports.https]);
-//             __servers[env.ports.http].listen(env.ports.http);
-//           }
-//         }
-//
-//         resolve(res);
-//       })
-//     );
-//   }
-//
 
 //
 
