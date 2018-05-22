@@ -4,7 +4,13 @@
   "description": "API/CMS management tool",
   "repository": "https://github.com/oscelest/Noxy.io",
   "license": "MIT",
+  "scripts": {
+    "build-server": "copy /Y env.json build\\env.json && copy /Y package.json build\\package.json && node_modules\\.bin\\tsc",
+    "test": "node scripts/build.js",
+    "build-docs": "./node_modules/.bin/webpack"
+  },
   "dependencies": {
+    "awesome-typescript-loader": "^5.0.0",
     "bluebird": "^3.5.1",
     "body-parser": "^1.18.3",
     "express": "^4.16.3",
@@ -14,7 +20,6 @@
     "mysql": "^2.15.0",
     "request": "^2.87.0",
     "request-promise": "^4.2.2",
-    "require-all": "^2.2.0",
     "socket.io": "^2.1.1",
     "uuid": "^3.2.1",
     "vhost": "^3.0.2"
@@ -31,6 +36,12 @@
     "@types/socket.io": "^1.4.33",
     "@types/uuid": "^3.4.3",
     "@types/xregexp": "^3.0.29",
-    "typescript": "^2.8.3"
+    "clean-webpack-plugin": "^0.1.19",
+    "copy-webpack-plugin": "^4.5.1",
+    "typescript": "^2.8.3",
+    "source-map-loader": "^0.2.3",
+    "webpack": "^4.8.3",
+    "webpack-cli": "^2.1.3"
+
   }
 }

@@ -12,7 +12,6 @@ import * as Promise from "bluebird";
 export const db: {[mode: string]: DBPool} = _.mapValues(env.databases, env_db => new DB(env_db));
 export const users: {[id: string]: User} = {};
 export const roles: {[id: string]: Role} = {};
-export const elements: {[type: string]: typeof Element} = _.transform(requireAll(__dirname + "/objects"), (r, v: {[key: string]: typeof Element}) => _.set(r, v.default.__type, v.default), {});
 export const init_chain = new PromiseChain([
   "pre-db", "db", "post-db",
   "pre-table", "table", "post-table",

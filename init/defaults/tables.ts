@@ -1,4 +1,4 @@
-import {db, init_chain, elements} from "../../app";
+import {db, init_chain} from "../../app";
 import * as requireAll from "require-all";
 import * as path from "path";
 import * as _ from "lodash";
@@ -10,11 +10,10 @@ import {Include} from "../../modules/Include";
 init_chain.addPromise("table", (resolve, reject) =>
   db[env.mode].connect()
   .then(connection => {
-    Include({path: path.resolve(__dirname, "../../objects"), transform: (r, v) => _.set(r, v.default.__type, v.default)}).then((res: {[type: string]: typeof Element}) => {
+    Include({path: path.resolve(__dirname, "../../objects"), transform: (r, v) => _.set(r, v.default.__type, v.default)}).then((res: {[type: string]: typeof Element}) =>
       Promise.all(_.map(res, (object: typeof Element) => object.bind(connection)))
       .then(res => resolve(res))
       .catch(err => reject(err))
-      .finally(() => connection.close());
-    });
+      .finally(() => connection.close()));
   })
 );

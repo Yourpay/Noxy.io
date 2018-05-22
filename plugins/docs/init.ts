@@ -1,12 +1,10 @@
 import {init_chain} from "../../app";
 import {HTTPService} from "../../modules/HTTPService";
-import ServerMessage from "../../classes/ServerMessage";
 import * as path from "path";
 
 init_chain.addPromise("tables", resolve => {
 
-
-})
+});
 
 init_chain.addPromise("route", resolve => {
   
