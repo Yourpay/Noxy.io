@@ -16,7 +16,7 @@ init_chain.addPromise("route", resolve => {
   _.each(elements, (element: typeof Element | any) =>
     api.router("/" + element.__type)
     .param("id", (request, response, next) => response.locals.id = request.params.id && next())
-    .endpoint("GET", "/", HTTPService.auth, (request, response) => {
+    .endpoint("GET", "/", HTTPService.auth, (request, response) =>
       new Promise((resolve, reject) => {
         if (request.query.start < 0) { request.query.start = 0; }
         if (request.query.limit < 0 || request.query.limit > 100) { request.query.limit = 100; }
@@ -25,18 +25,17 @@ init_chain.addPromise("route", resolve => {
         .catch(err => reject(err));
       })
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code).json(HTTPService.response(err)));
-    })
-    .endpoint("GET", "/:id", HTTPService.auth, (request, response) => {
-      new Promise((resolve, reject) => {
+      .catch(err => response.status(err.code).json(HTTPService.response(err)))
+    )
+    .endpoint("GET", "/:id", HTTPService.auth, (request, response) =>
+      new Promise((resolve, reject) =>
         new element(response.locals.id).validate()
         .then(res => !element.__fields.user_created || response.locals.user.id === res.user_created ? resolve(res.toObject()) : reject(new ServerMessage(404, "any")))
-        .catch(err => reject(err));
-      })
+        .catch(err => reject(err))
+      )
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code).json(HTTPService.response(err)));
-    })
-    .endpoint("POST", "/", HTTPService.auth, (request, response) => {
+      .catch(err => response.status(err.code).json(HTTPService.response(err))))
+    .endpoint("POST", "/", HTTPService.auth, (request, response) =>
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
@@ -47,9 +46,8 @@ init_chain.addPromise("route", resolve => {
         .catch(err => reject(err))
       )
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code).json(HTTPService.response(err)));
-    })
-    .endpoint("PUT", "/:id", HTTPService.auth, (request, response) => {
+      .catch(err => response.status(err.code).json(HTTPService.response(err))))
+    .endpoint("PUT", "/:id", HTTPService.auth, (request, response) =>
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
@@ -60,9 +58,8 @@ init_chain.addPromise("route", resolve => {
         .catch(err => reject(err))
       )
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code).json(HTTPService.response(err)));
-    })
-    .endpoint("DELETE", "/:id", HTTPService.auth, (request, response) => {
+      .catch(err => response.status(err.code).json(HTTPService.response(err))))
+    .endpoint("DELETE", "/:id", HTTPService.auth, (request, response) =>
       new Promise((resolve, reject) =>
         new element(request.body).validate()
         .then(res =>
@@ -73,15 +70,14 @@ init_chain.addPromise("route", resolve => {
         .catch(err => reject(err))
       )
       .then(res => response.json(HTTPService.response(res)))
-      .catch(err => response.status(err.code).json(HTTPService.response(err)));
-    })
+      .catch(err => response.status(err.code).json(HTTPService.response(err))))
   );
   
-  api.router("/user").endpoint("POST", "/login", HTTPService.auth, (request, response) => {
+  api.router("/user").endpoint("POST", "/login", HTTPService.auth, (request, response) =>
     new Promise((resolve, reject) =>
       new Promise((resolve, reject) => {
         if ((request.body.username || request.body.email) && request.body.password) { return resolve(request.body); }
-        if (request.get("Authorization")) { return jwt.verify(request.get("Authorization"), env.tokens.jwt, (err, decoded) => !err ? resolve(decoded) : reject(new ServerMessage(401, "jwt"))); }
+        if (response.locals.user) { return resolve(response.locals.user); }
         reject(new ServerMessage(401, "any"));
       })
       .then(res =>
@@ -90,26 +86,24 @@ init_chain.addPromise("route", resolve => {
           if (!res.exists || request.body.password && !User.generateHash(request.body.password, res.salt).equals(res.hash)) { return reject(new ServerMessage(401, "any"));}
           res.time_login = Date.now();
           res.save()
-          .then(res => resolve(jwt.sign(res.toObject(), env.tokens.jwt, {expiresIn: "7d"})))
+          .then(res => {
+            const token = jwt.sign(res.toObject(), env.tokens.jwt, {expiresIn: "7d"});
+            resolve(token);
+          })
           .catch(err => reject(err));
         })
         .catch(err => reject(err)))
       .catch(err => reject(err)))
     .then(res => response.json(HTTPService.response(res)))
-    .catch(err => response.status(err.code).json(HTTPService.response(err)));
-  });
+    .catch(err => response.status(err.code).json(HTTPService.response(err))));
   
-  api.router("/").endpoint("GET", "/", (request, response, next) => {
-    response.json(HTTPService.response(new ServerMessage(200, "any")));
-  });
+  api.router("/").endpoint("GET", "/", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
   
-  api.router("/test").endpoint("GET", "/", (request, response, next) => {
-    response.json(HTTPService.response(new ServerMessage(200, "any")));
-  });
+  base.router("/").endpoint("GET", "/", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
   
-  api.router("/test").endpoint("GET", "/test", (request, response, next) => {
-    response.json(HTTPService.response(new ServerMessage(200, "any")));
-  });
+  api.router("/test").endpoint("GET", "/", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
+  
+  api.router("/test").endpoint("GET", "/test", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
   
   resolve();
   

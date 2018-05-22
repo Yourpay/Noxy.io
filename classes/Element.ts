@@ -40,7 +40,7 @@ export default abstract class Element {
   public static __relations: iObjectRelationSet = {};
   
   public toObject() {
-    return _.set(_.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || k === "uuid" || v instanceof Buffer), "id", this.uuid);
+    return _.set(_.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || k === "uuid" || v instanceof Buffer || !v), "id", this.uuid);
   }
   
   public get exists() {

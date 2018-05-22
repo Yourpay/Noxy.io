@@ -71,7 +71,6 @@ export namespace HTTPService {
             // __servers[env.ports.http].listen(env.ports.http);
           }
         }
-        
         resolve();
       })
       .catch(err => console.error("EWWOR", err));
@@ -146,17 +145,15 @@ export namespace HTTPService {
         _.each(this.__endpoints, (endpoint, path) =>
           _.each(endpoint, (middlewares, method) =>
             promises.push(new Promise((resolve, reject) => {
-              //TODO: Store route
               const route = new Route({
                 path:      this.__path + _.trimEnd(path, "/"),
                 method:    _.toUpper(method),
                 subdomain: subdomain
               });
               const key = `${route.method}:${route.subdomain}:${route.path}`;
-              
               if (__routes[key]) { return resolve(__routes[key]); }
               route.validate()
-              .then(res => res.exists ? resolve(res) : res.save()
+              .then(res => res.exists ? resolve(__routes[key] = res) : res.save()
                 .then(res => resolve(__routes[key] = res))
                 .catch(err => reject(err))
               )
@@ -238,7 +235,6 @@ export namespace HTTPService {
   
 }
 
-type Path = {route?: string, subroute?: string}
 type Method = "GET" | "POST" | "PUT" | "DELETE"
 type ExpressFunction = (request: express.Request, response: express.Response, next: express.NextFunction) => void
 
