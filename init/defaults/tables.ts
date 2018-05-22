@@ -5,33 +5,16 @@ import * as _ from "lodash";
 import * as env from "../../env.json";
 import Element from "../../classes/Element";
 import * as Promise from "bluebird";
+import {Include} from "../../modules/Include";
 
 init_chain.addPromise("table", (resolve, reject) =>
   db[env.mode].connect()
   .then(connection => {
-    const files: iBaseObjectFile = requireAll(path.resolve(__dirname, "../../objects"));
-    _.merge(elements, _.transform(files, (r, v) => v.default.prototype instanceof Element && v.default.__type && _.set(r, v.default.__type, v.default) || r, {}));
-    Promise.all(_.map(_.pickBy(elements, object => _.size(object.__relations) === 0), object => connection.query(object.generateTableSQL())))
-    .then(() => {
-      Promise.all(_.map(_.pickBy(elements, object => _.size(object.__relations) > 0), object => connection.query(object.generateTableSQL())))
+    Include({path: path.resolve(__dirname, "../../objects"), transform: (r, v) => _.set(r, v.default.__type, v.default)}).then((res: {[type: string]: typeof Element}) => {
+      Promise.all(_.map(res, (object: typeof Element) => object.bind(connection)))
       .then(res => resolve(res))
       .catch(err => reject(err))
       .finally(() => connection.close());
-    })
-    .catch(err => reject(err));
+    });
   })
-  .catch(err => reject(err))
 );
-
-interface iBaseObjectFile {
-  [key: string]: {
-    [key: string]: any
-    default: {
-      __type: string
-      __fields: object,
-      __indexes: object,
-      __relations: object
-      prototype: Function
-    }
-  }
-}

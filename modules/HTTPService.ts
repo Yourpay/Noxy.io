@@ -18,14 +18,11 @@ import * as fs from "fs";
 export namespace HTTPService {
   
   const __roles: {[key: string]: Buffer[]} = {};
-  const __params: IParams = {"*": {}};
   const __routes: {[key: string]: Route} = {};
   const __servers: {[port: number]: http.Server | https.Server} = {};
   const __subdomains: {[subdomain: string]: HTTPSubdomain} = {};
   const __application: express.Application = express();
-  
   const __certificates: {[key: string]: object} = {};
-  const __methods = ["GET", "POST", "PUT", "DELETE", "PATCH"];
   
   __application.use(body_parser.urlencoded({extended: false}));
   __application.use(body_parser.json());
@@ -36,8 +33,8 @@ export namespace HTTPService {
   }
   
   export function listen() {
-    return new Promise((resolve, reject) => {
-      Promise.all(_.map(__subdomains, (subdomain, path) => subdomain.listen().then(res => ({path: path, router: res}))))
+    return new Promise((resolve) => {
+      Promise.all(_.map(__subdomains, (subdomain: HTTPSubdomain, path) => register(subdomain)))
       .then((res: {path: string, router: express.Router}[]) => {
         const subdomains = _.reject(res, v => v.path === "www");
         const base = _.find(res, v => v.path === "www");
@@ -88,42 +85,85 @@ export namespace HTTPService {
     };
   }
   
+  function register(subdomain: HTTPSubdomain): Promise<{path: string, router: express.Router}> {
+    const subdomain_app = express.Router();
+    return Promise.all(_.map(subdomain.routers, (router: HTTPRouter, path) => {
+      const router_app = express.Router();
+      const promises = [];
+      return new Promise<express.Router>((resolve, reject) => {
+        _.each(router.params, (middleware, identifier) => router_app.param(identifier, middleware));
+        _.each(router.endpoints, (endpoint, path) =>
+          _.each(endpoint, (middlewares, method) =>
+            promises.push(new Promise((resolve, reject) => {
+              const route = new Route({
+                path:      router.path + _.trimEnd(path, "/"),
+                method:    _.toUpper(method),
+                subdomain: subdomain.name
+              });
+              const key = `${route.method}:${route.subdomain}:${route.path}`;
+              if (__routes[key]) { return resolve(__routes[key]); }
+              route.validate()
+              .then(res => res.exists ? resolve(__routes[key] = res) : res.save()
+                .then(res => resolve(__routes[key] = res))
+                .catch(err => reject(err))
+              )
+              .catch(err => reject(err));
+              router_app[_.toLower(method)].apply(router_app, _.concat(<any>path, middlewares));
+            }))
+          )
+        );
+        Promise.all(promises).then(() => resolve(router_app)).catch(err => reject(err));
+      }).then(res => subdomain_app.use(path, res));
+    }))
+    .then(() => ({path: subdomain.name, router: subdomain_app}));
+  }
+  
   class HTTPSubdomain {
     
-    private __subdomain: string;
-    private __routers: {[path: string]: HTTPRouter};
+    private readonly __name: string;
+    private readonly __routers: {[path: string]: HTTPRouter};
     
     constructor(subdomain: string) {
-      this.__subdomain = subdomain;
+      this.__name = subdomain;
       this.__routers = {};
+    }
+    
+    public get name() {
+      return this.__name;
+    }
+    
+    public get routers(): {[path: string]: HTTPRouter} {
+      return _.clone(this.__routers);
     }
     
     public router(path: string): HTTPRouter {
       if (this.__routers[path]) { return this.__routers[path]; }
       return this.__routers[path] = new HTTPRouter(path);
     }
-    
-    public listen(): Promise<express.Router> {
-      const application = express.Router();
-      return new Promise((resolve, reject) =>
-        Promise.all(_.map(this.__routers, (router, path) => router.listen(this.__subdomain).then(res => application.use(path, res))))
-        .then(() => resolve(application))
-        .catch(err => reject(err))
-      );
-    }
-    
   }
   
   class HTTPRouter {
     
-    private __path: string;
-    private __endpoints: {[endpoint: string]: {[method: string]: ExpressFunction[]}};
-    private __params: {[param: string]: ExpressFunction};
+    private readonly __path: string;
+    private readonly __endpoints: {[endpoint: string]: {[method: string]: ExpressFunction[]}};
+    private readonly __params: {[param: string]: ExpressFunction};
     
     constructor(path: string) {
       this.__path = path;
       this.__endpoints = {};
       this.__params = {};
+    }
+    
+    public get path() {
+      return this.__path;
+    }
+    
+    public get endpoints(): {[endpoint: string]: {[method: string]: ExpressFunction[]}} {
+      return _.clone(this.__endpoints);
+    }
+    
+    public get params(): {[param: string]: ExpressFunction} {
+      return _.clone(this.__params);
     }
     
     public param(param: string, handler: ExpressFunction) {
@@ -135,37 +175,6 @@ export namespace HTTPService {
       if (!this.__endpoints[endpoint]) { this.__endpoints[endpoint] = {}; }
       if (!this.__endpoints[endpoint][method]) { this.__endpoints[endpoint][method] = middlewares; }
       return this;
-    }
-    
-    public listen(subdomain: string): Promise<express.Router> {
-      const application = express.Router();
-      const promises = [];
-      return new Promise((resolve, reject) => {
-        _.each(this.__params, (middleware, identifier) => application.param(identifier, middleware));
-        _.each(this.__endpoints, (endpoint, path) =>
-          _.each(endpoint, (middlewares, method) =>
-            promises.push(new Promise((resolve, reject) => {
-              const route = new Route({
-                path:      this.__path + _.trimEnd(path, "/"),
-                method:    _.toUpper(method),
-                subdomain: subdomain
-              });
-              const key = `${route.method}:${route.subdomain}:${route.path}`;
-              if (__routes[key]) { return resolve(__routes[key]); }
-              route.validate()
-              .then(res => res.exists ? resolve(__routes[key] = res) : res.save()
-                .then(res => resolve(__routes[key] = res))
-                .catch(err => reject(err))
-              )
-              .catch(err => reject(err));
-              application[_.toLower(method)].apply(application, _.concat(<any>path, middlewares));
-            }))
-          )
-        );
-        Promise.all(promises)
-        .then(() => resolve(application))
-        .catch(err => reject(err));
-      });
     }
   }
   
@@ -235,22 +244,5 @@ export namespace HTTPService {
   
 }
 
-type Method = "GET" | "POST" | "PUT" | "DELETE"
+type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH";
 type ExpressFunction = (request: express.Request, response: express.Response, next: express.NextFunction) => void
-
-interface IRoutes {
-  [subdomain: string]: {
-    [route: string]: {
-      [subroute: string]: {
-        [method: string]: (request: express.Request, response: express.Response, next: express.NextFunction) => void
-      }
-    }
-  }
-}
-
-interface IParams {
-  [subdomain: string]: ExpressFunction | {
-    [route: string]: ExpressFunction
-  }
-}
-

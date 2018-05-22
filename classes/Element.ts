@@ -6,6 +6,7 @@ import * as Promise from "bluebird";
 import * as env from "../env.json";
 import ServerMessage from "./ServerMessage";
 import User from "../objects/User";
+import DBConnection from "./DBConnection";
 
 export default abstract class Element {
   
@@ -133,6 +134,10 @@ export default abstract class Element {
     });
   }
   
+  public static bind(connection: DBConnection): Promise<any> {
+    return connection.query(this.generateTableSQL())
+  }
+  
   protected init(object: string | {[key: string]: any} = {}): this {
     const base = (<typeof Element>this.constructor);
     this.__type = base.__type;
@@ -166,7 +171,7 @@ export default abstract class Element {
     return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
   }
   
-  public static generateTableSQL(): string {
+  protected static generateTableSQL(): string {
     return `CREATE TABLE IF NOT EXISTS ${mysql.escapeId(this.__type)} (${this.generateFieldSQL()}) ENGINE=InnoDB DEFAULT CHARSET=utf8`;
   }
   
