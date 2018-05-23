@@ -1,5 +1,4 @@
 import {db, init_chain} from "../../app";
-import * as requireAll from "require-all";
 import * as path from "path";
 import * as _ from "lodash";
 import * as env from "../../env.json";

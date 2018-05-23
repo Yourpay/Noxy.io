@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build-server": "copy /Y env.json build\\env.json && copy /Y package.json build\\package.json && node_modules\\.bin\\tsc",
-    "test": "node scripts/build.js",
+    "test": "node scripts/build.js && node_modules\\.bin\\tsc",
     "build-docs": "./node_modules/.bin/webpack"
   },
   "dependencies": {
@@ -42,6 +42,5 @@
     "source-map-loader": "^0.2.3",
     "webpack": "^4.8.3",
     "webpack-cli": "^2.1.3"
-
   }
 }

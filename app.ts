@@ -1,6 +1,5 @@
 import PromiseChain from "./classes/PromiseChain";
 import DBPool, {default as DB} from "./classes/DB";
-import * as requireAll from "require-all";
 import * as _ from "lodash";
 import * as env from "./env.json";
 import Role from "./objects/Role";
