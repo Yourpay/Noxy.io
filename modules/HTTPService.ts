@@ -27,9 +27,9 @@ export namespace HTTPService {
   __application.use(body_parser.urlencoded({extended: false}));
   __application.use(body_parser.json());
   
-  export function subdomain(subdomain: string) {
+  export function subdomain(subdomain: string, statics?: string) {
     if (!/^(?:\*|[a-z][\w]{1,7})(?:\.[a-z][\w]{1,7})?$|^$/.test(subdomain)) { throw new ServerMessage(500, "test", {test_message: "Subdomain does not follow the standard.", test: subdomain}); }
-    return __subdomains[subdomain] || (__subdomains[subdomain] = new HTTPSubdomain(subdomain));
+    return __subdomains[subdomain] || (__subdomains[subdomain] = new HTTPSubdomain(subdomain, statics));
   }
   
   export function listen() {
@@ -87,6 +87,10 @@ export namespace HTTPService {
   
   function register(subdomain: HTTPSubdomain): Promise<{path: string, router: express.Router}> {
     const subdomain_app = express.Router();
+    if (subdomain.static) {
+      console.log("Serving", subdomain.static, "as static resource library");
+      subdomain_app.use(express.static(subdomain.static));
+    }
     return Promise.all(_.map(subdomain.routers, (router: HTTPRouter, path) => {
       const router_app = express.Router();
       const promises = [];
@@ -121,15 +125,21 @@ export namespace HTTPService {
   class HTTPSubdomain {
     
     private readonly __name: string;
+    private readonly __static: string;
     private readonly __routers: {[path: string]: HTTPRouter};
     
-    constructor(subdomain: string) {
+    constructor(subdomain: string, statics?: string) {
       this.__name = subdomain;
+      this.__static = statics;
       this.__routers = {};
     }
     
     public get name() {
       return this.__name;
+    }
+    
+    public get static() {
+      return this.__static;
     }
     
     public get routers(): {[path: string]: HTTPRouter} {

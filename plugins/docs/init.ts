@@ -8,8 +8,7 @@ init_chain.addPromise("tables", resolve => {
 
 init_chain.addPromise("route", resolve => {
   
-  HTTPService.subdomain("docs").router("/").endpoint("GET", "*", (request, response) => {
-    console.log("Looking up docs");
+  HTTPService.subdomain("docs", path.resolve(__dirname, "./public")).router("/").endpoint("GET", "*", (request, response) => {
     response.sendFile(path.resolve(__dirname, "./public/index.html"));
   });
   

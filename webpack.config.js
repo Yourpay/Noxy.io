@@ -1,25 +1,26 @@
 const CleanWebpackPlugin = require("clean-webpack-plugin");
 const CopyWebpackPlugin  = require("copy-webpack-plugin");
+const HtmlWebpackPlugin  = require("html-webpack-plugin");
+const path               = require("path");
 
 module.exports = [{
-  entry:   "./app.ts",
-  output:  {
-    path:     __dirname + "/dist",
-    filename: "[name].js"
-  },
-  resolve: {
-    extensions: [".ts", ".tsx", ".js", ".json"]
-  },
+  mode:    "development",
+  entry:   "./plugins/docs/public/main.tsx",
+  output:  {path: path.resolve(__dirname, "./build/plugins/docs/public/"), filename: "bundle.js"},
   module:  {
     rules: [
-      {test: /\.tsx?$/, loader: "awesome-typescript-loader"},
-      {enforce: "pre", test: /\.js$/, loader: "source-map-loader"}
+      {test: /\.less$/, use: [{loader: "style-loader"}, {loader: "css-loader"}, {loader: "less-loader", options: {strictMath: true, noIeCompat: true}}]},
+      {test: /\.tsx?$/, loader: "awesome-typescript-loader"}
     ]
   },
-  mode: "development",
-  target: "node",
+  resolve: {
+    extensions: [".ts", ".tsx", ".js", ".jsx"]
+  },
   plugins: [
-    new CleanWebpackPlugin("./dist/**/**", {}),
-    new CopyWebpackPlugin([{from: "./env.json", to: "./env.json"}, {from: "./package.json", to: "./package.json"}], {})
+    new HtmlWebpackPlugin({
+      title:    "ChatApp",
+      filename: "index.html",
+      template: "./plugins/docs/public/main.html"
+    })
   ]
 }];

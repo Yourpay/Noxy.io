@@ -6,9 +6,15 @@
     "outDir": "./build",
     "sourceMap": false,
     "declaration": false,
-    "noStrictGenericChecks": true
+    "noStrictGenericChecks": true,
+    "jsx": "React",
+    "types": [
+      "node",
+      "webpack-env"
+    ]
   },
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "plugins/*/*/*/**"
   ]
 }
