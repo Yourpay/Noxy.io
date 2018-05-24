@@ -4,7 +4,6 @@ import * as _ from "lodash";
 import * as env from "./env.json";
 import Role from "./objects/Role";
 import User from "./objects/User";
-import Element from "./classes/Element";
 import {Include} from "./modules/Include";
 import * as Promise from "bluebird";
 

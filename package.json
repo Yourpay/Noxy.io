@@ -5,14 +5,16 @@
   "repository": "https://github.com/oscelest/Noxy.io",
   "license": "MIT",
   "scripts": {
-    "build-server": "node scripts/build.js && node_modules\\.bin\\tsc",
-    "build-docs": "./node_modules/.bin/webpack"
+    "build-server": "gulp default && node_modules\\.bin\\tsc",
+    "build-plugins": "./node_modules/.bin/webpack"
   },
   "dependencies": {
     "bluebird": "^3.5.1",
     "body-parser": "^1.18.3",
     "express": "^4.16.3",
     "flat": "^4.0.0",
+    "gulp": "^4.0.0",
+    "gulp-typescript": "^4.0.2",
     "jsonwebtoken": "^8.2.1",
     "lodash": "^4.17.10",
     "mysql": "^2.15.0",
