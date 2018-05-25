@@ -5,7 +5,8 @@
   "repository": "https://github.com/oscelest/Noxy.io",
   "license": "MIT",
   "scripts": {
-    "build-server": "gulp default && node_modules\\.bin\\tsc",
+    "build-server": "gulp default",
+    "build-server2": "gulp default && node_modules\\.bin\\tsc",
     "build-plugins": "./node_modules/.bin/webpack"
   },
   "dependencies": {
@@ -13,14 +14,15 @@
     "body-parser": "^1.18.3",
     "express": "^4.16.3",
     "flat": "^4.0.0",
-    "gulp": "^4.0.0",
     "gulp-typescript": "^4.0.2",
     "jsonwebtoken": "^8.2.1",
     "lodash": "^4.17.10",
+    "merge-stream": "^1.0.1",
     "mysql": "^2.15.0",
     "request": "^2.87.0",
     "request-promise": "^4.2.2",
     "socket.io": "^2.1.1",
+    "split": "^1.0.1",
     "uuid": "^3.2.1",
     "vhost": "^3.0.2"
   },
@@ -41,6 +43,7 @@
     "clean-webpack-plugin": "^0.1.19",
     "copy-webpack-plugin": "^4.5.1",
     "css-loader": "^0.28.11",
+    "gulp": "^4.0.0",
     "html-webpack-plugin": "^3.2.0",
     "less": "^3.0.4",
     "less-loader": "^4.1.0",
@@ -51,6 +54,7 @@
     "style-loader": "^0.21.0",
     "typescript": "^2.8.3",
     "webpack": "^4.8.3",
-    "webpack-cli": "^2.1.4"
+    "webpack-cli": "^2.1.4",
+    "webpack-stream": "^4.0.3"
   }
 }

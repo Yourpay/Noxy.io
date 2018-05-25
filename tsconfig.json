@@ -7,12 +7,6 @@
     "sourceMap": false,
     "declaration": false,
     "noStrictGenericChecks": true,
-    "jsx": "React",
-    "watch": true,
-    "types": [
-      "node",
-      "webpack-env"
-    ]
   },
   "exclude": [
     "node_modules",

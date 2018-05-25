@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+    "sourceMap": false,
+    "declaration": false,
+    "noStrictGenericChecks": true,
+    "jsx": "React",
+    "types": [
+      "node",
+      "webpack-env"
+    ],
+    "rootDir": "../../",
+    "typeRoots": ["../../node_modules/@types"]
+  },
+  "include": [
+    "./plugins/docs/public/**"
+  ]
+}

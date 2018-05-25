@@ -3,14 +3,18 @@ const CopyWebpackPlugin  = require("copy-webpack-plugin");
 const HtmlWebpackPlugin  = require("html-webpack-plugin");
 const path               = require("path");
 
-module.exports = [{
+const entry = path.resolve(__dirname, "./public/main.tsx");
+const out   = path.resolve(__dirname, "../../build/plugins/docs/public");
+
+module.exports = {
   mode:    "development",
-  entry:   "./plugins/docs/public/main.tsx",
-  output:  {path: path.resolve(__dirname, "./build/plugins/docs/public/"), filename: "bundle.js"},
+  entry:   entry,
+  output:  {path: out, filename: "bundle.js"},
+  watch: true,
   module:  {
     rules: [
       {test: /\.less$/, use: [{loader: "style-loader"}, {loader: "css-loader"}, {loader: "less-loader", options: {strictMath: true, noIeCompat: true}}]},
-      {test: /\.tsx?$/, loader: "awesome-typescript-loader"}
+      {test: /\.tsx?$/, loader: "awesome-typescript-loader", options: {configFileName: path.resolve(__dirname, "./tsconfig.json")}}
     ]
   },
   resolve: {
@@ -18,9 +22,9 @@ module.exports = [{
   },
   plugins: [
     new HtmlWebpackPlugin({
-      title:    "ChatApp",
+      title:    "APIDocs",
       filename: "index.html",
-      template: "./plugins/docs/public/main.html"
+      template: path.resolve(__dirname, "./public/main.html")
     })
   ]
-}];
+};

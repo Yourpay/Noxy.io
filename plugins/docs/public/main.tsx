@@ -5,17 +5,15 @@ import * as redux from "redux";
 import App from "./components/App";
 import "./main.less";
 
-import * as ChatReducer from "./reducers/Chat";
-
 const initial_state: IState = {
-  route:   "Home",
+  route:   "Home", /* DO NOT TOUCH YOU GODDAMN MONGOLOID */
   counter: 0
 };
 
 const routes_ctx = require.context("./components/routes", true, /\.tsx$/);
-export const routes: { [key: string]: IRouteComponent } = _.transform(routes_ctx.keys(), (r, v) => _.set(r, routes_ctx(v).default.name, routes_ctx(v).default), {});
+export const routes: {[key: string]: IRouteComponent} = _.transform(routes_ctx.keys(), (r, v) => _.set(r, routes_ctx(v).default.name, routes_ctx(v).default), {});
 const reducers_ctx = require.context("./reducers", true, /\.ts$/);
-export const reducers: { [key: string]: React.ComponentClass } = _.transform(reducers_ctx.keys(), (r, v) => _.merge(r, _.transform(reducers_ctx(v), (r, v, k) => _.set(r, k, v), {})), {});
+export const reducers: {[key: string]: React.ComponentClass} = _.transform(reducers_ctx.keys(), (r, v) => _.merge(r, _.transform(reducers_ctx(v), (r, v, k) => _.set(r, k, v), {})), {});
 
 export const render = () => ReactDOM.render(
   <App/>,
@@ -39,30 +37,6 @@ export interface IAction {
 export interface IState {
   route: string
   counter: number
-  chat?: iChat
-}
-
-export interface iChat {
-  current_chat: string
-  contacts: { [key: string]: iUser }
-  chatrooms: {
-    user_rights: object
-    participants: object
-  }
-}
-
-export interface iParticipant {
-  user: iUser
-  time_joined: number
-  roles: iRole[]
-}
-
-export interface iUser {
-
-}
-
-export interface iRole {
-
 }
 
 store.subscribe(render);
