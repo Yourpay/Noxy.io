@@ -36,3 +36,4 @@ new Promise((resolve, reject) =>
   console.error(err);
   process.exitCode = 1;
 });
+

@@ -7,8 +7,8 @@
     "noStrictGenericChecks": true,
     "watch": true
   },
-  "exclude": [
-    "node_modules",
-    "plugins"
+  "include": [
+    "plugins/*/*.ts",
+    "typings.d.ts"
   ]
 }
