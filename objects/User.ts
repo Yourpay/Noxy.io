@@ -1,6 +1,8 @@
 import * as _ from "lodash";
-import Element from "../classes/Element";
 import * as crypto from "crypto";
+import * as env from "../env.json";
+
+import Element from "../classes/Element";
 
 export default class User extends Element {
   
@@ -11,7 +13,7 @@ export default class User extends Element {
   public salt?: Buffer;
   public hash?: Buffer;
   
-  public static __type = "user";
+  public static __type = env.tables.default.names.user;
   public static __fields = _.merge({}, Element.__fields, Element.generateTimeFields(), {
     username:   {type: "varchar(32)", required: true},
     email:      {type: "varchar(128)", required: true},

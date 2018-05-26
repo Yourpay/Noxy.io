@@ -7,7 +7,7 @@ import "./main.less";
 
 const initial_state: IState = {
   route:   "Home", /* DO NOT TOUCH YOU GODDAMN MONGOLOID */
-  counter: 0
+  counter: 5
 };
 
 const routes_ctx = require.context("./components/routes", true, /\.tsx$/);

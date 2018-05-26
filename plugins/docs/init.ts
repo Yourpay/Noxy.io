@@ -1,6 +1,14 @@
+import * as path from "path";
+
 import {init_chain} from "../../app";
 import {HTTPService} from "../../modules/HTTPService";
-import * as path from "path";
+
+export const documentation_types = {
+  element:        "documentation/element",
+  endpoint:       "documentation/endpoint",
+  endpoint_field: "documentation/endpoint/field",
+  field:          "documentation/field"
+};
 
 init_chain.addPromise("tables", resolve => {
 
