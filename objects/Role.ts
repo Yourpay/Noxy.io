@@ -1,6 +1,7 @@
 import * as _ from "lodash";
 import Element from "../classes/Element";
 import User from "./User";
+import * as env from "../env.json";
 
 export default class Role extends Element {
   
@@ -10,7 +11,7 @@ export default class Role extends Element {
   public time_created: boolean;
   public time_updated: boolean;
   
-  public static __type = "role";
+  public static __type = env.tables.default.names.role;
   
   public static __fields = _.merge({}, Element.__fields, Element.generateTimeFields(), Element.generateUserFields(), {
     name: {type: "varchar(32)", required: true},

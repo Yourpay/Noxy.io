@@ -39,6 +39,7 @@ export default abstract class Element {
   public static __primary: string[] = ["id"];
   public static __indexes: iObjectIndex = {};
   public static __relations: iObjectRelationSet = {};
+  private static __types: {[type: string]: typeof Element} = {};
   
   public toObject() {
     return _.set(_.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || k === "uuid" || v instanceof Buffer || !v), "id", this.uuid);
@@ -50,6 +51,10 @@ export default abstract class Element {
   
   public get validated() {
     return this.__validated;
+  }
+  
+  public static get types() {
+    return this.__types;
   }
   
   public static retrieve(start = 0, limit = 100, checks?: {[key: string]: any}): Promise<(Element | any)[]> {
@@ -134,8 +139,16 @@ export default abstract class Element {
     });
   }
   
+  public static register(): typeof Element {
+    return Element.types[this.__type] = this;
+  }
+  
   public static bind(connection: DBConnection): Promise<any> {
-    return connection.query(this.generateTableSQL())
+    return new Promise((resolve, reject) => {
+      connection.query(_.join(_.map(this.types, t => t.generateTableSQL()), ";"))
+      .then(res => resolve(res))
+      .catch(err => reject(err));
+    });
   }
   
   protected init(object: string | {[key: string]: any} = {}): this {

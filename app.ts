@@ -11,8 +11,8 @@ export const db: {[mode: string]: DBPool} = _.mapValues(env.databases, env_db =>
 export const users: {[id: string]: User} = {};
 export const roles: {[id: string]: Role} = {};
 export const init_chain = new PromiseChain([
-  "pre-db", "db", "post-db",
   "pre-table", "table", "post-table",
+  "pre-db", "db", "post-db",
   "pre-user", "user", "post-user",
   "pre-role", "role", "post-role",
   "pre-route", "route", "post-route",
