@@ -11,7 +11,10 @@
       "webpack-env"
     ],
     "rootDir": "../../",
-    "typeRoots": ["../../node_modules/@types"]
+    "typeRoots": [
+      "../../node_modules/@types",
+      "../../"
+    ]
   },
   "include": [
     "./plugins/docs/public/**"

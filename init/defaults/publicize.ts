@@ -15,11 +15,10 @@ init_chain.addPromise("publicize", (resolve, reject) => {
       )
       .catch(err => reject(err))
     )))
-  .then(() => {
+  .then(() =>
     HTTPService.listen()
     .then(res => resolve(res))
-    .catch(err => reject(err));
-  })
+    .catch(err => reject(err)))
   .catch(err => reject(err));
 });
 

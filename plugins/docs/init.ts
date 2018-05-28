@@ -1,10 +1,13 @@
 import * as _ from "lodash";
 import * as path from "path";
+import * as env from "../../env.json";
 
-import {init_chain} from "../../app";
+import {db, init_chain} from "../../app";
 import Element from "../../classes/Element";
 import {HTTPService} from "../../modules/HTTPService";
+import PromiseChain from "../../classes/PromiseChain";
 
+export const documentation_chain = new PromiseChain(["init"]);
 export const documentation_types = {
   element:        "documentation/element",
   endpoint:       "documentation/endpoint",
@@ -21,8 +24,8 @@ export namespace Documentation {
   }
   
   class DocumentationCategory {
-    
-    private pages: {[key: string]: DocumentationPage} = {}
+  
+    private pages: {[key: string]: DocumentationPage} = {};
     
     constructor() {}
     
@@ -34,17 +37,55 @@ export namespace Documentation {
   
   class DocumentationPage {
   
+    private objects: {[key: string]: DocumentationObject} = {};
+  
+    constructor() {}
+  
+    public object(name: string) {
+      return _.get(this.objects, name, this.objects[name] = new DocumentationObject());
+    }
+  
+  }
+  
+  class DocumentationObject {
+    
+    constructor() {}
+    
   }
   
 }
 
-init_chain.addPromise("dbs", resolve => {
+init_chain.addPromise("init", resolve => {
+  
+  resolve();
+  
+});
+
+init_chain.addPromise("post-route", resolve => {
+  
+  documentation_chain.addPromise("init", (resolve, reject) => {
+    Documentation.category("api");
+    resolve();
+  });
+  
+  documentation_chain.cycle();
   
   const api = Documentation.category("api");
+  
+  db[env.mode].connect()
+  .then(connection => {
+  
+  });
   
   _.each(Element.types, (type: typeof Element) => api.page(type.__type));
   
   resolve();
+  
+});
+
+init_chain.addPromise("pre-publicize", resolve => {
+  
+  documentation_chain.cycle();
   
 });
 

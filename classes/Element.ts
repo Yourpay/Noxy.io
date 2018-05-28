@@ -20,6 +20,7 @@ export default abstract class Element {
   protected __fields: {[key: string]: iObjectField};
   protected __indexes: iObjectIndex;
   protected __primary: string[];
+  protected __database: string = env.databases[env.mode].database;
   
   public static __type: string;
   public static __fields: {[key: string]: iObjectField} = {

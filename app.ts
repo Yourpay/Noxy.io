@@ -12,6 +12,7 @@ export const users: {[id: string]: User} = {};
 export const roles: {[id: string]: Role} = {};
 export const init_chain = new PromiseChain([
   "pre-table", "table", "post-table",
+  "pre-table", "table", "post-table",
   "pre-db", "db", "post-db",
   "pre-user", "user", "post-user",
   "pre-role", "role", "post-role",
