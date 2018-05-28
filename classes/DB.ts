@@ -17,9 +17,16 @@ export default class DB {
     });
   }
   
-  public setDatabase(options): Promise<DB> {
+  public setDatabase(options): Promise<DB>
+  public setDatabase(options, connection): Promise<DBConnection>
+  public setDatabase(options, connection?): Promise<DB | DBConnection> {
     return new Promise((resolve, reject) => {
-      this.pool.end(err => !err ? resolve(_.set(this, "pool", DB.createPool(options))) : reject(err));
+      this.pool.end(err => {
+        if (err) { return reject(err); }
+        const db = _.set(this, "pool", DB.createPool(options));
+        if (!connection) { return resolve(db); }
+        db.connect().then(res => resolve(res)).catch(err => reject(err));
+      });
     });
   }
   

@@ -11,14 +11,12 @@ const spawn        = require("child_process").spawn;
 const tsc          = path.resolve(__dirname, "node_modules/.bin/tsc.cmd");
 
 gulp.task("watch-server-typescript", cb =>
-  console.log(path.resolve(__dirname, "tsconfig.json")) ||
   spawn(tsc, ["--project", path.resolve(__dirname, "tsconfig.json")], {cwd: __dirname, stdio: ["ignore", "pipe", "ignore"]})
   .stdout.on("data", line => console.log("[TS-SERVER]", line.toString("utf8")))
   .on("close", () => console.log("[TS-SERVER]", "Finished watching") || cb())
 );
 
 gulp.task("watch-plugin-typescript", cb => {
-  console.log(path.resolve(__dirname, "plugin-tsconfig.json")) ||
   spawn(tsc, ["--project", path.resolve(__dirname, "plugin-tsconfig.json")], {cwd: __dirname, stdio: ["ignore", "pipe", "ignore"]})
   .stdout.on("data", line => console.log("[TS-PLUGIN]", line.toString("utf8")))
   .on("close", () => console.log("[TS-PLUGIN]", "Finished watching") || cb());

@@ -54,7 +54,7 @@ export default abstract class Element {
   }
   
   public static get types() {
-    return this.__types;
+    return _.clone(this.__types);
   }
   
   public static retrieve(start = 0, limit = 100, checks?: {[key: string]: any}): Promise<(Element | any)[]> {

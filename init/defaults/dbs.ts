@@ -7,12 +7,11 @@ init_chain.addPromise("db", (resolve, reject) =>
   .then(connection =>
     connection.query(`CREATE DATABASE IF NOT EXISTS \`${env.databases[env.mode].database}\`; `)
     .then(() =>
-      db[env.mode].setDatabase(env.databases[env.mode])
+      db[env.mode].setDatabase(env.databases[env.mode], connection)
       .then(res =>
-        res.connect().then(connection =>
-          Element.bind(connection)
-          .then(() => resolve(res))
-        )
+        Element.bind(connection)
+        .then(() => resolve(res))
+        .catch(err => reject(err))
       )
     )
   )
