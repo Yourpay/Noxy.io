@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as Promise from "aigle";
+import Promise from "aigle";
 
 export default class PromiseQueue {
   

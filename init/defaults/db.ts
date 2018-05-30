@@ -4,7 +4,7 @@ import * as env from "../../env.json";
 import Element from "../../classes/Element";
 import PromiseQueue from "../../classes/PromiseQueue";
 import {Include} from "../../modules/Include";
-import {db, init_chain, init_queue} from "../../app";
+import {db, init_queue} from "../../app";
 
 export const db_queue = new PromiseQueue(["register", "create", "alter"]);
 

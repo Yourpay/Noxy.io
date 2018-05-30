@@ -1,5 +1,5 @@
 import {HTTPService} from "../../modules/HTTPService";
-import {init_chain} from "../../app";
+import {init_queue} from "../../app";
 import User from "../../objects/User";
 import Element from "../../classes/Element";
 import * as env from "../../env.json";
@@ -9,23 +9,17 @@ import * as _ from "lodash";
 import ServerMessage from "../../classes/ServerMessage";
 import {Include} from "../../modules/Include";
 import * as path from "path";
-import PromiseChain from "../../classes/PromiseChain";
 import PromiseQueue from "../../classes/PromiseQueue";
 
-export const route_chain = new PromiseQueue(["subdomain", "route"]);
+export const routing_queue = new PromiseQueue(["subdomain", "route"]);
 
-route_chain.promise("subdomain", resolve => {
+routing_queue.promise("subdomain", resolve => {
   HTTPService.subdomain("www");
   HTTPService.subdomain("api");
+  resolve();
 });
 
-route_chain.promise("route", (resolve, reject) => {
-
-
-
-});
-
-init_chain.addPromise("route", resolve => {
+routing_queue.promise("route", (resolve, reject) => {
   
   const base = HTTPService.subdomain("www");
   const api = HTTPService.subdomain("api");
@@ -99,41 +93,46 @@ init_chain.addPromise("route", resolve => {
         .catch(err => response.status(err.code).json(HTTPService.response(err)))
       )
     )
+  ).then(
+    () => {
+      api.router("/user").endpoint("POST", "/login", HTTPService.auth, (request, response) =>
+        new Promise((resolve, reject) =>
+          new Promise((resolve, reject) => {
+            if ((request.body.username || request.body.email) && request.body.password) { return resolve(request.body); }
+            if (response.locals.user) { return resolve(response.locals.user); }
+            reject(new ServerMessage(401, "any"));
+          })
+          .then(res =>
+            new User(res).validate()
+            .then(res => {
+              if (!res.exists || request.body.password && !User.generateHash(request.body.password, res.salt).equals(res.hash)) { return reject(new ServerMessage(401, "any"));}
+              res.time_login = Date.now();
+              res.save()
+              .then(res => {
+                const token = jwt.sign(res.toObject(), env.tokens.jwt, {expiresIn: "7d"});
+                resolve(token);
+              })
+              .catch(err => reject(err));
+            })
+            .catch(err => reject(err)))
+          .catch(err => reject(err))
+        )
+        .then(res => response.json(HTTPService.response(res)))
+        .catch(err => response.status(err.code).json(HTTPService.response(err)))
+      );
+      
+      api.router("/").endpoint("GET", "/", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
+      
+      base.router("/").endpoint("GET", "/", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
+      
+      api.router("/test").endpoint("GET", "/", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
+      
+      api.router("/test").endpoint("GET", "/test", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
+      
+      resolve();
+    }
   );
   
-  api.router("/user").endpoint("POST", "/login", HTTPService.auth, (request, response) =>
-    new Promise((resolve, reject) =>
-      new Promise((resolve, reject) => {
-        if ((request.body.username || request.body.email) && request.body.password) { return resolve(request.body); }
-        if (response.locals.user) { return resolve(response.locals.user); }
-        reject(new ServerMessage(401, "any"));
-      })
-      .then(res =>
-        new User(res).validate()
-        .then(res => {
-          if (!res.exists || request.body.password && !User.generateHash(request.body.password, res.salt).equals(res.hash)) { return reject(new ServerMessage(401, "any"));}
-          res.time_login = Date.now();
-          res.save()
-          .then(res => {
-            const token = jwt.sign(res.toObject(), env.tokens.jwt, {expiresIn: "7d"});
-            resolve(token);
-          })
-          .catch(err => reject(err));
-        })
-        .catch(err => reject(err)))
-      .catch(err => reject(err))
-    )
-    .then(res => response.json(HTTPService.response(res)))
-    .catch(err => response.status(err.code).json(HTTPService.response(err))));
-  
-  api.router("/").endpoint("GET", "/", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
-  
-  base.router("/").endpoint("GET", "/", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
-  
-  api.router("/test").endpoint("GET", "/", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
-  
-  api.router("/test").endpoint("GET", "/test", (request, response) => response.json(HTTPService.response(new ServerMessage(200, "any"))));
-  
-  resolve();
-  
 });
+
+init_queue.promise("routing", (resolve, reject) => routing_queue.execute().then(res => resolve(res), err => reject(err)));

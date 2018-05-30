@@ -1,10 +1,10 @@
-import {init_chain, init_queue, roles, users} from "../../app";
+import {init_queue, roles, users} from "../../app";
 import User from "../../objects/User";
 import * as env from "../../env.json";
 import * as _ from "lodash";
 import * as fs from "fs";
 import * as path from "path";
-import * as Promise from "aigle";
+import Promise from "aigle";
 import PromiseQueue from "../../classes/PromiseQueue";
 import Role from "../../objects/Role";
 import RoleUser from "../../objects/RoleUser";

@@ -10,8 +10,7 @@
     "build-plugins": "./node_modules/.bin/webpack"
   },
   "dependencies": {
-    "aigle": "^1.12.0",
-    "bluebird": "^3.5.1",
+    "aigle": "^1.13.0-alpha.1",
     "body-parser": "^1.18.3",
     "express": "^4.16.3",
     "flat": "^4.0.0",

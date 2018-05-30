@@ -17,6 +17,6 @@
     ]
   },
   "include": [
-    "./plugins/docs/public/**"
+    "./plugins/docs/public/"
   ]
 }
