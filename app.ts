@@ -6,19 +6,21 @@ import Role from "./objects/Role";
 import User from "./objects/User";
 import {Include} from "./modules/Include";
 import * as Promise from "bluebird";
+import PromiseQueue from "./classes/PromiseQueue";
 
 export const db: {[mode: string]: DBPool} = _.mapValues(env.databases, env_db => new DB(env_db));
 export const users: {[id: string]: User} = {};
 export const roles: {[id: string]: Role} = {};
 export const init_chain = new PromiseChain([
-  "pre-table", "table", "post-table",
-  "pre-table", "table", "post-table",
-  "pre-db", "db", "post-db",
-  "pre-user", "user", "post-user",
-  "pre-role", "role", "post-role",
-  "pre-route", "route", "post-route",
-  "pre-publicize", "publicize", "post-publicize"
+  "table",
+  "db",
+  "user",
+  "role",
+  "route",
+  "publicize"
 ]);
+
+export const init_queue = new PromiseQueue(["db", "object", "routing", "publicize"]);
 
 new Promise((resolve, reject) =>
   Include({path: __dirname + "/init"})

@@ -141,12 +141,12 @@ export default abstract class Element {
   }
   
   public static register(): typeof Element {
-    return Element.types[this.__type] = this;
+    return Element.__types[this.__type] = this;
   }
   
   public static bind(connection: DBConnection): Promise<any> {
     return new Promise((resolve, reject) => {
-      connection.query(_.join(_.map(this.types, t => t.generateTableSQL()), ";"))
+      connection.query(_.join(_.map(this.__types, t => t.generateTableSQL()), ";"))
       .then(res => resolve(res))
       .catch(err => reject(err));
     });

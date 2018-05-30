@@ -12,7 +12,7 @@ import User from "../objects/User";
 import Route from "../objects/Route";
 import RoleRoute from "../objects/RoleRoute";
 import RoleUser from "../objects/RoleUser";
-import {roles} from "../app";
+import * as app from "../app";
 import * as fs from "fs";
 
 export namespace HTTPService {
@@ -26,6 +26,14 @@ export namespace HTTPService {
   
   __application.use(body_parser.urlencoded({extended: false}));
   __application.use(body_parser.json());
+  
+  export function roles() {
+    return _.clone(__roles);
+  }
+  
+  export function routes() {
+    return _.clone(__routes);
+  }
   
   export function subdomain(subdomain: string, statics?: string) {
     if (!/^(?:\*|[a-z][\w]{1,7})(?:\.[a-z][\w]{1,7})?$|^$/.test(subdomain)) { throw new ServerMessage(500, "test", {test_message: "Subdomain does not follow the standard.", test: subdomain}); }
@@ -87,10 +95,7 @@ export namespace HTTPService {
   
   function register(subdomain: HTTPSubdomain): Promise<{path: string, router: express.Router}> {
     const subdomain_app = express.Router();
-    if (subdomain.static) {
-      console.log("Serving", subdomain.static, "as static resource library");
-      subdomain_app.use(express.static(subdomain.static));
-    }
+    if (subdomain.static) { subdomain_app.use(express.static(subdomain.static)); }
     return Promise.all(_.map(subdomain.routers, (router: HTTPRouter, path) => {
       const router_app = express.Router();
       const promises = [];
@@ -196,7 +201,7 @@ export namespace HTTPService {
       .then(route => {
         if (!route.flag_active) {
           return authUser(request.get("Authorization"))
-          .then(res => _.some(res[1], v => v.equals(roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerMessage(403, "any")))
+          .then(res => _.some(res[1], v => v.equals(app.roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerMessage(403, "any")))
           .catch(err => reject(err.code === 401 && err.type === "jwt" ? new ServerMessage(404, "any") : err));
         }
         authRoleRoute(route)

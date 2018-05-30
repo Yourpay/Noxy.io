@@ -3,6 +3,9 @@ import {HTTPService} from "../../modules/HTTPService";
 import Route from "../../objects/Route";
 import * as Promise from "bluebird";
 import * as _ from "lodash";
+import PromiseChain from "../../classes/PromiseChain";
+
+export const publicize_chain = new PromiseChain();
 
 init_chain.addPromise("publicize", (resolve, reject) => {
   Promise.all(_.map(["/user", "/user/login"], path =>
@@ -21,4 +24,3 @@ init_chain.addPromise("publicize", (resolve, reject) => {
     .catch(err => reject(err)))
   .catch(err => reject(err));
 });
-

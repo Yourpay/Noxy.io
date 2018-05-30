@@ -15,6 +15,10 @@ export default class PromiseChain {
     return this;
   }
   
+  public getLinkPromise(key : string): Promise<any> {
+    return this.links[key].initializer;
+  }
+  
   public addPromise(key: string, fnPromise: (resolve, reject) => void): Promise<any> {
     if (!this.links[key]) {
       this.queue.push(this.links[key] = new PromiseChainLink(key));

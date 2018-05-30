@@ -6,6 +6,9 @@ import * as path from "path";
 import * as _ from "lodash";
 import * as fs from "fs";
 import RoleUser from "../../objects/RoleUser";
+import PromiseChain from "../../classes/PromiseChain";
+
+export const role_chain = new PromiseChain();
 
 init_chain.addPromise("role", (resolve, reject) => {
   Promise.all(_.map(env.roles, (role, key) =>

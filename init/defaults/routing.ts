@@ -10,15 +10,32 @@ import ServerMessage from "../../classes/ServerMessage";
 import {Include} from "../../modules/Include";
 import * as path from "path";
 import PromiseChain from "../../classes/PromiseChain";
+import PromiseQueue from "../../classes/PromiseQueue";
 
-export const route_chain = new PromiseChain();
+export const route_chain = new PromiseQueue(["subdomain", "route"]);
+
+route_chain.promise("subdomain", resolve => {
+  HTTPService.subdomain("www");
+  HTTPService.subdomain("api");
+});
+
+route_chain.promise("route", (resolve, reject) => {
+
+
+
+});
 
 init_chain.addPromise("route", resolve => {
   
   const base = HTTPService.subdomain("www");
   const api = HTTPService.subdomain("api");
+  const options = {
+    path:      path.resolve(__dirname, "../../objects"),
+    transform: (r, v) => _.set(r, v.default.__type, v.default)
+  };
   
-  Include({path: path.resolve(__dirname, "../../objects"), transform: (r, v) => _.set(r, v.default.__type, v.default)}).then((res: {[type: string]: typeof Element}) =>
+  Include(options)
+  .then((res: {[type: string]: typeof Element}) =>
     _.each(res, (element: typeof Element | any) =>
       api.router("/" + element.__type)
       .param("id", (request, response, next) => response.locals.id = request.params.id && next())

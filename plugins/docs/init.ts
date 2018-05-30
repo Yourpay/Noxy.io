@@ -24,7 +24,7 @@ export namespace Documentation {
   }
   
   class DocumentationCategory {
-  
+    
     private pages: {[key: string]: DocumentationPage} = {};
     
     constructor() {}
@@ -36,15 +36,15 @@ export namespace Documentation {
   }
   
   class DocumentationPage {
-  
+    
     private objects: {[key: string]: DocumentationObject} = {};
-  
+    
     constructor() {}
-  
+    
     public object(name: string) {
       return _.get(this.objects, name, this.objects[name] = new DocumentationObject());
     }
-  
+    
   }
   
   class DocumentationObject {
@@ -63,24 +63,11 @@ init_chain.addPromise("init", resolve => {
 
 init_chain.addPromise("post-route", resolve => {
   
-  documentation_chain.addPromise("init", (resolve, reject) => {
+  documentation_chain.addPromise("init", resolve => {
     Documentation.category("api");
     resolve();
   });
-  
-  documentation_chain.cycle();
-  
-  const api = Documentation.category("api");
-  
-  db[env.mode].connect()
-  .then(connection => {
-  
-  });
-  
-  _.each(Element.types, (type: typeof Element) => api.page(type.__type));
-  
   resolve();
-  
 });
 
 init_chain.addPromise("pre-publicize", resolve => {
