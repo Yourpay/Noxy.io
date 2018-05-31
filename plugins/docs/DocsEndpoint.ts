@@ -2,7 +2,7 @@ import * as _ from "lodash";
 import Element, {iObjectRelationSet} from "../../classes/Element";
 import Route from "../../objects/Route";
 import {documentation_types} from "./init";
-import * as env from "../../env.json";
+import {env} from "../../app";
 
 export default class APIEndpoint extends Element {
   

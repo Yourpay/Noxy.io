@@ -1,6 +1,6 @@
-import {init_chain} from "../../app";
+import {init_queue} from "../../app";
 
-init_chain.addPromise("route", resolve => {
+init_queue.promise("routing", resolve => {
   
   // const host = "http://192.168.0.1";
   // const type = {

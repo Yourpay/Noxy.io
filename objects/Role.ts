@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import Element from "../classes/Element";
 import User from "./User";
-import * as env from "../env.json";
+import {env} from "../app";
 
 export default class Role extends Element {
   

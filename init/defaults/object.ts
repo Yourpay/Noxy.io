@@ -1,6 +1,5 @@
-import {init_queue, roles, users} from "../../app";
+import {env, init_queue, roles, users} from "../../app";
 import User from "../../objects/User";
-import * as env from "../../env.json";
 import * as _ from "lodash";
 import * as fs from "fs";
 import * as path from "path";

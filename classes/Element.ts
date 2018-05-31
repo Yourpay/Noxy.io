@@ -1,9 +1,8 @@
 import * as _ from "lodash";
 import * as uuid from "uuid";
 import * as mysql from "mysql";
-import {db, users} from "../app";
+import {db, env, users} from "../app";
 import * as Promise from "bluebird";
-import * as env from "../env.json";
 import ServerMessage from "./ServerMessage";
 import User from "../objects/User";
 import DBConnection from "./DBConnection";

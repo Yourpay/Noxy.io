@@ -1,8 +1,7 @@
 import {HTTPService} from "../../modules/HTTPService";
-import {init_queue} from "../../app";
+import {env, init_queue} from "../../app";
 import User from "../../objects/User";
 import Element from "../../classes/Element";
-import * as env from "../../env.json";
 import * as jwt from "jsonwebtoken";
 import * as Promise from "bluebird";
 import * as _ from "lodash";

@@ -1,13 +1,8 @@
 import * as _ from "lodash";
-import * as path from "path";
-import * as env from "../../env.json";
 
-import {db, init_chain} from "../../app";
-import Element from "../../classes/Element";
-import {HTTPService} from "../../modules/HTTPService";
-import PromiseChain from "../../classes/PromiseChain";
+import PromiseQueue from "../../classes/PromiseQueue";
 
-export const documentation_chain = new PromiseChain(["init"]);
+export const documentation_queue = new PromiseQueue(["init"]);
 export const documentation_types = {
   element:        "documentation/element",
   endpoint:       "documentation/endpoint",
@@ -54,35 +49,35 @@ export namespace Documentation {
   }
   
 }
-
-init_chain.addPromise("init", resolve => {
-  
-  resolve();
-  
-});
-
-init_chain.addPromise("post-route", resolve => {
-  
-  documentation_chain.addPromise("init", resolve => {
-    Documentation.category("api");
-    resolve();
-  });
-  resolve();
-});
-
-init_chain.addPromise("pre-publicize", resolve => {
-  
-  documentation_chain.cycle();
-  
-});
-
-init_chain.addPromise("route", resolve => {
-  
-  HTTPService.subdomain("docs", path.resolve(__dirname, "./public")).router("/").endpoint("GET", "*", (request, response) => {
-    response.sendFile(path.resolve(__dirname, "./public/index.html"));
-  });
-  
-  resolve();
-  
-});
+//
+// init_queue.promise("init", resolve => {
+//
+//   resolve();
+//
+// });
+//
+// init_queue.promise("routing", resolve => {
+//
+//   documentation_chain.addPromise("init", resolve => {
+//     Documentation.category("api");
+//     resolve();
+//   });
+//   resolve();
+// });
+//
+// init_chain.addPromise("pre-publicize", resolve => {
+//
+//   documentation_chain.cycle();
+//
+// });
+//
+// init_chain.addPromise("route", resolve => {
+//
+//   HTTPService.subdomain("docs", path.resolve(__dirname, "./public")).router("/").endpoint("GET", "*", (request, response) => {
+//     response.sendFile(path.resolve(__dirname, "./public/index.html"));
+//   });
+//
+//   resolve();
+//
+// });
 

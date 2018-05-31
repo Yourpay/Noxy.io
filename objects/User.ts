@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 import * as crypto from "crypto";
-import * as env from "../env.json";
+import {env} from "../app";
 
 import Element from "../classes/Element";
 

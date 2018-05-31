@@ -6,13 +6,13 @@ import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as vhost from "vhost";
 import * as _ from "lodash";
-import * as env from "../env.json";
+import * as app from "../app";
+import {env} from "../app";
 import ServerMessage from "../classes/ServerMessage";
 import User from "../objects/User";
 import Route from "../objects/Route";
 import RoleRoute from "../objects/RoleRoute";
 import RoleUser from "../objects/RoleUser";
-import * as app from "../app";
 import * as fs from "fs";
 
 export namespace HTTPService {
