@@ -22,6 +22,7 @@ db_queue.promise("create", (resolve, reject) => {
     .then(() =>
       db[env.mode].setDatabase(env.databases[env.mode], connection)
       .then(connection =>
+  
         Element.bind(connection)
         .then(res => resolve(res))
         .catch(err => reject(err))

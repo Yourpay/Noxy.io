@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as Promise from "bluebird";
+import Promise from "aigle";
 import * as _ from "lodash";
 import * as flat from "flat";
 
@@ -18,7 +18,7 @@ export namespace Include {
       const offset = options.path.length;
       const parsed_path = path.parse(options.path);
       walkDirAsync(path.resolve(options.path))
-      .then(res => resolve(_.transform(res, (result, full_path) => {
+      .then(res => resolve(_.transform(res, (result, full_path: string) => {
         const file_path = full_path.substring(offset + 1);
         if (options.filter) {
           if (options.filter instanceof RegExp && !file_path.match(options.filter)) { return result; }
