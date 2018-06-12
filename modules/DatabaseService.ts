@@ -2,120 +2,139 @@ import * as mysql from "mysql";
 import * as _ from "lodash";
 import Promise from "aigle";
 
-export namespace DatabaseService {
+const __cluster = mysql.createPoolCluster();
+const __pools: {[namespace: string]: DatabasePool} = {};
+const __configurations: {[id: string]: any} = {};
+
+export function register(key: string, options: DatabaseOptions | DatabaseOptions[]): DatabasePool {
+  const namespace = __pools[key] || (__pools[key] = new DatabasePool(key));
+  _.each(Array.isArray(options) ? options : [options], (o: DatabaseOptions) =>
+    _.each(Array.isArray(o.database) ? o.database : [o.database], database =>
+      namespace.add(_.assign(_.mapKeys(options, (v, k) => _.camelCase(k)), {
+        database:           database,
+        host:               "localhost",
+        port:               3306,
+        charset:            "utf8mb4_unicode_ci",
+        timezone:           "local",
+        connectTimeout:     10000,
+        stringifyObjects:   false,
+        multipleStatements: true
+      }))
+    )
+  );
+  return namespace;
+}
+
+export function namespace(id: string): DatabasePool { return __pools[id]; }
+
+export function namespaces() { return _.clone(__pools); }
+
+export function configurations() { return _.clone(__configurations); }
+
+export interface IDatabasePool {
+  databases: {[key: string]: any}
+  add: (config: mysql.PoolConfig) => this
+  remove: (id: string) => this
   
-  const __cluster = mysql.createPoolCluster();
-  const __namespaces: {[namespace: string]: DatabaseNamespace} = {};
-  const __pools: {[key: string]: DatabasePool} = {};
+  query(expression: string, replacers: any[]): Promise<any>
   
-  export function register(key: string, options: DatabaseOptions | DatabaseOptions[]): DatabaseNamespace {
-    const namespace = __namespaces[key] || (__namespaces[key] = new DatabaseNamespace(key));
-    _.each(Array.isArray(options) ? options : [options], (o: DatabaseOptions) =>
-      _.each(Array.isArray(o.database) ? o.database : [o.database], database =>
-        namespace.add(_.merge(_.mapKeys(options, (v, k) => _.camelCase(k)), {
-          database:           database,
-          multipleStatements: true
-        }))
+  connect(): Promise<DatabaseConnection>
+}
+
+export interface IDatabaseConnection {
+  query: (expression: string, replacers?: any) => Promise<any>
+  close: () => Promise<void>
+  transaction: (options: mysql.QueryOptions) => Promise<void>
+  commit: (options: mysql.QueryOptions) => Promise<void>
+}
+
+class DatabasePool implements IDatabasePool {
+  
+  public readonly id: string;
+  private readonly __databases: {[key: string]: mysql.Pool} = {};
+  
+  constructor(id: string) {
+    this.id = id;
+  }
+  
+  public get databases(): {[key: string]: mysql.Pool} {
+    return _.clone(this.__databases);
+  }
+  
+  public add(config: mysql.PoolConfig): this {
+    const id = `${this.id}::${config.socketPath || config.host}::${config.database}`;
+    if (this.__databases[id]) { return this; }
+    __cluster.add(id, config);
+    __configurations[id] = config;
+    this.__databases[id] = __cluster.of(id);
+    return this;
+  }
+  
+  public remove(id: string): this {
+    __cluster.remove(id);
+    delete __pools[id];
+    delete __configurations[id];
+    delete this.__databases[id];
+    return this;
+  }
+  
+  public all(expression: string, replacers?: any[]): Promise<any> {
+    return Promise.map(this.__databases, database => new Promise((resolve, reject) => {
+      database.query(expression, replacers, (err, result) => err ? reject(err) : resolve(result));
+    }));
+  }
+  
+  public query(expression: string, replacers: any[]): Promise<any> {
+    return new Promise((resolve, reject) =>
+      __cluster.of(`${this.id}::`).query(expression, replacers, (err, res) =>
+        err ? reject(err) : resolve(res)
       )
     );
-    return namespace;
   }
   
-  export function namespace(id: string): DatabaseNamespace {
-    return __namespaces[id];
-  }
-  
-  export function namespaces() {
-    return _.clone(__namespaces);
-  }
-  
-  export function pool(id: string): DatabasePool {
-    return __pools[id];
-  }
-  
-  export function pools() {
-    return _.clone(__pools);
-  }
-  
-  class DatabaseNamespace {
-    
-    public readonly id: string;
-    private readonly __pools: {[key: string]: DatabasePool} = {};
-    
-    constructor(id: string) {
-      this.id = id;
-    }
-    
-    public get pools(): {[key: string]: DatabasePool} {
-      return _.clone(this.__pools);
-    }
-    
-    public add(config: mysql.PoolConfig): this {
-      const id = `${this.id}-${config.socketPath || config.host}-${config.database}`;
-      if (this.__pools[id]) { return this; }
-      __cluster.add(id, config);
-      __pools[id] = this.__pools[id] = new DatabasePool(id, __cluster.of(id));
-      return this;
-    }
-    
-    public remove(id: string)
-    public remove(db: DatabasePool)
-    public remove(id: string | DatabasePool): this {
-      id = id instanceof DatabasePool ? id.id : id;
-      __cluster.remove(id);
-      delete __pools[id];
-      delete this.__pools[id];
-      return this;
-    }
-    
-    public query(expression: string, replacers: any[]): Promise<any> {
-      return new Promise((resolve, reject) =>
-        __cluster.of(this.id).query(expression, replacers, (err, res) =>
-          err ? reject(err) : resolve(res)
-        )
-      );
-    }
-    
-    public connect(): Promise<DatabaseConnection> {
-      return new Promise((resolve, reject) => {
-        __cluster.of(this.id).getConnection((err, connection) => {
-          err ? reject(err) : resolve(new DatabaseConnection(connection));
-        });
+  public connect(): Promise<DatabaseConnection> {
+    return new Promise((resolve, reject) => {
+      __cluster.of(`${this.id}::`).getConnection((err, connection) => {
+        err ? reject(err) : resolve(new DatabaseConnection(connection));
       });
-    }
-    
+    });
   }
   
-  class DatabasePool {
-    
-    public readonly id: string;
-    private readonly pool: mysql.Pool;
-    
-    constructor(id, pool: mysql.Pool) {
-      this.id = id;
-      this.pool = pool;
-    }
-    
-    public query(expression, replacers) {
-      return new Promise((resolve, reject) =>
-        this.pool.query(expression, replacers || [], (err, res) =>
-          err ? reject(err) : resolve(res)
-        )
-      );
-    }
-    
+}
+
+class DatabaseConnection implements IDatabaseConnection {
+  
+  private __connection: mysql.Connection;
+  
+  constructor(connection: mysql.Connection) {
+    this.__connection = connection;
   }
   
-  class DatabaseConnection {
-    
-    private __connection: mysql.Connection;
-    
-    constructor(connection: mysql.Connection) {
-      this.__connection = connection;
-    }
-    
+  public query(expression: string, replacers?: any): Promise<any> {
+    return new Promise((resolve, reject) =>
+      this.__connection.query(expression, replacers || [], (err, res) =>
+        err ? reject(err) : resolve(res)
+      )
+    );
   }
   
+  public transaction(options?: mysql.QueryOptions): Promise<void> {
+    return new Promise((resolve, reject) =>
+      this.__connection.beginTransaction(options, err => err ? reject(err) : resolve())
+    );
+  }
+  
+  public commit(options?: mysql.QueryOptions): Promise<void> {
+    return new Promise((resolve, reject) =>
+      this.__connection.commit(options, err => err ? reject(err) : resolve())
+    );
+  }
+  
+  public close(): Promise<void> {
+    return new Promise((resolve, reject) =>
+      this.__connection.end(err => err ? reject(err) : resolve())
+    );
+  }
 }
 
 interface DatabaseOptions {
@@ -147,27 +166,3 @@ interface DatabaseOptions {
   flags?: string | string[]
   ssl?: any
 }
-
-const options = {
-  "test":  [
-    {
-      host:     "localhost",
-      user:     "user",
-      password: "password",
-      database: "testimonial"
-    },
-    {
-      host:     "localhost",
-      user:     "resu",
-      password: "drowssap",
-      database: ["testify", "testifyier"]
-    }
-  ],
-  "debug": {
-    host:     "localhost",
-    user:     "user",
-    password: "password",
-    database: ["debuggery", "debugchery"]
-  }
-  
-};

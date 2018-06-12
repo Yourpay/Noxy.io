@@ -1,11 +1,11 @@
 import * as _ from "lodash";
 import * as uuid from "uuid";
 import * as mysql from "mysql";
-import {db, env, users} from "../app";
+import {env, users} from "../app";
 import * as Promise from "bluebird";
 import ServerMessage from "./ServerMessage";
 import User from "../objects/User";
-import DBConnection from "./DBConnection";
+import * as DatabaseService from "../modules/DatabaseService";
 
 export default abstract class Element {
   
@@ -19,7 +19,6 @@ export default abstract class Element {
   protected __fields: {[key: string]: iObjectField};
   protected __indexes: iObjectIndex;
   protected __primary: string[];
-  protected __database: string = env.databases[env.mode].database;
   
   public static __type: string;
   public static __fields: {[key: string]: iObjectField} = {
@@ -39,7 +38,7 @@ export default abstract class Element {
   public static __primary: string[] = ["id"];
   public static __indexes: iObjectIndex = {};
   public static __relations: iObjectRelationSet = {};
-  private static __types: {[type: string]: typeof Element} = {};
+  public static __database = {read: "development", write: "development"};
   
   public toObject() {
     return _.set(_.omitBy(this, (v: any, k) => k.slice(0, 2) === "__" || k === "uuid" || v instanceof Buffer || !v), "id", this.uuid);
@@ -53,101 +52,82 @@ export default abstract class Element {
     return this.__validated;
   }
   
-  public static get types() {
-    return _.clone(this.__types);
-  }
-  
   public static retrieve(start = 0, limit = 100, checks?: {[key: string]: any}): Promise<(Element | any)[]> {
     return new Promise((resolve, reject) => {
-      db[env.mode].connect()
-      .then(link => {
-        let index = "", where = "";
-        if (checks) {
-          if (_.every(checks, (v, k) => !!this.__fields[k])) { where = link.parse("WHERE ?", checks); }
-          if (!!(index = _.findKey(this.__indexes.unique_key, index => _.difference(index, _.values(checks)).length === 0) || "")) { index = link.parse("USE INDEX (??)", index); }
-        }
-        const sql = link.parse(`SELECT * FROM ?? ${index} ${where} LIMIT ? OFFSET ?`, [this.__type, limit, start]);
-        link.query(sql)
-        .then(res => resolve(res))
-        .catch(err => reject(ServerMessage.parseSQLError(err)))
-        .finally(() => link.close());
-      })
-      .catch(err => reject(err));
+      let index = "", where = "";
+      if (checks) {
+        if (_.every(checks, (v, k) => !!this.__fields[k])) { where = mysql.format("WHERE ?", <any>checks); }
+        if (!!(index = _.findKey(this.__indexes.unique_key, index => _.difference(index, _.values(checks)).length === 0) || "")) { index = mysql.format("USE INDEX (??)", <any>index); }
+      }
+      DatabaseService.namespace(this.__database.read).query(`SELECT * FROM ?? ${index} ${where} LIMIT ? OFFSET ?`, [this.__type, limit, start])
+      .then(res => resolve(res))
+      .catch(err => reject(ServerMessage.parseSQLError(err)));
     });
   }
   
   public validate(): Promise<this> {
     return new Promise<this>((resolve, reject) => {
-      db[env.mode].connect()
-      .then(link => {
-        const indexes = _.concat(_.values(this.__indexes.unique_key), [this.__primary]);
-        const where = _.join(_.map(indexes, a => `(${_.join(_.map(a, k => `\`${k}\` = ?`), " AND ")})`), " OR ");
-        const values = _.reduce(indexes, (r, a) => _.concat(r, _.map(a, v => this[v] || "")), []);
-        const sql = link.parse(`SELECT * FROM ?? WHERE ${where}`, _.concat(this.__type, values));
-        link.query(sql)
-        .then(res => {
-          if (!res[0]) { return resolve(_.assign(this, {__validated: true, __exists: false})); }
-          const object = new (<typeof Element | any>this.constructor)(res[0]);
-          const merges = _.pickBy(object, (v, k) => this.__fields[k] && (this.__fields[k].protected || this.__fields[k].intermediate || !this[k]));
-          resolve(_.assign(this, merges, {__validated: true, __exists: true}));
-        })
-        .catch(err => reject(ServerMessage.parseSQLError(err)))
-        .finally(() => link.close());
-      })
-      .catch(err => reject(err));
+      resolve();
+      // db[env.mode].connect()
+      // .then(link => {
+      //   const indexes = _.concat(_.values(this.__indexes.unique_key), [this.__primary]);
+      //   const where = _.join(_.map(indexes, a => `(${_.join(_.map(a, k => `\`${k}\` = ?`), " AND ")})`), " OR ");
+      //   const values = _.reduce(indexes, (r, a) => _.concat(r, _.map(a, v => this[v] || "")), []);
+      //   const sql = link.parse(`SELECT * FROM ?? WHERE ${where}`, _.concat(this.__type, values));
+      //   link.query(sql)
+      //   .then(res => {
+      //     if (!res[0]) { return resolve(_.assign(this, {__validated: true, __exists: false})); }
+      //     const object = new (<typeof Element | any>this.constructor)(res[0]);
+      //     const merges = _.pickBy(object, (v, k) => this.__fields[k] && (this.__fields[k].protected || this.__fields[k].intermediate || !this[k]));
+      //     resolve(_.assign(this, merges, {__validated: true, __exists: true}));
+      //   })
+      //   .catch(err => reject(ServerMessage.parseSQLError(err)))
+      //   .finally(() => link.close());
+      // })
+      // .catch(err => reject(err));
     });
   }
   
   public save(invoker?: User): Promise<this> {
     return new Promise<this>((resolve, reject) => {
-      new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
-      .then(() => {
-        const on = !this.__exists ? "onInsert" : "onUpdate";
-        _.each(this.__fields, (field, key) => field[on] && (this[key] = _.invoke(field, on, this, invoker)));
-        if (!this.__exists && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerMessage(400, "post")); }
-        db[env.mode].connect()
-        .then(link => {
-          const values = [this.__type, this.filter(), this.id];
-          const sql = link.parse(!this.__exists ? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
-          link.query(sql)
-          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true, __exists: true})) : reject(new ServerMessage(400, !this.__validated ? "post" : "put", sql)))
-          .catch(err => reject(ServerMessage.parseSQLError(err)))
-          .finally(() => link.close());
-        })
-        .catch(err => reject(err));
-      })
-      .catch(err => reject(err));
+      resolve();
+      // new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
+      // .then(() => {
+      //   const on = !this.__exists ? "onInsert" : "onUpdate";
+      //   _.each(this.__fields, (field, key) => field[on] && (this[key] = _.invoke(field, on, this, invoker)));
+      //   if (!this.__exists && !_.every(this.__fields, (v, k) => !v.required || v.required && this[k])) { return reject(new ServerMessage(400, "post")); }
+      //   db[env.mode].connect()
+      //   .then(link => {
+      //     const values = [this.__type, this.filter(), this.id];
+      //     const sql = link.parse(!this.__exists ? "INSERT IGNORE INTO ?? SET ?" : "UPDATE ?? SET ? WHERE `id` = ?", values);
+      //     link.query(sql)
+      //     .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__validated: true, __exists: true})) : reject(new ServerMessage(400, !this.__validated ? "post" : "put", sql)))
+      //     .catch(err => reject(ServerMessage.parseSQLError(err)))
+      //     .finally(() => link.close());
+      //   })
+      //   .catch(err => reject(err));
+      // })
+      // .catch(err => reject(err));
     });
   }
   
   public remove(invoker?: User): Promise<this> {
     return new Promise<this>((resolve, reject) => {
-      new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
-      .then(() => {
-        _.each(this.__fields, (field: iObjectField, key) => field.onDelete && (this[key] = field.onDelete(this, invoker)));
-        if (!this.__exists) { return reject(new ServerMessage(404, "delete", this)); }
-        db[env.mode].connect()
-        .then(link => {
-          const sql = link.parse("DELETE FROM ?? WHERE `id` = ?", [this.type, this.id]);
-          link.query(sql)
-          .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__exists: true})) : reject(new ServerMessage(400, "delete", sql)))
-          .catch(err => reject(ServerMessage.parseSQLError(err)))
-          .finally(() => link.close());
-        });
-      })
-      .catch(err => reject(err));
-    });
-  }
-  
-  public static register(): typeof Element {
-    return Element.__types[this.__type] = this;
-  }
-  
-  public static bind(connection: DBConnection): Promise<any> {
-    return new Promise((resolve, reject) => {
-      connection.query(_.join(_.map(this.__types, t => t.generateTableSQL()), ";"))
-      .then(res => resolve(res))
-      .catch(err => reject(err));
+      resolve();
+      // new Promise((resolve, reject) => this.__validated ? resolve(this) : this.validate().then(res => resolve(res)).catch(err => reject(err)))
+      // .then(() => {
+      //   _.each(this.__fields, (field: iObjectField, key) => field.onDelete && (this[key] = field.onDelete(this, invoker)));
+      //   if (!this.__exists) { return reject(new ServerMessage(404, "delete", this)); }
+      //   db[env.mode].connect()
+      //   .then(link => {
+      //     const sql = link.parse("DELETE FROM ?? WHERE `id` = ?", [this.type, this.id]);
+      //     link.query(sql)
+      //     .then(res => res.affectedRows > 0 ? resolve(_.assign(this, {__exists: true})) : reject(new ServerMessage(400, "delete", sql)))
+      //     .catch(err => reject(ServerMessage.parseSQLError(err)))
+      //     .finally(() => link.close());
+      //   });
+      // })
+      // .catch(err => reject(err));
     });
   }
   

@@ -16,18 +16,36 @@ interface RoleEnvironmental {
 interface DatabaseEnvironmental {
   user: string
   password: string
-  host: string
-  database: string
-  pool?: number
+  database: string | string[]
+  host?: "localhost" | string
+  port?: 3306 | number
+  socket_path?: string
+  local_address?: string
+  charset?: "utf8mb4_unicode_ci" | string
+  timezone?: "local" | string
+  connect_timeout?: 10000 | number
+  stringify_objects?: false | boolean
+  insecure_auth?: false | boolean
+  type_cast?: true
+  support_big_numbers?: false | boolean
+  big_number_strings?: false | boolean
+  debug?: false | boolean | string[]
+  trace?: true | boolean
+  flags?: string | string[]
+  ssl?: any
 }
 
 declare module "*env.json" {
   const value: {
+  
     mode: ModeEnvironmental
+  
     websockets: boolean
+  
     databases: {
-      [key: string]: DatabaseEnvironmental
+      [key: string]: DatabaseEnvironmental | DatabaseEnvironmental[]
     },
+  
     tables: {
       default: {
         names: {
@@ -41,20 +59,20 @@ declare module "*env.json" {
         }
       }
     }
-    users: {
-      [key: string]: UserEnvironmental
-    }
-    roles: {
-      [key: string]: RoleEnvironmental
-      
-    }
-    tokens: { [key: string]: string }
+  
+    users: {[key: string]: UserEnvironmental}
+  
+    roles: {[key: string]: RoleEnvironmental}
+  
+    tokens: {[key: string]: string}
+    
     ports: {
       [key: string]: number
       
       http: number
       https: number
     }
+  
     certificates?: {
       [key: string]: string
       
@@ -62,7 +80,7 @@ declare module "*env.json" {
       cert?: string
       ca?: string
     }
-    plugin: any
+  
   };
   export = value;
 }
