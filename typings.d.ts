@@ -40,31 +40,11 @@ declare module "*env.json" {
   
     mode: ModeEnvironmental
   
-    websockets: boolean
-  
     databases: {
       [key: string]: DatabaseEnvironmental | DatabaseEnvironmental[]
+    
+      master: DatabaseEnvironmental
     },
-  
-    tables: {
-      default: {
-        names: {
-          [key: string]: string
-          
-          user: string
-          route: string
-          role: string
-          role_user: string
-          role_route: string
-        }
-      }
-    }
-  
-    users: {[key: string]: UserEnvironmental}
-  
-    roles: {[key: string]: RoleEnvironmental}
-  
-    tokens: {[key: string]: string}
     
     ports: {
       [key: string]: number
@@ -81,6 +61,12 @@ declare module "*env.json" {
       ca?: string
     }
   
+    tokens: {[key: string]: string}
+  
+    users: {[key: string]: UserEnvironmental}
+  
+    roles: {[key: string]: RoleEnvironmental}
+    
   };
   export = value;
 }

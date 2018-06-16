@@ -1,6 +1,6 @@
 import Role from "./objects/Role";
 import User from "./objects/User";
-import {Include} from "./modules/Include";
+import * as Include from "./modules/Include";
 import * as Promise from "bluebird";
 import PromiseQueue from "./classes/PromiseQueue";
 import * as environmentals from "./env.json";

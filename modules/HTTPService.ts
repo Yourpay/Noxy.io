@@ -1,6 +1,6 @@
 import * as body_parser from "body-parser";
 import * as express from "express";
-import * as Promise from "bluebird";
+import Promise from "aigle";
 import * as https from "https";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";

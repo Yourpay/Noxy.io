@@ -2,7 +2,6 @@ import * as _ from "lodash";
 import Element, {iObjectRelationSet} from "../../classes/Element";
 import Route from "../../objects/Route";
 import {documentation_types} from "./init";
-import {env} from "../../app";
 
 export default class APIEndpoint extends Element {
   
@@ -22,7 +21,7 @@ export default class APIEndpoint extends Element {
     }
   );
   public static __relations = <iObjectRelationSet>{
-    route_id: {table: env.tables.default.names.route, on_delete: "NO ACTION", on_update: "CASCADE"}
+    route_id: {table: "route", on_delete: "NO ACTION", on_update: "CASCADE"}
   };
   public route: Route;
   

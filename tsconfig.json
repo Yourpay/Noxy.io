@@ -6,7 +6,8 @@
     "outDir": "./build",
     "noStrictGenericChecks": true,
     "watch": true,
-    "jsx": "React"
+    "jsx": "React",
+    "experimentalDecorators": true
   },
   "exclude": [
     "node_modules",

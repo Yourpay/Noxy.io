@@ -3,71 +3,65 @@ import * as _ from "lodash";
 import Promise from "aigle";
 
 const __cluster = mysql.createPoolCluster();
-const __pools: {[namespace: string]: DatabasePool} = {};
+const __pools: {[namespace: string]: Pool} = {};
 const __configurations: {[id: string]: any} = {};
 
-export function register(key: string, options: DatabaseOptions | DatabaseOptions[]): DatabasePool {
-  const namespace = __pools[key] || (__pools[key] = new DatabasePool(key));
-  _.each(Array.isArray(options) ? options : [options], (o: DatabaseOptions) =>
-    _.each(Array.isArray(o.database) ? o.database : [o.database], database =>
-      namespace.add(_.assign(_.mapKeys(options, (v, k) => _.camelCase(k)), {
-        database:           database,
-        host:               "localhost",
-        port:               3306,
-        charset:            "utf8mb4_unicode_ci",
-        timezone:           "local",
-        connectTimeout:     10000,
-        stringifyObjects:   false,
-        multipleStatements: true
-      }))
+export function register(key: string, options: DatabaseOptions | DatabaseOptions[]): Promise<Pool> {
+  const namespace = new Pool(key);
+  return new Promise((resolve, reject) =>
+    Promise.map(Array.isArray(options) ? options : [options], o =>
+      Promise.map(Array.isArray(o.database) ? o.database : [o.database], database =>
+        namespace.add(_.assign(_.mapKeys(options, (v, k) => _.camelCase(k)), {
+          database:           database,
+          host:               "localhost",
+          port:               3306,
+          charset:            "utf8mb4_unicode_ci",
+          timezone:           "local",
+          connectTimeout:     10000,
+          stringifyObjects:   false,
+          multipleStatements: true
+        }))
+      )
     )
+    .then(() => resolve(namespace))
+    .catch(err => reject(err))
   );
-  return namespace;
 }
 
-export function namespace(id: string): DatabasePool { return __pools[id]; }
+export function namespace(id: string): Pool { return _.clone(__pools[id]); }
 
 export function namespaces() { return _.clone(__pools); }
 
+export function configuration(id: string) { return _.clone(__configurations[id]); }
+
 export function configurations() { return _.clone(__configurations); }
 
-export interface IDatabasePool {
-  databases: {[key: string]: any}
-  add: (config: mysql.PoolConfig) => this
-  remove: (id: string) => this
-  
-  query(expression: string, replacers: any[]): Promise<any>
-  
-  connect(): Promise<DatabaseConnection>
-}
-
-export interface IDatabaseConnection {
-  query: (expression: string, replacers?: any) => Promise<any>
-  close: () => Promise<void>
-  transaction: (options: mysql.QueryOptions) => Promise<void>
-  commit: (options: mysql.QueryOptions) => Promise<void>
-}
-
-class DatabasePool implements IDatabasePool {
+export class Pool implements Pool {
   
   public readonly id: string;
   private readonly __databases: {[key: string]: mysql.Pool} = {};
   
   constructor(id: string) {
     this.id = id;
+    return __pools[id] || (__pools[id] = this);
   }
   
   public get databases(): {[key: string]: mysql.Pool} {
     return _.clone(this.__databases);
   }
   
-  public add(config: mysql.PoolConfig): this {
+  public add(config: mysql.PoolConfig): Promise<this> {
     const id = `${this.id}::${config.socketPath || config.host}::${config.database}`;
-    if (this.__databases[id]) { return this; }
-    __cluster.add(id, config);
-    __configurations[id] = config;
-    this.__databases[id] = __cluster.of(id);
-    return this;
+    const path = config.socketPath || `mysql://${config.user}:${encodeURIComponent(config.password)}@${config.host}/`;
+    if (this.__databases[id]) { return Promise.resolve(this); }
+    return new Promise((resolve, reject) => {
+      mysql.createConnection(path).query("CREATE DATABASE IF NOT EXISTS `" + config.database + "`", err => err ? reject(err) : resolve());
+    })
+    .then(() => {
+      __cluster.add(id, __configurations[id] = config);
+      this.__databases[id] = __cluster.of(id);
+      return this;
+    });
   }
   
   public remove(id: string): this {
@@ -84,9 +78,9 @@ class DatabasePool implements IDatabasePool {
     }));
   }
   
-  public query(expression: string, replacers: any[]): Promise<any> {
+  public query(expression: string, replacers?: any[]): Promise<any> {
     return new Promise((resolve, reject) =>
-      __cluster.of(`${this.id}::`).query(expression, replacers, (err, res) =>
+      __cluster.of(`${this.id}::*`).query(expression, replacers, (err, res) =>
         err ? reject(err) : resolve(res)
       )
     );
@@ -100,6 +94,13 @@ class DatabasePool implements IDatabasePool {
     });
   }
   
+}
+
+export interface IDatabaseConnection {
+  query: (expression: string, replacers?: any) => Promise<any>
+  close: () => Promise<void>
+  transaction: (options: mysql.QueryOptions) => Promise<void>
+  commit: (options: mysql.QueryOptions) => Promise<void>
 }
 
 class DatabaseConnection implements IDatabaseConnection {

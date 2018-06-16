@@ -1,7 +1,6 @@
-import * as _ from "lodash";
 import Element from "../classes/Element";
 import User from "./User";
-import {env} from "../app";
+import * as _ from "lodash";
 
 export default class Role extends Element {
   
@@ -11,15 +10,33 @@ export default class Role extends Element {
   public time_created: boolean;
   public time_updated: boolean;
   
-  public static __type = env.tables.default.names.role;
+  public static __type = "role";
   
-  public static __fields = _.merge({}, Element.__fields, Element.generateTimeFields(), Element.generateUserFields(), {
-    name: {type: "varchar(32)", required: true},
-    key:  {type: "varchar(32)", required: true, protected: true, onCreate: $this => Element.stringToKey($this.name)}
-  });
+  public static __fields = _.assign({},
+    Element.__fields,
+    {
+      name: {type: "varchar(32)", required: true},
+      key:  {type: "varchar(32)", required: true, protected: true, onCreate: $this => Element.stringToKey($this.name)}
+    },
+    Element.generateTimeFields(),
+    Element.generateUserFields()
+  );
   
-  public static __indexes = _.merge({}, Element.__indexes, Element.generateTimeIndexes(), Element.generateUserIndexes(), {unique_key: {name: ["name"], key: ["key"]}});
-  public static __relations = _.merge({}, Element.__relations, Element.generateUserRelations());
+  public static __indexes = _.assign({},
+    Element.__indexes,
+    {
+      unique_key: {
+        name: ["name"],
+        key:  ["key"]
+      }
+    },
+    Element.generateTimeIndexes(),
+    Element.generateUserIndexes());
+  
+  public static __relations = _.assign({},
+    Element.__relations,
+    Element.generateUserRelations()
+  );
   
   constructor(object: any) {
     super();
