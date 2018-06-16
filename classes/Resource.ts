@@ -60,22 +60,15 @@ export interface iResource {
   new(object?: {[key: string]: any}): iResourceInstance;
 }
 
+interface iResourceInstance {
+  id: Buffer
+  uuid?: string
+  validate: (db: Database.Pool) => Promise<this>
+}
+
 interface iResourceObject {
   id?: Buffer
   uuid?: string
   
   [key: string]: any
 }
-
-interface iResourceInstance {
-  uuid?: Buffer
-  id: string
-  validate: (db: Database.Pool) => Promise<this>
-}
-
-[key
-:
-string;
-]:
-any;
- 

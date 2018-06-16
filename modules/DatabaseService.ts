@@ -54,9 +54,7 @@ export class Pool implements Pool {
     const id = `${this.id}::${config.socketPath || config.host}::${config.database}`;
     const path = config.socketPath || `mysql://${config.user}:${encodeURIComponent(config.password)}@${config.host}/`;
     if (this.__databases[id]) { return Promise.resolve(this); }
-    return new Promise((resolve, reject) => {
-      mysql.createConnection(path).query("CREATE DATABASE IF NOT EXISTS `" + config.database + "`", err => err ? reject(err) : resolve());
-    })
+    return new Promise((resolve, reject) => mysql.createConnection(path).query("CREATE DATABASE IF NOT EXISTS `" + config.database + "`", err => err ? reject(err) : resolve()))
     .then(() => {
       __cluster.add(id, __configurations[id] = config);
       this.__databases[id] = __cluster.of(id);

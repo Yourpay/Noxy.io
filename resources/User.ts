@@ -10,9 +10,9 @@ const columns: Tables.iTableColumns = {
   email:        {type: "varchar(128)", required: true, unique_index: ["email"]},
   salt:         {type: "binary(64)", required: true, protected: true},
   hash:         {type: "binary(64)", required: true, protected: true},
-  time_login:   {type: "bigint(14)", default: null, protected: true, index: ["time_login"]},
-  time_created: Table.generateTimeColumn(true),
-  time_updated: Table.generateTimeColumn(false)
+  time_login:   Table.generateTimeColumn("time_login"),
+  time_created: Table.generateTimeColumn("time_created"),
+  time_updated: Table.generateTimeColumn()
 };
 
 @Resources.implement<Resources.iResource>()

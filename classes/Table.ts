@@ -1,21 +1,37 @@
 import * as _ from "lodash";
 import * as Resource from "./Resource";
 import * as mysql from "mysql";
+import * as DatabaseService from "../modules/DatabaseService";
 
 export class Table {
   
   public readonly __name: string;
+  private static __tables: {[data: string]: {[key: string]: Table}} = {};
   public readonly __columns: iTableColumns;
   public readonly __options: iTableOptions;
+  public readonly __database: string;
   
   constructor(name: string, options: iTableOptions, columns: iTableColumns) {
+    this.__database = options.database instanceof DatabaseService.Pool ? options.database.id : options.database || "master";
+  
+    if (_.get(Table.__tables, [this.__database, name])) { return Table.__tables[this.__database][name]; }
+    _.set(Table.__tables, [this.__database, name], this);
+    
     this.__name = name;
     this.__options = options;
     this.__columns = _.merge(options.junction ? {} : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}}, columns);
   }
   
-  public static generateTimeColumn(index?: boolean): iTableColumn {
-    return {type: "bigint(14)", required: true, protected: true};
+  public static get tables() {
+    return _.clone(this.__tables);
+  }
+  
+  public static generateTimeColumn(index?: string): iTableColumn {
+    return {type: "bigint(14)", required: true, protected: true, default: null, index: index ? [index] : null};
+  }
+  
+  public static generateUserColumn(index?: string): iTableColumn {
+    return {type: "binary(16)", required: true, protected: true, default: null, index: index ? [index] : null, relations: [{table: "user", column: "id", "on_update": "CASCADE", "on_delete": "NO ACTION"}]};
   }
   
   public validationSQL(resource: Resource.Constructor) {
@@ -37,7 +53,12 @@ export class Table {
   }
   
   private getTableDefinitionSQL() {
-    return _.trimEnd(_.join(this.getColumnSQL(), ", ") + ", " + _.join(this.getIndexSQL(), ", ") + ", " + _.join(this.getRelationSQL(), ", "), ", ");
+    return _.join(_.filter([
+      _.join(this.getColumnSQL(), ", "),
+      this.getPrimaryKeySQL(),
+      _.join(this.getIndexSQL(), ", "),
+      _.join(this.getRelationSQL(), ", ")
+    ]), ", ");
   }
   
   private getColumnSQL(): string[] {
@@ -51,10 +72,8 @@ export class Table {
     ]), " "));
   }
   
-  private getPrimaryKeySQL(): string[] {
-    return _.reduce(this.__columns, (result, options, column) => {
-      return options.primary_key ? result.concat(column) : result;
-    }, []);
+  private getPrimaryKeySQL(): string {
+    return "PRIMARY KEY (" + _.reduce(this.__columns, (result, options, column) => options.primary_key ? result.concat("`" + column + "`") : result, []) + ")";
   }
   
   private getIndexSQL(): string[] {
@@ -88,6 +107,7 @@ export class Table {
 }
 
 export interface iTableOptions {
+  database?: string | DatabaseService.Pool;
   /* Is the table a junction table? If it is, the ID column will not be added automatically. */
   junction?: boolean
   /* The default collation to use with the table */
