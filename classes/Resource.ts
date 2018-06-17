@@ -12,6 +12,7 @@ export class Constructor {
   public id: Buffer;
   public uuid: string;
   
+  private __database: string = "master";
   private __exists: boolean = false;
   private __validated: boolean = false;
   
@@ -37,15 +38,28 @@ export class Constructor {
   
   public validate(db?: Database.Pool): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
+    const database = db || Database.namespace("master");
     return new Promise((resolve, reject) => {
-      (db || Database.namespace("master")).query($this.__table.validationSQL(this))
-      .then(res => resolve(_.merge(this, res[0], {__validated: true, __exists: res[0]})))
+      if (this.__validated && database.id === this.__database) { resolve(this); }
+      database.query($this.__table.validationSQL(this))
+      .then(res => resolve(_.merge(_.reduce(res[0], (r, v, k) => _.set(r, k, v), this), {__validated: true, __exists: !!res[0], __database: database.id})))
       .catch(err => reject(err));
     });
   }
   
   public save(db?: Database.Pool): Promise<this> {
-    return new Promise((resolve, reject) => {});
+    const $this = (<typeof Constructor>this.constructor);
+    const database = db || Database.namespace("master");
+    return new Promise((resolve, reject) => {
+      this.validate()
+      .then(() => {
+        const sql = _.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this);
+        database.query(sql)
+        .then(res => console.log("SUCCESS", res) || resolve(res))
+        .catch(err => console.error("SAVE ERR", err) || reject(err));
+      })
+      .catch(err => console.error("VALIDATE ERR", err) || reject(err));
+    });
   }
   
 }

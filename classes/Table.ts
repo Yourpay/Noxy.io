@@ -6,14 +6,15 @@ import * as DatabaseService from "../modules/DatabaseService";
 export class Table {
   
   public readonly __name: string;
-  private static __tables: {[data: string]: {[key: string]: Table}} = {};
+  public readonly __database: string;
   public readonly __columns: iTableColumns;
   public readonly __options: iTableOptions;
-  public readonly __database: string;
+  
+  private static __tables: {[data: string]: {[key: string]: Table}} = {};
   
   constructor(name: string, options: iTableOptions, columns: iTableColumns) {
     this.__database = options.database instanceof DatabaseService.Pool ? options.database.id : options.database || "master";
-  
+    
     if (_.get(Table.__tables, [this.__database, name])) { return Table.__tables[this.__database][name]; }
     _.set(Table.__tables, [this.__database, name], this);
     
@@ -36,12 +37,23 @@ export class Table {
   
   public validationSQL(resource: Resource.Constructor) {
     const where: {[key: string]: string[]} = {};
+    // TODO: Fix this segment of code by reducing complexity.
     _.each(this.__columns, (options, column) => {
       if (options.primary_key) { where.primary ? where.primary.push(column) : where.primary = [column]; }
       _.each(options.unique_index, index => where[index] ? where[index].push(column) : where[index] = [column]);
     });
     const t = _.join(_.map(where, value => `(${_.join(_.map(_.filter(value), v => mysql.format(`${v} = ?`, [resource[v]])), " AND ")})`), " OR ");
     return `SELECT * FROM \`${this.__name}\` WHERE ${t}`;
+  }
+  
+  public insertSQL(resource: Resource.Constructor) {
+    return DatabaseService.parse(`INSERT INTO \`${this.__name}\` SET ?`, _.pick(resource, _.keys(this.__columns)));
+  }
+  
+  public updateSQL(resource: Resource.Constructor) {
+    const update = _.pick(resource, _.keys(this.__columns));
+    const where = _.join(_.reduce(this.__columns, (r,v,k) => v.primary_key ? r.concat(DatabaseService.parse(`${k} = ?`, resource[k])) : r, []), " AND ");
+    return DatabaseService.parse(`UPDATE \`${this.__name}\` SET ? WHERE ${where}`, update);
   }
   
   public toSQL(): string {
@@ -65,8 +77,8 @@ export class Table {
     return _.map(this.__columns, (options, column) => _.join(_.filter([
       "`" + column + "`",
       _.toUpper(options.type),
-      options.null && !options.primary_key ? "NULL" : "NOT NULL",
-      options.default || (options.null && !options.primary_key) ? `DEFAULT ${options.default || "NULL"}` : "",
+      options.null && !options.primary_key || options.default === null ? "NULL" : "NOT NULL",
+      options.null && !options.primary_key || options.default ? `DEFAULT ${options.default || "NULL"}` : "",
       options.collation && options.type.match(/(?:text|char)/gi) ? `COLLATE ${options.collation}` : "",
       options.comment
     ]), " "));

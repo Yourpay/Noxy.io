@@ -36,6 +36,7 @@ export class User extends Resources.Constructor {
       this.hash = User.generateHash(this.password, this.salt);
       delete this.password;
     }
+    this.time_created = Date.now();
   }
   
   public static generateSalt(): Buffer {

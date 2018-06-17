@@ -28,6 +28,8 @@ export function register(key: string, options: DatabaseOptions | DatabaseOptions
   );
 }
 
+export function parse(sql: string, replacers: any | any[]) { return mysql.format(sql, replacers); }
+
 export function namespace(id: string): Pool { return _.clone(__pools[id]); }
 
 export function namespaces() { return _.clone(__pools); }

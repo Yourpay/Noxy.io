@@ -23,7 +23,7 @@ db_queue.promise("register", (resolve, reject) => {
 });
 
 db_queue.promise("create", (resolve, reject) => {
-  Promise.map(Table.tables, (tables, database) => DatabaseService.namespace(database).query(_.join(_.map(tables, table => table.toSQL()), " ")))
+  Promise.map(Table.tables, (tables, database: string) => DatabaseService.namespace(database).query(_.join(_.map(tables, table => table.toSQL()), " ")))
   .then(res => resolve(res))
   .catch(err => reject(err));
 });
@@ -31,10 +31,7 @@ db_queue.promise("create", (resolve, reject) => {
 db_queue.promise("alter", (resolve, reject) => {
   const user = new User({username: "root", password: "testdkjeslk423ewdsf", email: "admin@localhost"});
   console.log("User:", user);
-  user.validate()
-  .then(res => console.log("result", res))
-  .catch(err => console.error("err", err));
-  resolve();
+  user.save()
 });
 
 init_queue.promise("db", (resolve, reject) => db_queue.execute().then(res => resolve(res), err => reject(err)));
