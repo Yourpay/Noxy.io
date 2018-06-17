@@ -1,6 +1,7 @@
 import * as Resources from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import {Table} from "../classes/Table";
+import User from "./User";
 
 const options: Tables.iTableOptions = {};
 
@@ -13,7 +14,7 @@ const columns: Tables.iTableColumns = {
 };
 
 @Resources.implement<Resources.iResource>()
-export class User extends Resources.Constructor {
+export default class Role extends Resources.Constructor {
   
   public static __table: Table = new Table("role", options, columns);
   public name: string;

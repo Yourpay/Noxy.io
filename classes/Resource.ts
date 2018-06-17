@@ -19,8 +19,8 @@ export class Constructor {
   constructor(object?) {
     const $this = (<typeof Constructor>this.constructor);
     if (!$this.__table) { throw Error("Cannot initialize an instance of 'Resource' lacking a table definition."); }
-    if (!$this.__table.__options.junction) { this.id = (this.uuid = object.id) || Constructor.bufferFromUuid(this.uuid = uuid.v4()); }
     _.assign(this, object);
+    if (!$this.__table.__options.junction) { this.id = Constructor.bufferFromUuid(object.id ? (!Constructor.isUuid(object.id) ? object.id : this.uuid = object.id) : this.uuid = uuid.v4()); }
   }
   
   protected static isUuid(uuid: string): boolean {

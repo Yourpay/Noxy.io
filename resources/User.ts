@@ -16,7 +16,7 @@ const columns: Tables.iTableColumns = {
 };
 
 @Resources.implement<Resources.iResource>()
-export class User extends Resources.Constructor {
+export default class User extends Resources.Constructor {
   
   public static __table: Table = new Table("user", options, columns);
   public id: Buffer;

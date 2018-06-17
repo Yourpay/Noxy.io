@@ -5,7 +5,8 @@
     "newLine": "lf",
     "outDir": "./build",
     "noStrictGenericChecks": true,
-    "watch": true
+    "watch": true,
+    "experimentalDecorators": true
   },
   "include": [
     "plugins/*/*.ts",
