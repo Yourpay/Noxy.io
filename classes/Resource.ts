@@ -26,15 +26,15 @@ export class Constructor {
     this.__database = <string>$this.__table.__options.database;
   }
   
-  protected static isUuid(uuid: string): boolean {
+  public static isUuid(uuid: string): boolean {
     return !!`${uuid}`.match(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
   }
   
-  protected static bufferFromUuid(uuid: string): Buffer {
+  public static bufferFromUuid(uuid: string): Buffer {
     return Buffer.alloc(16, uuid.replace(/-/g, ""), "hex");
   }
   
-  protected static uuidFromBuffer(buffer: Buffer): string {
+  public static uuidFromBuffer(buffer: Buffer): string {
     const hex = buffer.toString("hex");
     return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
   }

@@ -17,7 +17,7 @@ new Promise((resolve, reject) =>
     Include({path: __dirname + "/plugins", filter: /^[\w\d\s]+\\init\.js/})
     .then(() =>
       init_queue.execute()
-      .then(() => console.log(users) || resolve())
+      .then(() => resolve())
       .catch(err => reject(err))
     )
     .catch(err => reject(err))

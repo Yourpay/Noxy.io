@@ -12,7 +12,7 @@ const columns: Tables.iTableColumns = {
 };
 
 @Resources.implement<Resources.iResource>()
-export default class PSP extends Resources.Constructor {
+export default class CardType extends Resources.Constructor {
   
   public static __table: Table = new Table("card/type", options, columns);
   
