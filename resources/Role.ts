@@ -2,6 +2,8 @@ import * as Resources from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import {Table} from "../classes/Table";
 import User from "./User";
+import {users} from "../app";
+import * as _ from "lodash";
 
 const options: Tables.iTableOptions = {};
 
@@ -19,27 +21,22 @@ export default class Role extends Resources.Constructor {
   public static __table: Table = new Table("role", options, columns);
   public name: string;
   public key: string;
-  public user_created: User;
-  public time_created: boolean;
-  public time_updated: boolean;
+  public user_created: Buffer;
+  public time_created: number;
+  public time_updated: number;
   
-  constructor(object?: iUserObject) {
+  constructor(object?: iRoleObject) {
     super(object);
-  }
-  
-  public static get() {
-  
+    this.user_created = _.get(object, "user_created.id", users["server"].id);
   }
   
 }
 
-interface iUserObject {
+interface iRoleObject {
   id?: string
-  username: string
-  email: string
-  password?: string
-  salt?: string
-  hash?: string
-  time_login?: number
+  name: string
+  key: string
+  user_created?: User
   time_created?: number
+  time_updated?: number
 }

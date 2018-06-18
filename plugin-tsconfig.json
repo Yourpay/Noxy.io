@@ -9,7 +9,10 @@
     "experimentalDecorators": true
   },
   "include": [
-    "plugins/*/*.ts",
+    "plugins/**/*.ts",
     "typings.d.ts"
+  ],
+  "exclude": [
+    "plugins/*/public/**/*.ts"
   ]
 }

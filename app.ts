@@ -9,7 +9,7 @@ export const env = environmentals;
 export const users: {[id: string]: User} = {};
 export const roles: {[id: string]: Role} = {};
 
-export const init_queue = new PromiseQueue(["db", "object", "routing", "publicize"]);
+export const init_queue = new PromiseQueue(["db", "resource", "routing", "publicize"]);
 
 new Promise((resolve, reject) =>
   Include({path: __dirname + "/init"})
@@ -17,7 +17,7 @@ new Promise((resolve, reject) =>
     Include({path: __dirname + "/plugins", filter: /^[\w\d\s]+\\init\.js/})
     .then(() =>
       init_queue.execute()
-      .then(() => resolve())
+      .then(() => console.log(users) || resolve())
       .catch(err => reject(err))
     )
     .catch(err => reject(err))

@@ -42,7 +42,7 @@ export class Table {
       if (options.primary_key) { where.primary ? where.primary.push(column) : where.primary = [column]; }
       _.each(options.unique_index, index => where[index] ? where[index].push(column) : where[index] = [column]);
     });
-    const t = _.join(_.map(where, value => `(${_.join(_.map(_.filter(value), v => mysql.format(`${v} = ?`, [resource[v]])), " AND ")})`), " OR ");
+    const t = _.join(_.map(where, value => `(${_.join(_.map(_.filter(value), v => mysql.format(`\`${v}\` = ?`, [resource[v]])), " AND ")})`), " OR ");
     return `SELECT * FROM \`${this.__name}\` WHERE ${t}`;
   }
   
@@ -52,7 +52,7 @@ export class Table {
   
   public updateSQL(resource: Resource.Constructor) {
     const update = _.pick(resource, _.keys(this.__columns));
-    const where = _.join(_.reduce(this.__columns, (r,v,k) => v.primary_key ? r.concat(DatabaseService.parse(`${k} = ?`, resource[k])) : r, []), " AND ");
+    const where = _.join(_.reduce(this.__columns, (r, v, k) => v.primary_key ? r.concat(DatabaseService.parse(`${k} = ?`, resource[k])) : r, []), " AND ");
     return DatabaseService.parse(`UPDATE \`${this.__name}\` SET ? WHERE ${where}`, update);
   }
   
@@ -103,8 +103,10 @@ export class Table {
     return _.reduce(
       this.__columns,
       (result, options, col) => result.concat(_.map(options.relations, rel =>
-        `CONSTRAINT \`${this.__name}:${col}\` FOREIGN KEY (\`${col}\`) REFERENCES \`${rel.table}\` (\`${rel.column}\`) ON UPDATE ${rel.on_update || "NO ACTION"} ON DELETE ${rel.on_delete || "NO ACTION"}`)
-      ),
+        _.template("CONSTRAINT `${cs}` FOREIGN KEY (`${fk}`) REFERENCES `${db}`.`${tbl}` (`${cl}`) ON UPDATE ${ou} ON DELETE ${od}")({
+          cs: this.__name + ":" + col, fk: col, db: rel.database || "master", tbl: rel.table, cl: rel.column, ou: rel.on_update || "NO ACTION", od: rel.on_delete || "NO ACTION"
+        })
+      )),
       []
     );
   }
@@ -138,7 +140,7 @@ export interface iTableColumn {
   /* Can this field be a NULL value */
   null?: boolean
   /* What should this field's default value be (Note: NULL as default set the NULL flag to true) */
-  default?: string
+  default?: string | number
   /* Must the field contain a value */
   required?: boolean
   /* Should the value be modifiable from outside the server */
@@ -162,6 +164,7 @@ export interface iTableColumn {
 }
 
 export interface iTableRelations {
+  database?: "master" | string
   table: string
   column: string
   match?: "FULL" | "PARTIAL" | "SIMPLE"
