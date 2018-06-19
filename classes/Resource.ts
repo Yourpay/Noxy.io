@@ -1,15 +1,16 @@
-import {Table} from "./Table";
+import Table from "./Table";
 import * as _ from "lodash";
 import Promise from "aigle";
 import * as Database from "../modules/DatabaseService";
-import {Endpoint} from "./Endpoint";
+import Endpoint from "./Endpoint";
+import ServerMessage from "./ServerMessage";
 import uuid = require("uuid");
 
 @implement<iResource>()
 export class Constructor {
   
   public static __table: Table;
-  public static __endpoint: Endpoint = new Endpoint();
+  public static __endpoint: Endpoint;
   
   public id: Buffer;
   public uuid: string;
@@ -24,35 +25,6 @@ export class Constructor {
     _.assign(this, object);
     if (!$this.__table.__options.junction) { this.id = Constructor.bufferFromUuid(object.id ? (!Constructor.isUuid(object.id) ? object.id : this.uuid = object.id) : this.uuid = uuid.v4()); }
     this.__database = <string>$this.__table.__options.database;
-  }
-  
-  public static isUuid(uuid: string): boolean {
-    return !!`${uuid}`.match(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
-  }
-  
-  public static bufferFromUuid(uuid: string): Buffer {
-    return Buffer.alloc(16, uuid.replace(/-/g, ""), "hex");
-  }
-  
-  public static uuidFromBuffer(buffer: Buffer): string {
-    const hex = buffer.toString("hex");
-    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
-  }
-  
-  public get exists() {
-    return this.__exists;
-  }
-  
-  public get validated() {
-    return this.__validated;
-  }
-  
-  public get database() {
-    return this.__database;
-  }
-  
-  public static get(db?: Database.Pool): Promise<Constructor[]> {
-    return new Promise((resolve, reject) => resolve());
   }
   
   public validate(db?: Database.Pool): Promise<this> {
@@ -85,6 +57,45 @@ export class Constructor {
     return new Promise((resolve, reject) => { return resolve(this); });
   }
   
+  public get exists() {
+    return this.__exists;
+  }
+  
+  public get validated() {
+    return this.__validated;
+  }
+  
+  public get database() {
+    return this.__database;
+  }
+  
+  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Partial<Constructor>[]> {
+    const database = db || Database.namespace("master");
+    start = start > 0 ? start : 0;
+    limit = limit > 0 && limit < 100 ? limit : 100;
+    return database.query(this.__table.selectSQL(start, limit, where))
+    .then(res => _.map(res, row => new this(row).toObject()))
+    .catch(err => { throw ServerMessage.parseSQLError(err); });
+  }
+  
+  public static isUuid(uuid: string): boolean {
+    return !!`${uuid}`.match(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
+  }
+  
+  public static bufferFromUuid(uuid: string): Buffer {
+    return Buffer.alloc(16, uuid.replace(/-/g, ""), "hex");
+  }
+  
+  public static uuidFromBuffer(buffer: Buffer): string {
+    const hex = buffer.toString("hex");
+    return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+  }
+  
+  public toObject(): Partial<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    return _.omitBy(this, (v, k) => $this.__table.__columns[k].hidden);
+  }
+  
 }
 
 export function implement<T>() {
@@ -92,16 +103,37 @@ export function implement<T>() {
 }
 
 export interface iResource {
+  __endpoint: Endpoint;
+  
   __table: Table;
+  isUuid: (uuid: string) => boolean
+  bufferFromUuid: (uuid: string) => Buffer
+  uuidFromBuffer: (buffer: Buffer) => string
+  
+  [key: string]: any
   
   new(object?: {[key: string]: any}): iResourceInstance;
 }
 
 interface iResourceInstance {
+  exists: boolean
+  
   id: Buffer
   uuid?: string
+  validated: boolean
+  database: string
+  save: (db: Database.Pool) => Promise<this>
+  
   validate: (db: Database.Pool) => Promise<this>
+  delete: (db: Database.Pool) => Promise<this>
 }
+
+[key;
+:
+string;
+]:
+any;
+
 
 interface iResourceObject {
   id?: Buffer

@@ -3,7 +3,7 @@ import * as Resource from "./Resource";
 import * as mysql from "mysql";
 import * as DatabaseService from "../modules/DatabaseService";
 
-export class Table {
+export default class Table {
   
   public readonly __name: string;
   public readonly __database: string;
@@ -56,6 +56,16 @@ export class Table {
     return DatabaseService.parse(`UPDATE \`${this.__name}\` SET ? WHERE ${where}`, update);
   }
   
+  public selectSQL(start?: number, limit?: number, where?: {[key: string]: any}) {
+    const replacers = {
+      table: this.__name,
+      limit: limit || 18446744073709551615,
+      start: start || 0,
+      where: where ? DatabaseService.parse("WHERE ?", where) : ""
+    };
+    return _.template("SELECT * FROM ${table} WHERE ${where} LIMIT ${limit} OFFSET ${start}")(replacers);
+  }
+  
   public toSQL(): string {
     return `${this.getTableSQL()} (${this.getTableDefinitionSQL()}) ${this.getTableOptionsSQL()};`;
   }
@@ -102,9 +112,9 @@ export class Table {
   private getRelationSQL(): string[] {
     return _.reduce(
       this.__columns,
-      (result, options, col) => result.concat(_.map(options.relations, rel =>
+      (result, options, col) => result.concat(_.map(Array.isArray(options.relations) ? options.relations : _.filter([options.relations]), rel =>
         _.template("CONSTRAINT `${cs}` FOREIGN KEY (`${fk}`) REFERENCES `${db}`.`${tbl}` (`${cl}`) ON UPDATE ${ou} ON DELETE ${od}")({
-          cs: this.__name + ":" + col, fk: col, db: rel.database || "master", tbl: rel.table, cl: rel.column, ou: rel.on_update || "NO ACTION", od: rel.on_delete || "NO ACTION"
+          cs: this.__name + ":" + col, fk: col, db: rel.database || "master", tbl: rel.table, cl: rel.column || "id", ou: rel.on_update || "NO ACTION", od: rel.on_delete || "NO ACTION"
         })
       )),
       []
@@ -145,6 +155,8 @@ export interface iTableColumn {
   required?: boolean
   /* Should the value be modifiable from outside the server */
   protected?: boolean
+  /* Should this column appear in result sets after being parsed? */
+  hidden?: boolean
   /* Which "key" indexes should this column be part of */
   index?: string[]
   /* Which "unique" indexes should this column be part of */
@@ -156,7 +168,7 @@ export interface iTableColumn {
   /* Is this part of the primary key? */
   primary_key?: boolean
   /* Defines the foreign key relations this column has to another */
-  relations?: iTableRelations[]
+  relations?: iTableRelations | iTableRelations[]
   /* The default collation to use with the column */
   collation?: "utf8mb4_unicode_ci" | string
   /* Add a comment to the column in the database */
@@ -166,7 +178,7 @@ export interface iTableColumn {
 export interface iTableRelations {
   database?: "master" | string
   table: string
-  column: string
+  column?: string
   match?: "FULL" | "PARTIAL" | "SIMPLE"
   on_delete?: "RESTRICT" | "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT"
   on_update?: "RESTRICT" | "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT"

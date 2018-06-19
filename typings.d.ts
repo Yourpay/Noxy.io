@@ -53,6 +53,13 @@ declare module "*env.json" {
       https: number
     }
   
+    subdomains: {
+      [key: string]: string
+    
+      default: string
+      api: string
+    }
+    
     certificates?: {
       [key: string]: string
       

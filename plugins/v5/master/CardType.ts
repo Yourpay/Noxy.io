@@ -1,9 +1,8 @@
 import * as Resources from "../../../classes/Resource";
 import * as Tables from "../../../classes/Table";
-import {Table} from "../../../classes/Table";
+import Table from "../../../classes/Table";
 
 const options: Tables.iTableOptions = {};
-
 const columns: Tables.iTableColumns = {
   name:         {type: "varchar(64)", required: true, protected: true},
   pattern:      {type: "varchar(12)", required: true, protected: true, unique_index: ["pattern"]},
@@ -23,6 +22,7 @@ export default class CardType extends Resources.Constructor {
   
   constructor(object?: iCardTypeObject) {
     super(object);
+    this.time_created = Date.now();
   }
   
 }

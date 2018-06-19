@@ -15,10 +15,10 @@ db_queue.promise("register", (resolve, reject) => {
 
 resource_queue.promise("v5", (resolve, reject) => {
   
-  const v5_queue = new PromiseQueue(["init", "requests"]);
+  const v5_queue = new PromiseQueue([]);
   const card_types = {};
   
-  v5_queue.promise("init", (resolve, reject) => {
+  v5_queue.promise("card_types", (resolve, reject) => {
     const preset = {
       "Unknown":                               ["0"],
       "American Express":                      ["34", "37"],

@@ -1,9 +1,8 @@
 import * as Resources from "../../../classes/Resource";
 import * as Tables from "../../../classes/Table";
-import {Table} from "../../../classes/Table";
+import Table from "../../../classes/Table";
 
 export const type = "card";
-
 export const columns: Tables.iTableColumns = {
   name:         {type: "varchar(64)", required: true, protected: true, unique_index: ["card"]},
   time_created: Table.generateTimeColumn("time_created"),

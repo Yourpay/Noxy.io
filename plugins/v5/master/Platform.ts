@@ -1,6 +1,6 @@
 import * as Resources from "../../../classes/Resource";
 import * as Tables from "../../../classes/Table";
-import {Table} from "../../../classes/Table";
+import Table from "../../../classes/Table";
 
 const options: Tables.iTableOptions = {};
 
