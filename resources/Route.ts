@@ -1,10 +1,7 @@
 import * as Resources from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
-import Endpoint from "../classes/Endpoint";
-import {env} from "../app";
 
-const type = "route";
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
   subdomain:    {type: "varchar(64)", protected: true, required: true, unique_index: ["route"]},
@@ -18,8 +15,8 @@ const columns: Tables.iTableColumns = {
 @Resources.implement<Resources.iResource>()
 export default class Route extends Resources.Constructor {
   
-  public static __table: Table = new Table(type, options, columns);
-  public static __endpoint: Endpoint = new Endpoint(env.subdomains.api, type).addResource(Route);
+  public static readonly __type: string = "route";
+  public static readonly __table: Table = new Table(Route, options, columns);
   
   public method: string;
   public path: string;
@@ -30,6 +27,7 @@ export default class Route extends Resources.Constructor {
   
   constructor(object?: iRouteObject) {
     super(object);
+    this.path = (object.path || "/").replace(/\/{2,}/g, "/").replace(/(\w)\/$/, "$1");
     this.time_created = Date.now();
   }
   

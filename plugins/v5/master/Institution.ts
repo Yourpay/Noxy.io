@@ -3,7 +3,6 @@ import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
 
 const options: Tables.iTableOptions = {};
-
 const columns: Tables.iTableColumns = {
   name:         {type: "varchar(128)", required: true, protected: true},
   time_created: Table.generateTimeColumn("time_created"),
@@ -11,9 +10,10 @@ const columns: Tables.iTableColumns = {
 };
 
 @Resources.implement<Resources.iResource>()
-export default class PSP extends Resources.Constructor {
+export default class Institution extends Resources.Constructor {
   
-  public static __table: Table = new Table("institution", options, columns);
+  public static readonly __type: string = "institution";
+  public static readonly __table: Table = new Table(Institution, options, columns);
   
   public name: string;
   public time_created: number;

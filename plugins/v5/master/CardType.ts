@@ -13,7 +13,8 @@ const columns: Tables.iTableColumns = {
 @Resources.implement<Resources.iResource>()
 export default class CardType extends Resources.Constructor {
   
-  public static __table: Table = new Table("card/type", options, columns);
+  public static readonly __type: string = "card/type";
+  public static readonly __table: Table = new Table(CardType, options, columns);
   
   public name: string;
   public pattern: string;

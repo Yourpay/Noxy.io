@@ -4,12 +4,10 @@ import Promise from "aigle";
 import * as Resources from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
-import Endpoint from "../classes/Endpoint";
 import ServerMessage from "../classes/ServerMessage";
 import {env} from "../app";
 import * as _ from "lodash";
 
-const type = "user";
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
   username:     {type: "varchar(32)", required: true, protected: true, unique_index: ["username"]},
@@ -20,15 +18,12 @@ const columns: Tables.iTableColumns = {
   time_created: Table.generateTimeColumn("time_created"),
   time_updated: Table.generateTimeColumn()
 };
-const table = new Table(type, options, columns);
-const endpoint = new Endpoint(env.subdomains.api, type)
-.addRoute("POST", "/login", Endpoint.auth, (request, response) => User.login(response.locals.user || request.body).then(res => Endpoint.response(response, res), err => Endpoint.response(response, err)));
 
 @Resources.implement<Resources.iResource>()
 export default class User extends Resources.Constructor {
   
-  public static __table: Table = table;
-  public static __endpoint: Endpoint = endpoint.addResource(User);
+  public static readonly __type: string = "user";
+  public static readonly __table: Table = new Table(User, options, columns);
   
   public username: string;
   public email: string;
@@ -37,7 +32,7 @@ export default class User extends Resources.Constructor {
   public time_login: number;
   public time_created: number;
   
-  public __password: string;
+  private __password: string;
   
   constructor(object?: iUserObject) {
     super(object);
@@ -49,13 +44,9 @@ export default class User extends Resources.Constructor {
     this.time_created = Date.now();
   }
   
-  public get password() {
-    return this.__password;
-  }
-  
-  public set password(pw) {
+  public set password(value) {
     this.salt = User.generateSalt();
-    this.hash = User.generateHash(pw, this.salt);
+    this.hash = User.generateHash(value, this.salt);
   }
   
   public static login(credentials: User | {username?: string, email?: string, password: string}): Promise<ServerMessage> {

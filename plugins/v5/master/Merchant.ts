@@ -4,7 +4,6 @@ import Table from "../../../classes/Table";
 import User from "../../../resources/User";
 
 const options: Tables.iTableOptions = {};
-
 const columns: Tables.iTableColumns = {
   psp_id:            {type: "binary(16)", required: true, protected: true, relations: [{table: "psp", column: "id"}]},
   old_id:            {type: "int(11)", required: true, protected: true, unique_index: ["old_id"]},
@@ -30,7 +29,8 @@ const columns: Tables.iTableColumns = {
 @Resources.implement<Resources.iResource>()
 export default class Merchant extends Resources.Constructor {
   
-  public static __table: Table = new Table("merchant", options, columns);
+  public static readonly __type: string = "merchant";
+  public static readonly __table: Table = new Table(Merchant, options, columns);
   
   public psp_id: string | Buffer;
   public old_id: number;

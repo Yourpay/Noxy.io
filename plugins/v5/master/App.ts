@@ -2,8 +2,8 @@ import * as Resources from "../../../classes/Resource";
 import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
 
-export const type = "card";
-export const columns: Tables.iTableColumns = {
+const options: Tables.iTableOptions = {};
+const columns: Tables.iTableColumns = {
   name:         {type: "varchar(64)", required: true, protected: true, unique_index: ["card"]},
   time_created: Table.generateTimeColumn("time_created"),
   time_updated: Table.generateTimeColumn()
@@ -11,6 +11,9 @@ export const columns: Tables.iTableColumns = {
 
 @Resources.implement<Resources.iResource>()
 export default class App extends Resources.Constructor {
+  
+  public static readonly __type: string = "app";
+  public static readonly __table: Table = new Table(App, options, columns);
   
   public name: string;
   public time_created: number;

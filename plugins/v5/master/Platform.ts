@@ -3,7 +3,6 @@ import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
 
 const options: Tables.iTableOptions = {};
-
 const columns: Tables.iTableColumns = {
   name:         {type: "varchar(64)", required: true, protected: true, unique_index: ["platform"]},
   domain:       {type: "varchar(64)", required: true, protected: true, unique_index: ["platform"]},
@@ -13,9 +12,10 @@ const columns: Tables.iTableColumns = {
 };
 
 @Resources.implement<Resources.iResource>()
-export default class PSP extends Resources.Constructor {
+export default class Platform extends Resources.Constructor {
   
-  public static __table: Table = new Table("platform", options, columns);
+  public static readonly __type: string = "platform";
+  public static readonly __table: Table = new Table(Platform, options, columns);
   
   public name: string;
   public domain: string;

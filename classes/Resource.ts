@@ -2,15 +2,14 @@ import Table from "./Table";
 import * as _ from "lodash";
 import Promise from "aigle";
 import * as Database from "../modules/DatabaseService";
-import Endpoint from "./Endpoint";
 import ServerMessage from "./ServerMessage";
 import uuid = require("uuid");
 
 @implement<iResource>()
 export class Constructor {
   
-  public static __table: Table;
-  public static __endpoint: Endpoint;
+  public static readonly __type: string;
+  public static readonly __table: Table;
   
   public id: Buffer;
   public uuid: string;
@@ -103,39 +102,34 @@ export function implement<T>() {
 }
 
 export interface iResource {
-  __endpoint: Endpoint;
+  __type: string;
   
+  [key: string]: any
   __table: Table;
+  
   isUuid: (uuid: string) => boolean
   bufferFromUuid: (uuid: string) => Buffer
   uuidFromBuffer: (buffer: Buffer) => string
   
-  [key: string]: any
-  
   new(object?: {[key: string]: any}): iResourceInstance;
 }
 
-interface iResourceInstance {
-  exists: boolean
+export interface iResourceInstance {
+  database: string
   
   id: Buffer
   uuid?: string
-  validated: boolean
-  database: string
-  save: (db: Database.Pool) => Promise<this>
+  exists: boolean
   
+  [key: string]: any;
+  validated: boolean
+  
+  save: (db: Database.Pool) => Promise<this>
   validate: (db: Database.Pool) => Promise<this>
   delete: (db: Database.Pool) => Promise<this>
 }
 
-[key;
-:
-string;
-]:
-any;
-
-
-interface iResourceObject {
+export interface iResourceObject {
   id?: Buffer
   uuid?: string
   

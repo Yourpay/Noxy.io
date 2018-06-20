@@ -5,20 +5,20 @@ import * as DatabaseService from "../modules/DatabaseService";
 
 export default class Table {
   
-  public readonly __name: string;
+  public readonly __resource: typeof Resource.Constructor;
   public readonly __database: string;
   public readonly __columns: iTableColumns;
   public readonly __options: iTableOptions;
   
   private static __tables: {[data: string]: {[key: string]: Table}} = {};
   
-  constructor(name: string, options: iTableOptions, columns: iTableColumns) {
-    this.__database = options.database instanceof DatabaseService.Pool ? options.database.id : options.database || "master";
+  constructor(constructor: typeof Resource.Constructor, options: iTableOptions, columns: iTableColumns) {
+    this.__database = (options.database instanceof DatabaseService.Pool ? options.database.id : options.database) || (options.coextensive ? "coextensive" : "master");
     
-    if (_.get(Table.__tables, [this.__database, name])) { return Table.__tables[this.__database][name]; }
-    _.set(Table.__tables, [this.__database, name], this);
+    if (_.get(Table.__tables, [this.__database, constructor.__type])) { return Table.__tables[this.__database][constructor.__type]; }
+    _.set(Table.__tables, [this.__database, constructor.__type], this);
     
-    this.__name = name;
+    this.__resource = constructor;
     this.__options = options;
     this.__columns = _.merge(options.junction ? {} : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}}, columns);
   }
@@ -43,22 +43,22 @@ export default class Table {
       _.each(options.unique_index, index => where[index] ? where[index].push(column) : where[index] = [column]);
     });
     const t = _.join(_.map(where, value => `(${_.join(_.map(_.filter(value), v => mysql.format(`\`${v}\` = ?`, [resource[v]])), " AND ")})`), " OR ");
-    return `SELECT * FROM \`${this.__name}\` WHERE ${t}`;
+    return `SELECT * FROM \`${this.__resource.__type}\` WHERE ${t}`;
   }
   
   public insertSQL(resource: Resource.Constructor) {
-    return DatabaseService.parse(`INSERT INTO \`${this.__name}\` SET ?`, _.pick(resource, _.keys(this.__columns)));
+    return DatabaseService.parse(`INSERT INTO \`${this.__resource.__type}\` SET ?`, _.pick(resource, _.keys(this.__columns)));
   }
   
   public updateSQL(resource: Resource.Constructor) {
     const update = _.pick(resource, _.keys(this.__columns));
     const where = _.join(_.reduce(this.__columns, (r, v, k) => v.primary_key ? r.concat(DatabaseService.parse(`${k} = ?`, resource[k])) : r, []), " AND ");
-    return DatabaseService.parse(`UPDATE \`${this.__name}\` SET ? WHERE ${where}`, update);
+    return DatabaseService.parse(`UPDATE \`${this.__resource.__type}\` SET ? WHERE ${where}`, update);
   }
   
   public selectSQL(start?: number, limit?: number, where?: {[key: string]: any}) {
     const replacers = {
-      table: this.__name,
+      table: this.__resource.__type,
       limit: limit || 18446744073709551615,
       start: start || 0,
       where: where ? DatabaseService.parse("WHERE ?", where) : ""
@@ -71,7 +71,7 @@ export default class Table {
   }
   
   private getTableSQL(): string {
-    return "CREATE TABLE IF NOT EXISTS `?`".replace("?", this.__name);
+    return "CREATE TABLE IF NOT EXISTS `?`".replace("?", this.__resource.__type);
   }
   
   private getTableDefinitionSQL() {
@@ -114,7 +114,7 @@ export default class Table {
       this.__columns,
       (result, options, col) => result.concat(_.map(Array.isArray(options.relations) ? options.relations : _.filter([options.relations]), rel =>
         _.template("CONSTRAINT `${cs}` FOREIGN KEY (`${fk}`) REFERENCES `${db}`.`${tbl}` (`${cl}`) ON UPDATE ${ou} ON DELETE ${od}")({
-          cs: this.__name + ":" + col, fk: col, db: rel.database || "master", tbl: rel.table, cl: rel.column || "id", ou: rel.on_update || "NO ACTION", od: rel.on_delete || "NO ACTION"
+          cs: this.__resource.__type + ":" + col, fk: col, db: rel.database || "master", tbl: rel.table, cl: rel.column || "id", ou: rel.on_update || "NO ACTION", od: rel.on_delete || "NO ACTION"
         })
       )),
       []
@@ -131,6 +131,9 @@ export default class Table {
 }
 
 export interface iTableOptions {
+  /* Is this table coextensive? Can it exist in multiple databases? */
+  coextensive?: boolean
+  /* The database that this table should be assigned to if it is not coextensive */
   database?: string | DatabaseService.Pool;
   /* Is the table a junction table? If it is, the ID column will not be added automatically. */
   junction?: boolean
