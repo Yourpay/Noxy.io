@@ -7,6 +7,8 @@ import Table from "../classes/Table";
 import ServerMessage from "../classes/ServerMessage";
 import {env} from "../app";
 import * as _ from "lodash";
+import {publicize_chain} from "../init/defaults/publicize";
+import Domain from "../classes/Domain";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -72,6 +74,17 @@ export default class User extends Resources.Constructor {
   }
   
 }
+
+publicize_chain.promise("setup", () => {
+  
+  Domain.addRoutes(env.subdomains.api, User.__type)
+  
+  Domain.subdomains[env.subdomains.api].endpoints[User.__type]
+  .addRoute("GET", "/", (request, response) => User.get(request.query.start, request.query.limit, {}).catch(e => e).then(r => response.json(r)))
+  .addRoute("GET", "/:id", (request, response) => User.getBy({id: request.query.id}))
+  .addRoute("GET", "/full", (request, response) => User.getBy({id: request.query.id}))
+  
+});
 
 interface iUserObject {
   id?: string

@@ -28,10 +28,10 @@ export default class Endpoint {
   }
   
   public addResource(resource: typeof Resource.Constructor) {
-  
+    _.set(this, ["__routes", `/${resource.__type}`, "GET"], (request, response) => resource.get(request.query.start, request.query.limit, {}));
   }
   
-  public addRoute(method: Method, uri: string, ...fn: Middleware[]) {
+  public addRoute(method: Method, uri: string, ...fn: Middleware[]): this {
     return _.set(this, ["__routes", uri, method], fn);
   }
   

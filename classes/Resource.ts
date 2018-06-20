@@ -77,6 +77,13 @@ export class Constructor {
     .catch(err => { throw ServerMessage.parseSQLError(err); });
   }
   
+  public static getBy(where?: {[key: string]: any}, db?: Database.Pool) {
+    const database = db || Database.namespace("master");
+    return database.query(this.__table.selectSQL(0, 1, where))
+    .then(res =>  _.map(res, row => new this(row).toObject()))
+    .catch(err => { throw ServerMessage.parseSQLError(err); });
+  }
+  
   public static isUuid(uuid: string): boolean {
     return !!`${uuid}`.match(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
   }

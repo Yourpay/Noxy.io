@@ -60,6 +60,7 @@ export default class Domain {
         application.use("/", res[env.subdomains.default]);
         application.all("*", (request, response) => response.status(404).send("Could not find anything here"));
         http.createServer(application).listen(80);
+        resolve();
       });
     }));
   }
