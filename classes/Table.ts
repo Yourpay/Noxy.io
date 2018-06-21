@@ -20,7 +20,7 @@ export default class Table {
     
     this.__resource = constructor;
     this.__options = options;
-    this.__columns = _.merge(options.junction ? {} : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}}, columns);
+    this.__columns = _.merge(options.junction ? {} : {id: {type: "binary(16)", primary_key: true, required: true, protected: true, hidden: true}}, columns);
   }
   
   public static get tables() {
@@ -63,7 +63,7 @@ export default class Table {
       start: start || 0,
       where: where ? DatabaseService.parse("WHERE ?", where) : ""
     };
-    return _.template("SELECT * FROM ${table} WHERE ${where} LIMIT ${limit} OFFSET ${start}")(replacers);
+    return _.template("SELECT * FROM ${table} ${where} LIMIT ${limit} OFFSET ${start}")(replacers);
   }
   
   public toSQL(): string {

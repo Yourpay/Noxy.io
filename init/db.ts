@@ -1,8 +1,8 @@
-import * as Database from "../../modules/DatabaseService";
-import * as Include from "../../modules/Include";
-import PromiseQueue from "../../classes/PromiseQueue";
-import Table from "../../classes/Table";
-import {env, init_queue} from "../../app";
+import * as Database from "../modules/DatabaseService";
+import * as Include from "../modules/Include";
+import PromiseQueue from "../classes/PromiseQueue";
+import Table from "../classes/Table";
+import {env, init_queue} from "../app";
 import * as path from "path";
 import * as _ from "lodash";
 import Promise from "aigle";
@@ -16,7 +16,7 @@ db_queue.promise("connect", (resolve, reject) =>
 );
 
 db_queue.promise("register", (resolve, reject) => {
-  Include({path: path.resolve(__dirname, "../../resources")})
+  Include({path: path.resolve(__dirname, "../resources")})
   .then(res => resolve(res))
   .catch(err => reject(err));
 });

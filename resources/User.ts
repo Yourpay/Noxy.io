@@ -1,14 +1,12 @@
-import * as crypto from "crypto";
-import * as JWT from "jsonwebtoken";
-import Promise from "aigle";
 import * as Resources from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
-import ServerMessage from "../classes/ServerMessage";
-import {env} from "../app";
+import * as JWT from "jsonwebtoken";
+import * as crypto from "crypto";
 import * as _ from "lodash";
-import {publicize_chain} from "../init/defaults/publicize";
-import Domain from "../classes/Domain";
+import Response from "../classes/Response";
+import Promise from "aigle";
+import {env} from "../app";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -51,18 +49,18 @@ export default class User extends Resources.Constructor {
     this.hash = User.generateHash(value, this.salt);
   }
   
-  public static login(credentials: User | {username?: string, email?: string, password: string}): Promise<ServerMessage> {
+  public static login(credentials: User | {username?: string, email?: string, password: string}): Promise<Response> {
     return new Promise((resolve, reject) => {
       if (credentials instanceof User) { return resolve(credentials); }
-      if (!(credentials.username || credentials.password) && !credentials.password) { return reject(reject(new ServerMessage(401, "any"))); }
+      if (!(credentials.username || credentials.password) && !credentials.password) { return reject(reject(new Response(401, "any"))); }
       new User(credentials).validate()
-      .then(res => !res.exists ? reject(new ServerMessage(401, "any")) : _.set(res, "time_login", Date.now()).save()
+      .then(res => !res.exists ? reject(new Response(401, "any")) : _.set(res, "time_login", Date.now()).save()
         .then(res => resolve(res))
         .catch(err => reject(err))
       )
       .catch(err => reject(err));
     })
-    .then((res: User) => new ServerMessage(200, "any", JWT.sign(_.merge({id: res.uuid}, _.pick(res, ["username", "email", "time_login", "time_created"])), env.tokens.jwt, {expiresIn: "7d"})));
+    .then((res: User) => new Response(200, "any", JWT.sign(_.merge({id: res.uuid}, _.pick(res, ["username", "email", "time_login", "time_created"])), env.tokens.jwt, {expiresIn: "7d"})));
   }
   
   public static generateSalt(): Buffer {
@@ -74,17 +72,6 @@ export default class User extends Resources.Constructor {
   }
   
 }
-
-publicize_chain.promise("setup", () => {
-  
-  Domain.addRoutes(env.subdomains.api, User.__type)
-  
-  Domain.subdomains[env.subdomains.api].endpoints[User.__type]
-  .addRoute("GET", "/", (request, response) => User.get(request.query.start, request.query.limit, {}).catch(e => e).then(r => response.json(r)))
-  .addRoute("GET", "/:id", (request, response) => User.getBy({id: request.query.id}))
-  .addRoute("GET", "/full", (request, response) => User.getBy({id: request.query.id}))
-  
-});
 
 interface iUserObject {
   id?: string

@@ -70,9 +70,19 @@ declare module "*env.json" {
   
     tokens: {[key: string]: string}
   
-    users: {[key: string]: UserEnvironmental}
+    users: {
+      [key: string]: UserEnvironmental
+    
+      admin: UserEnvironmental
+      server: UserEnvironmental
+    }
   
-    roles: {[key: string]: RoleEnvironmental}
+    roles: {
+      [key: string]: RoleEnvironmental
+    
+      user: RoleEnvironmental
+      admin: RoleEnvironmental
+    }
     
   };
   export = value;

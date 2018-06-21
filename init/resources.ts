@@ -1,8 +1,8 @@
-import PromiseQueue from "../../classes/PromiseQueue";
-import {env, init_queue, roles, users} from "../../app";
+import PromiseQueue from "../classes/PromiseQueue";
+import {env, init_queue, roles, users} from "../app";
 import Promise from "aigle";
-import User from "../../resources/User";
-import Role from "../../resources/Role";
+import User from "../resources/User";
+import Role from "../resources/Role";
 import * as fs from "fs";
 import * as path from "path";
 

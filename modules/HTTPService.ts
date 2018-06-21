@@ -8,7 +8,7 @@
 // import * as _ from "lodash";
 // import * as app from "../app";
 // import {env} from "../app";
-// import ServerMessage from "../classes/ServerMessage";
+// import Response from "../classes/Response";
 // import User from "../objects/User";
 // import Route from "../objects/Route";
 // import RoleRoute from "../objects/RoleRoute";
@@ -36,7 +36,7 @@
 //   }
 //
 //   export function subdomain(subdomain: string, statics?: string) {
-//     if (!/^(?:\*|[a-z][\w]{1,7})(?:\.[a-z][\w]{1,7})?$|^$/.test(subdomain)) { throw new ServerMessage(500, "test", {test_message: "Domain does not follow the standard.", test: subdomain}); }
+//     if (!/^(?:\*|[a-z][\w]{1,7})(?:\.[a-z][\w]{1,7})?$|^$/.test(subdomain)) { throw new Response(500, "test", {test_message: "Domain does not follow the standard.", test: subdomain}); }
 //     return __subdomains[subdomain] || (__subdomains[subdomain] = new HTTPSubdomain(subdomain, statics));
 //   }
 //
@@ -84,7 +84,7 @@
 //
 //   export function response(object) {
 //     return {
-//       success: !(object instanceof ServerMessage),
+//       success: !(object instanceof Response),
 //       content: object,
 //       code:    object.code || 200,
 //       type:    object.type || "any",
@@ -201,13 +201,13 @@
 //       .then(route => {
 //         if (!route.flag_active) {
 //           return authUser(request.get("Authorization"))
-//           .then(res => _.some(res[1], v => v.equals(app.roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new ServerMessage(403, "any")))
-//           .catch(err => reject(err.code === 401 && err.type === "jwt" ? new ServerMessage(404, "any") : err));
+//           .then(res => _.some(res[1], v => v.equals(app.roles["admin"].id)) ? resolve([res[0], res[1], []]) : reject(new Response(403, "any")))
+//           .catch(err => reject(err.code === 401 && err.type === "jwt" ? new Response(404, "any") : err));
 //         }
 //         authRoleRoute(route)
 //         .then(route_roles => {
 //           authUser(request.get("Authorization"))
-//           .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new ServerMessage(403, "any")))
+//           .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new Response(403, "any")))
 //           .catch(err => err.code === 401 && err.type === "jwt" ? resolve([null, [], route_roles]) : reject(err));
 //         });
 //       })
@@ -225,11 +225,11 @@
 //     return new Promise<[User, Buffer[]]>((resolve, reject) =>
 //       new Promise<User>((resolve, reject) =>
 //         jwt.verify(token, env.tokens.jwt, (err, decoded) =>
-//           !err ? resolve(new User(decoded)) : reject(new ServerMessage(401, "jwt"))
+//           !err ? resolve(new User(decoded)) : reject(new Response(401, "jwt"))
 //         )
 //       )
 //       .then(user => user.validate().then(user => authRoleUser(user).then(res => resolve([user, res]))))
-//       .catch(err => reject(err || new ServerMessage(401, "any")))
+//       .catch(err => reject(err || new Response(401, "any")))
 //     );
 //   }
 //

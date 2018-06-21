@@ -1,9 +1,11 @@
 import Table from "./Table";
-import * as _ from "lodash";
 import Promise from "aigle";
+
 import * as Database from "../modules/DatabaseService";
-import ServerMessage from "./ServerMessage";
-import uuid = require("uuid");
+import * as Responses from "../modules/Response";
+
+import * as _ from "lodash";
+import * as uuid from "uuid";
 
 @implement<iResource>()
 export class Constructor {
@@ -22,7 +24,10 @@ export class Constructor {
     const $this = (<typeof Constructor>this.constructor);
     if (!$this.__table) { throw Error("Cannot initialize an instance of 'Resource' lacking a table definition."); }
     _.assign(this, object);
-    if (!$this.__table.__options.junction) { this.id = Constructor.bufferFromUuid(object.id ? (!Constructor.isUuid(object.id) ? object.id : this.uuid = object.id) : this.uuid = uuid.v4()); }
+    if (!$this.__table.__options.junction) {
+      this.id = object.id ? (Constructor.isUuid(object.id) ? Constructor.bufferFromUuid(this.uuid = object.id) : object.id) : Constructor.bufferFromUuid(this.uuid = uuid.v4());
+      this.uuid = this.uuid || Constructor.uuidFromBuffer(this.id);
+    }
     this.__database = <string>$this.__table.__options.database;
   }
   
@@ -52,6 +57,16 @@ export class Constructor {
     );
   }
   
+  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
+    const time_started = Date.now();
+    const database = db || Database.namespace("master");
+    start = start > 0 ? start : 0;
+    limit = limit > 0 && limit < 100 ? limit : 100;
+    return database.query(this.__table.selectSQL(start, limit, where))
+    .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
+    .catch(err => console.log(err) || new Responses.JSON(500, "any", {}, time_started));
+  }
+  
   public delete(db?: Database.Pool): Promise<this> {
     return new Promise((resolve, reject) => { return resolve(this); });
   }
@@ -68,20 +83,17 @@ export class Constructor {
     return this.__database;
   }
   
-  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Partial<Constructor>[]> {
-    const database = db || Database.namespace("master");
-    start = start > 0 ? start : 0;
-    limit = limit > 0 && limit < 100 ? limit : 100;
-    return database.query(this.__table.selectSQL(start, limit, where))
-    .then(res => _.map(res, row => new this(row).toObject()))
-    .catch(err => { throw ServerMessage.parseSQLError(err); });
-  }
-  
-  public static getBy(where?: {[key: string]: any}, db?: Database.Pool) {
+  public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
+    const time_started = Date.now();
     const database = db || Database.namespace("master");
     return database.query(this.__table.selectSQL(0, 1, where))
-    .then(res =>  _.map(res, row => new this(row).toObject()))
-    .catch(err => { throw ServerMessage.parseSQLError(err); });
+    .then(res => res.length > 0 ? new Responses.JSON(200, "any", new this(res[0]).toObject(), time_started) : new Responses.JSON(404, "any", null, time_started))
+    .catch(() => new Responses.JSON(500, "any", {}, time_started));
+  }
+  
+  public toObject(): Partial<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
   }
   
   public static isUuid(uuid: string): boolean {
@@ -97,11 +109,6 @@ export class Constructor {
     return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
   }
   
-  public toObject(): Partial<this> {
-    const $this = (<typeof Constructor>this.constructor);
-    return _.omitBy(this, (v, k) => $this.__table.__columns[k].hidden);
-  }
-  
 }
 
 export function implement<T>() {
@@ -112,6 +119,7 @@ export interface iResource {
   __type: string;
   
   [key: string]: any
+  
   __table: Table;
   
   isUuid: (uuid: string) => boolean
@@ -129,6 +137,7 @@ export interface iResourceInstance {
   exists: boolean
   
   [key: string]: any;
+  
   validated: boolean
   
   save: (db: Database.Pool) => Promise<this>

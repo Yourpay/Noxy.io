@@ -1,10 +1,12 @@
 import * as _ from "lodash";
 
-export default class ServerMessage extends Error {
+export default class Response extends Error {
   
   public code: number;
   public type: string;
-  public item: string;
+  public time: number;
+  public message: string;
+  public content: string;
   
   private static codes: {[status: number]: {[type: string]: string}} = {
     200: {
@@ -30,21 +32,35 @@ export default class ServerMessage extends Error {
     }
   };
   
-  constructor(code: number, type: string, item?: any) {
-    super(ServerMessage.codes[code][type]);
-    this.code = ServerMessage.codes[code] ? code : 500;
-    this.type = ServerMessage.codes[code][type] ? type : "any";
-    this.message = ServerMessage.codes[code][type];
-    this.item = item || {};
+  constructor(code: number, type: string, content?: any) {
+    super(Response.codes[code][type]);
+    this.code = Response.codes[code] ? code : 500;
+    this.type = Response.codes[code][type] ? type : "any";
+    this.message = Response.codes[code][type];
+    this.content = content || {};
+    this.time = Date.now();
   }
   
   public static parseSQLError(error: iSQLError) {
     const cleaned = _.omit(error, "error");
     const type = error.sql.slice(0, 6).toLowerCase() === "select" ? "get" : error.sql.slice(0, 6).toLowerCase() === "insert" ? "post" : "put";
-    if (error.errno === 1064) { return new ServerMessage(400, type, cleaned); }
-    return new ServerMessage(500, "any", cleaned);
+    if (error.errno === 1064) { return new Response(400, type, cleaned); }
+    return new Response(500, "any", cleaned);
   }
   
+  public asResponse(): JSONResponse {
+    return _.merge({success: this.code === 200}, _.pick(this, ["code", "type", "message", "content", "time"]));
+  }
+  
+}
+
+export interface JSONResponse {
+  success: boolean;
+  code: number;
+  type: string;
+  message: string;
+  time: number;
+  content: string;
 }
 
 interface iSQLError {

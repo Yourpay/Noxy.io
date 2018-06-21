@@ -1,10 +1,10 @@
 import PromiseQueue from "../../classes/PromiseQueue";
 import * as Resource from "../../classes/Resource";
-import {db_queue} from "../../init/defaults/db";
+import {db_queue} from "../../init/db";
 import * as Include from "../../modules/Include";
 import * as path from "path";
 import Promise from "aigle";
-import {resource_queue} from "../../init/defaults/resources";
+import {resource_queue} from "../../init/resources";
 import CardType from "./master/CardType";
 
 db_queue.promise("register", (resolve, reject) => {
