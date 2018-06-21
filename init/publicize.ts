@@ -19,8 +19,8 @@ publicize_chain.promise("setup", (resolve, reject) => {
 publicize_chain.promise("listen", (resolve, reject) => {
   
   Application.publicize()
-  .then(res => console.log(res) && resolve(res))
-  .catch(err => console.log(err) && reject(err));
+  .then(res => resolve(res))
+  .catch(err => reject(err));
   
 });
 

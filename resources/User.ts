@@ -1,4 +1,5 @@
 import * as Resources from "../classes/Resource";
+import * as Application from "../modules/Application";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 import * as JWT from "jsonwebtoken";
@@ -7,6 +8,7 @@ import * as _ from "lodash";
 import Response from "../classes/Response";
 import Promise from "aigle";
 import {env} from "../app";
+import {publicize_chain} from "../init/publicize";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -72,6 +74,14 @@ export default class User extends Resources.Constructor {
   }
   
 }
+
+publicize_chain.promise("register", (resolve, reject) => {
+  
+  Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) => {
+  
+  })
+  
+});
 
 interface iUserObject {
   id?: string

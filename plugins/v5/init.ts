@@ -4,11 +4,19 @@ import {db_queue} from "../../init/db";
 import * as Include from "../../modules/Include";
 import * as path from "path";
 import Promise from "aigle";
-import {resource_queue} from "../../init/resources";
+import {resource_queue} from "../../init/resource";
 import CardType from "./master/CardType";
+import {publicize_chain} from "../../init/publicize";
+import * as Database from "../../modules/DatabaseService";
+
+db_queue.promise("connect", (resolve, reject) =>
+  Database.register("aurora_payments", {user: "osce", password: "", host: "aurora.aws.com", database: "di_payments"})
+  .then(res => resolve(res))
+  .catch(err => reject(err))
+);
 
 db_queue.promise("register", (resolve, reject) => {
-  Include({path: path.resolve(__dirname, "./master")})
+  Promise.map(["./master", "./merchant"], p => Include({path: path.resolve(__dirname, p)}))
   .then(res => resolve(res))
   .catch(err => reject(err));
 });
@@ -62,4 +70,9 @@ resource_queue.promise("v5", (resolve, reject) => {
   
 });
 
+publicize_chain.promise("setup", (resolve, reject) => {
+  
+  resolve();
+  
+});
 

@@ -22,8 +22,8 @@ db_queue.promise("register", (resolve, reject) => {
 });
 
 db_queue.promise("create", (resolve, reject) => {
-  Promise.map(Table.tables, (tables, database: string) =>
-    Database.namespace(database).query(`SET FOREIGN_KEY_CHECKS=0; ${_.join(_.map(_.reject(tables, t => t.__options.coextensive), table => table.toSQL()), " ")} SET FOREIGN_KEY_CHECKS=1;`)
+  Promise.map(_.omitBy(Table.tables, (v,k) => k === "coextensive"), (tables, database: string) =>
+    Database.namespace(database).query(`SET FOREIGN_KEY_CHECKS=0; ${_.join(_.map(tables, table => table.toSQL()), " ")} SET FOREIGN_KEY_CHECKS=1;`)
   )
   .then(res => resolve(res))
   .catch(err => reject(err));

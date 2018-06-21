@@ -57,14 +57,9 @@ export class Constructor {
     );
   }
   
-  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
-    const time_started = Date.now();
-    const database = db || Database.namespace("master");
-    start = start > 0 ? start : 0;
-    limit = limit > 0 && limit < 100 ? limit : 100;
-    return database.query(this.__table.selectSQL(start, limit, where))
-    .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
-    .catch(err => console.log(err) || new Responses.JSON(500, "any", {}, time_started));
+  public toObject(): Partial<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
   }
   
   public delete(db?: Database.Pool): Promise<this> {
@@ -83,17 +78,22 @@ export class Constructor {
     return this.__database;
   }
   
+  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
+    const time_started = Date.now();
+    const database = db || Database.namespace("master");
+    start = start > 0 ? start : 0;
+    limit = limit > 0 && limit < 100 ? limit : 100;
+    return database.query(this.__table.selectSQL(start, limit, where))
+    .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
+    .catch(err => new Responses.JSON(500, "any", {}, time_started));
+  }
+  
   public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
     const time_started = Date.now();
     const database = db || Database.namespace("master");
     return database.query(this.__table.selectSQL(0, 1, where))
     .then(res => res.length > 0 ? new Responses.JSON(200, "any", new this(res[0]).toObject(), time_started) : new Responses.JSON(404, "any", null, time_started))
     .catch(() => new Responses.JSON(500, "any", {}, time_started));
-  }
-  
-  public toObject(): Partial<this> {
-    const $this = (<typeof Constructor>this.constructor);
-    return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
   }
   
   public static isUuid(uuid: string): boolean {
