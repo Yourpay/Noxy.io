@@ -81,25 +81,27 @@ export default class Merchant extends Resource.Constructor {
         Database.namespace("aurora_customer").query("SELECT * FROM `customer_cvr` WHERE merchantid IN (?)", [_.reduce(res, (result, value) => _.concat(result, _.keys(value)), [])])
         .then(res =>
           Promise.map(res, merchant =>
-            new PSP({old_id: merchant.psper}).validate()
-            .then(res =>
-              new Merchant({
-                address:    merchant.address,
-                city:       merchant.city,
-                country:    merchant.country,
-                cvr:        merchant.cvr,
-                logo:       merchant.logo,
-                mcc:        merchant.mcc,
-                name:       merchant.cvr_name,
-                old_id:     merchant.merchantid,
-                phone:      merchant.phone,
-                postal:     merchant.postal,
-                psp_id:     res.id,
-                website:    merchant.website,
-                type_login: merchant.alternate_dashboard
-              }).save()
+            new Promise((resolve, reject) =>
+              new PSP({old_id: merchant.psper}).validate()
+              .then(res =>
+                new Merchant({
+                  address:    merchant.address,
+                  city:       merchant.city,
+                  country:    merchant.country,
+                  cvr:        merchant.cvr,
+                  logo:       merchant.logo,
+                  mcc:        merchant.mcc,
+                  name:       merchant.cvr_name,
+                  old_id:     merchant.merchantid,
+                  phone:      merchant.phone,
+                  postal:     merchant.postal,
+                  psp_id:     res.id,
+                  website:    merchant.website,
+                  type_login: merchant.alternate_dashboard
+                }).save()
+              )
+              .catch(err => reject(err))
             )
-            .catch(err => reject(err))
           )
           .then(res => resolve(res))
           .catch(err => reject(err))
