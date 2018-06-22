@@ -7,8 +7,17 @@ import CardType from "./master/CardType";
 import PSP from "./master/PSP";
 import * as Include from "../../modules/Include";
 import * as path from "path";
+import {env} from "../../app";
+import * as Database from "../../modules/Database";
+import * as _ from "lodash";
 
 export const databases = {customer: "aurora_customer", payments: "aurora_payments"};
+
+db_queue.promise("connect", (resolve, reject) => {
+  Promise.map(_.pick(env.databases, ["aurora_payments", "aurora_customer"]), (set, namespace) => Promise.map(Array.isArray(set) ? set : [set], database => Database.register(<string>namespace, database)))
+  .then(res => resolve(res))
+  .catch(err => reject(err));
+});
 
 db_queue.promise("register", (resolve, reject) => {
   Include({path: path.resolve(__dirname, "./master")})
