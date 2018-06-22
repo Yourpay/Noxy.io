@@ -8,7 +8,7 @@ import * as _ from "lodash";
 import Response from "../classes/Response";
 import Promise from "aigle";
 import {env} from "../app";
-import {publicize_chain} from "../init/publicize";
+import {publicize_queue} from "../init/publicize";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -75,7 +75,7 @@ export default class User extends Resources.Constructor {
   
 }
 
-publicize_chain.promise("register", (resolve, reject) => {
+publicize_queue.promise("register", (resolve, reject) => {
   
   Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) => {
   

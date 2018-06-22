@@ -4,9 +4,9 @@ import * as Application from "../modules/Application";
 import * as _ from "lodash";
 import Table from "../classes/Table";
 
-export const publicize_chain = new PromiseQueue(["setup", "listen"]);
+export const publicize_queue = new PromiseQueue(["setup", "listen"]);
 
-publicize_chain.promise("setup", (resolve, reject) => {
+publicize_queue.promise("setup", (resolve, reject) => {
   
   Application.addParam(env.subdomains.api, "id", (request, response, next, id) => (request.query.id = id) && next());
   
@@ -16,7 +16,7 @@ publicize_chain.promise("setup", (resolve, reject) => {
   
 });
 
-publicize_chain.promise("listen", (resolve, reject) => {
+publicize_queue.promise("listen", (resolve, reject) => {
   
   Application.publicize()
   .then(res => resolve(res))
@@ -24,4 +24,4 @@ publicize_chain.promise("listen", (resolve, reject) => {
   
 });
 
-init_queue.promise("publicize", (resolve, reject) => publicize_chain.execute().then(res => resolve(res), err => reject(err)));
+init_queue.promise("publicize", (resolve, reject) => publicize_queue.execute().then(res => resolve(res), err => reject(err)));

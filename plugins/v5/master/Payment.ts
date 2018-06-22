@@ -1,16 +1,13 @@
 import * as Resources from "../../../classes/Resource";
 import * as Application from "../../../modules/Application";
+import * as Database from "../../../modules/Database";
 import * as Response from "../../../modules/Response";
 import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
 import {env} from "../../../app";
-import * as rp from "request-promise";
+import Merchant from "./Merchant";
 
-export const type = "card";
-
-export const options: Tables.iTableOptions = {
-  coextensive: true
-};
+export const options: Tables.iTableOptions = {};
 export const columns: Tables.iTableColumns = {
   type_id:      {type: "binary(16)", required: true, protected: true},
   name:         {type: "varchar(64)", required: true, protected: true, unique_index: ["card"]},
@@ -39,6 +36,24 @@ export default class Payment extends Resources.Constructor {
   
 }
 
+Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
+  (request, response, next) => {
+    const time_started = Date.now();
+    if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
+    Merchant.getMerchantId(request.body.merchant_token)
+    .then(res => {
+      
+      Database.namespace("aurora_payments").query("SELECT * FROM `02_payments` WHERE merchantnumber IN (?) LIMIT 100", [[res.merchant_id, res.production_id]])
+      .then(res => {
+        console.log(res);
+        response.status(200).json(new Response.JSON(200, "any", res, time_started));
+      })
+      .catch(err => console.log(2, err) || response.status(400).json(new Response.JSON(400, "merchant_token", err, time_started)));
+    })
+    .catch(err => console.log(1, err) || response.status(400).json(new Response.JSON(400, "merchant_token", err, time_started)));
+  }
+]);
+
 interface iPaymentObject {
   id?: string | Buffer
   type_id: string | Buffer
@@ -48,17 +63,3 @@ interface iPaymentObject {
   time_created?: number
   time_updated?: number
 }
-
-Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
-  (request, response, next) => {
-    const time_started = Date.now();
-    if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
-    console.log(request.body.merchant_token)
-    return rp({method: "POST", uri: "https://webservice.yourpay.dk/v4.3/payment_list", form: {merchant_token: request.body.merchant_token, listtype: "1"}, json: true}).then(res => {
-      console.log(res);
-      response.status(200).json(new Response.JSON(200, "any", res, time_started));
-    })
-    .catch(err => console.log(err) || response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)));
-  },
-  (request, response) => console.log("t", response.locals) || response.status(response.locals.json.code).send(response.locals.json)
-]);

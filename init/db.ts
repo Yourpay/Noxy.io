@@ -1,4 +1,4 @@
-import * as Database from "../modules/DatabaseService";
+import * as Database from "../modules/Database";
 import * as Include from "../modules/Include";
 import PromiseQueue from "../classes/PromiseQueue";
 import Table from "../classes/Table";

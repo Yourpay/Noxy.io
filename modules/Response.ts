@@ -5,11 +5,12 @@ const codes: {[status: number]: {[type: string]: string}} = {
     "any": "Request performed successfully"
   },
   400: {
-    "any":       "Bad request received",
-    "get":       "Could not retrieve data due to missing or errorful data.",
-    "post":      "Could not create or change resource due to missing or errorful data.",
-    "update":    "Could not update resource due to missing or errorful data.",
-    "duplicate": "Resource already exists and no duplicates are allowed."
+    "any":            "Bad request received",
+    "get":            "Could not retrieve data due to missing or errorful data.",
+    "post":           "Could not create or change resource due to missing or errorful data.",
+    "update":         "Could not update resource due to missing or errorful data.",
+    "duplicate":      "Resource already exists and no duplicates are allowed.",
+    "merchant_token": "Could not validate merchant token."
   },
   401: {
     "any": "Unauthorized",

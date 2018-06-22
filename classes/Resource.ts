@@ -1,7 +1,7 @@
 import Table from "./Table";
 import Promise from "aigle";
 
-import * as Database from "../modules/DatabaseService";
+import * as Database from "../modules/Database";
 import * as Responses from "../modules/Response";
 
 import * as _ from "lodash";

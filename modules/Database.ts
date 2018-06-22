@@ -11,7 +11,7 @@ export function register(key: string, options: DatabaseOptions | DatabaseOptions
   return new Promise((resolve, reject) =>
     Promise.map(Array.isArray(options) ? options : [options], o =>
       Promise.map(Array.isArray(o.database) ? o.database : [o.database], database =>
-        namespace.add(_.assign(_.mapKeys(options, (v, k) => _.camelCase(k)), {
+        namespace.add(_.assign({
           database:           database,
           host:               "localhost",
           port:               3306,
@@ -20,7 +20,7 @@ export function register(key: string, options: DatabaseOptions | DatabaseOptions
           connectTimeout:     10000,
           stringifyObjects:   false,
           multipleStatements: true
-        }))
+        }, _.mapKeys(options, (v, k) => _.camelCase(k))))
       )
     )
     .then(() => resolve(namespace))
@@ -78,7 +78,7 @@ export class Pool implements Pool {
     }));
   }
   
-  public query(expression: string, replacers?: any[]): Promise<any> {
+  public query(expression: string, replacers?: any): Promise<any> {
     return new Promise((resolve, reject) =>
       __cluster.of(`${this.id}::*`).query(expression, replacers, (err, res) =>
         err ? reject(err) : resolve(res)

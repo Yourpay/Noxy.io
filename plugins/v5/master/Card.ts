@@ -1,13 +1,8 @@
 import * as Resources from "../../../classes/Resource";
 import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
-import App from "../master/App";
 
-export const type = "card";
-
-export const options: Tables.iTableOptions = {
-  coextensive: true
-};
+export const options: Tables.iTableOptions = {};
 export const columns: Tables.iTableColumns = {
   type_id:      {type: "binary(16)", required: true, protected: true},
   name:         {type: "varchar(64)", required: true, protected: true, unique_index: ["card"]},
@@ -21,7 +16,7 @@ export const columns: Tables.iTableColumns = {
 export default class Card extends Resources.Constructor {
   
   public static readonly __type: string = "card";
-  public static readonly __table: Table = new Table(App, options, columns);
+  public static readonly __table: Table = new Table(Card, options, columns);
   
   public type_id: string;
   public name: string;

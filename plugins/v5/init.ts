@@ -1,22 +1,17 @@
 import PromiseQueue from "../../classes/PromiseQueue";
-import * as Resource from "../../classes/Resource";
-import {db_queue} from "../../init/db";
-import * as Include from "../../modules/Include";
-import * as path from "path";
 import Promise from "aigle";
 import {resource_queue} from "../../init/resource";
+import {publicize_queue} from "../../init/publicize";
+import {db_queue} from "../../init/db";
 import CardType from "./master/CardType";
-import {publicize_chain} from "../../init/publicize";
-import * as Database from "../../modules/DatabaseService";
+import PSP from "./master/PSP";
+import * as Include from "../../modules/Include";
+import * as path from "path";
 
-db_queue.promise("connect", (resolve, reject) =>
-  Database.register("aurora_payments", {user: "osce", password: "", host: "aurora.aws.com", database: "di_payments"})
-  .then(res => resolve(res))
-  .catch(err => reject(err))
-);
+export const databases = {customer: "aurora_customer", payments: "aurora_payments"};
 
 db_queue.promise("register", (resolve, reject) => {
-  Promise.map(["./master", "./merchant"], p => Include({path: path.resolve(__dirname, p)}))
+  Include({path: path.resolve(__dirname, "./master")})
   .then(res => resolve(res))
   .catch(err => reject(err));
 });
@@ -24,7 +19,15 @@ db_queue.promise("register", (resolve, reject) => {
 resource_queue.promise("v5", (resolve, reject) => {
   
   const v5_queue = new PromiseQueue([]);
-  const card_types = {};
+  
+  v5_queue.promise("psp", (resolve, reject) => {
+    Promise.all([
+      new PSP({name: "Standard Customer", contact: "support@yourpay.io", old_id: 0, volume: 0, settlement_days: 14, percentage: 2.25}).save(),
+      PSP.migrate()
+    ])
+    .then(res => resolve(res))
+    .catch(err => reject(err));
+  });
   
   v5_queue.promise("card_types", (resolve, reject) => {
     const preset = {
@@ -48,20 +51,10 @@ resource_queue.promise("v5", (resolve, reject) => {
       "SMSPay":                                ["smspay"],
       "MobilePay":                             ["mobilepay"]
     };
-    
-    return Promise.map(preset, (patterns, type) =>
-      Promise.map(patterns, pattern =>
-        (new CardType({name: type, pattern: pattern})).save()
-        .then(res => card_types[Resource.Constructor.uuidFromBuffer(res.id)] = res)
-      )
-    )
+  
+    Promise.map(preset, (patterns, type) => Promise.map(patterns, pattern => new CardType({name: type, pattern: pattern}).save()))
     .then(res => resolve(res))
     .catch(err => reject(err));
-  });
-  
-  v5_queue.promise("requests", (resolve, reject) => {
-    // console.log(card_types);
-    resolve();
   });
   
   v5_queue.execute()
@@ -70,7 +63,7 @@ resource_queue.promise("v5", (resolve, reject) => {
   
 });
 
-publicize_chain.promise("setup", (resolve, reject) => {
+publicize_queue.promise("setup", (resolve, reject) => {
   
   resolve();
   

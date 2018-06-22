@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import * as Resource from "./Resource";
 import * as mysql from "mysql";
-import * as DatabaseService from "../modules/DatabaseService";
+import * as DatabaseService from "../modules/Database";
 
 export default class Table {
   
