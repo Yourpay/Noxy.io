@@ -1,7 +1,6 @@
 import PromiseQueue from "../../classes/PromiseQueue";
 import Promise from "aigle";
 import {resource_queue} from "../../init/resource";
-import {publicize_queue} from "../../init/publicize";
 import {db_queue} from "../../init/db";
 import CardType from "./master/CardType";
 import PSP from "./master/PSP";
@@ -69,11 +68,5 @@ resource_queue.promise("v5", (resolve, reject) => {
   v5_queue.execute()
   .then(res => resolve(res))
   .catch(err => reject(err));
-  
-});
-
-publicize_queue.promise("setup", (resolve, reject) => {
-  
-  resolve();
   
 });

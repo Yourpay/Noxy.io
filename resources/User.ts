@@ -79,7 +79,9 @@ publicize_queue.promise("register", (resolve, reject) => {
   
   Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) => {
   
-  })
+  });
+  
+  resolve();
   
 });
 

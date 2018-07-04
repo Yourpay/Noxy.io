@@ -9,6 +9,7 @@ import {env} from "../../../app";
 import Promise from "aigle";
 import * as _ from "lodash";
 import PSP from "./PSP";
+import MerchantHierarchy from "./MerchantHierarchy";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -48,9 +49,6 @@ export default class Merchant extends Resource.Constructor {
   public logo: string;
   public type_login: number;
   public mcc: number;
-  public pipedrive_deal_id: number;
-  public pipedrive_org_id: number;
-  public pipedrive_sale_id: number;
   public user_created: User;
   public time_created: number;
   public time_updated: number;
@@ -60,7 +58,7 @@ export default class Merchant extends Resource.Constructor {
     this.time_created = Date.now();
   }
   
-  public static getMerchantId(merchant_token: string) {
+  public static getMerchantId(merchant_token: string): Promise<MerchantLookup> {
     return Database.namespace("aurora_customer").query("SELECT merchantid as id, merchantid_prod as production_id, overall_merchantid as overall_id FROM `customer_cvr` WHERE merchant_token = ?", merchant_token)
     .then(res => {
       if (!res[0]) { throw new Error("Could not validate merchant_token,"); }
@@ -69,47 +67,41 @@ export default class Merchant extends Resource.Constructor {
   }
   
   public static migrate(merchant: MerchantLookup): Promise<any> {
-    return new Promise((resolve, reject) => {
-      Promise.all([
-        Merchant.getParentMerchants(merchant.overall_id, {}),
-        Merchant.getEqualMerchants(merchant.overall_id, {}),
-        Merchant.getSubMerchants(merchant.id, {})
-      ])
-      .then(res => {
-        const master = _.find(res[0], row => row.overall_id === 0);
-        console.log(master);
-        Database.namespace("aurora_customer").query("SELECT * FROM `customer_cvr` WHERE merchantid IN (?)", [_.reduce(res, (result, value) => _.concat(result, _.keys(value)), [])])
-        .then(res =>
-          Promise.map(res, merchant =>
-            new Promise((resolve, reject) =>
-              new PSP({old_id: merchant.psper}).validate()
-              .then(res =>
-                new Merchant({
-                  address:    merchant.address,
-                  city:       merchant.city,
-                  country:    merchant.country,
-                  cvr:        merchant.cvr,
-                  logo:       merchant.logo,
-                  mcc:        merchant.mcc,
-                  name:       merchant.cvr_name,
-                  old_id:     merchant.merchantid,
-                  phone:      merchant.phone,
-                  postal:     merchant.postal,
-                  psp_id:     res.id,
-                  website:    merchant.website,
-                  type_login: merchant.alternate_dashboard
-                }).save()
-              )
-              .catch(err => reject(err))
-            )
-          )
-          .then(res => resolve(res))
-          .catch(err => reject(err))
-        )
-        .catch(err => reject(err));
-      })
-      .catch(err => reject(err));
-    });
+    let master: Buffer, superiors: {[id: number]: Merchant} = {};
+    return Promise.all([
+      Merchant.getParentMerchants(merchant.overall_id, {}),
+      Merchant.getEqualMerchants(merchant.overall_id, {}),
+      Merchant.getSubMerchants(merchant.id, {})
+    ])
+    .then(ids => Database.namespace("aurora_customer").query("SELECT * FROM `customer_cvr` WHERE merchantid IN (?)", [_.reduce(ids, (result, value) => _.concat(result, _.keys(value)), [])]))
+    .then(results => Promise.map(results, merchant => new PSP({old_id: merchant.psper}).validate().then(psp => _.merge(merchant, {psp: psp.id}))))
+    .then(merchants => Promise.map(merchants, merchant =>
+      (superiors[merchant.merchantid] = new Merchant({
+        address:       merchant.address,
+        city:          merchant.city,
+        country:       merchant.country,
+        cvr:           merchant.cvr,
+        logo:          merchant.logo,
+        mcc:           merchant.mcc,
+        name:          merchant.cvr_name,
+        old_id:        merchant.merchantid,
+        phone:         merchant.phone,
+        postal:        merchant.postal,
+        psp_id:        merchant.psp,
+        website:       merchant.website,
+        type_login:    merchant.alternate_dashboard,
+        overall_id:    merchant.overall_merchantid,
+        production_id: merchant.merchantid_prod
+      })).save()
+    ))
+    .then(merchants => Promise.map(merchants, merchant =>
+      new MerchantHierarchy({
+        merchant_id: merchant.id,
+        master_id:   master || (master = _.orderBy(_.values(superiors), ["overall_id"], ["asc"])[0].id),
+        superior_id: superiors[(<any>merchant).overall_id || merchant.old_id].id
+      }).save()
+    ))
+    .then(() => _.omit(superiors[merchant.id], ["overall_id", "production_id"]));
   }
   
   private static getParentMerchants(overall_id: number, merchants: {[id: string]: MerchantLookup}): Promise<{[id: string]: MerchantLookup}> {
@@ -152,11 +144,11 @@ Application.addRoute(env.subdomains.api, Merchant.__type, "/migrate", "POST", [
     const time_started = Date.now();
     if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
     Merchant.getMerchantId(request.body.merchant_token)
-    .then(res => {
+    .then(res =>
       Merchant.migrate(res)
       .then(res => { response.status(200).json(res); })
-      .catch(err => { response.status(500).json(err); });
-    })
+      .catch(err => { response.status(500).json(err); })
+    )
     .catch(err => console.log(1, err) || response.status(400).json(new Response.JSON(400, "merchant_token", err, time_started)));
   }
 ]);
@@ -164,6 +156,8 @@ Application.addRoute(env.subdomains.api, Merchant.__type, "/migrate", "POST", [
 type MerchantLookup = {id: number, production_id: number, overall_id: number};
 
 interface iMerchantObject {
+  [key: string]: any
+  
   id?: string
   psp_id?: string | Buffer
   old_id?: number
