@@ -4,7 +4,7 @@ import Table from "../../../classes/Table";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
-  name:         {type: "varchar(128)", required: true, protected: true},
+  name:         {type: "varchar(128)", required: true, protected: true, unique_index: ["name"]},
   time_created: Table.generateTimeColumn("time_created"),
   time_updated: Table.generateTimeColumn()
 };

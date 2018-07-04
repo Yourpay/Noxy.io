@@ -58,8 +58,11 @@ export default class Payment extends Resources.Constructor {
     super(object);
   }
   
-  public static migrate(merchant: Merchant) {
-    return Database.namespace("aurora_payments").query("SELECT * FROM `02_payments` WHERE merchantnumber IN (?) LIMIT 100", [[merchant.old_id]])
+  public static migrate(merchant: Merchant, payment?: Payment) {
+    const sql = payment.exists
+                ? Database.parse("SELECT * FROM `02_payments` WHERE `merchantnumber` IN (?) LIMIT 100", [[merchant.old_id]])
+                : Database.parse("SELECT * FROM `02_payments` WHERE `merchantnumber` IN (?) AND `PaymentID` = ? LIMIT 1", [[merchant.old_id], payment.old_id]);
+    return Database.namespace("aurora_payments").query(sql)
     .then(payments => {
       
       console.log(payments);
@@ -76,7 +79,7 @@ Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
     if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
     Merchant.getMerchantId(request.body.merchant_token)
     .then(lookup => new Merchant({old_id: lookup.id}).validate().then(merchant => (merchant_lookup = lookup) && merchant.exists ? merchant : Merchant.migrate(lookup)))
-    .then(merchant => Payment.migrate(merchant))
+    .then(merchant => console.log(request.body) || !request.body.id ? Payment.migrate(merchant) : new Payment({old_id: request.body.id}).validate().then(res => Payment.migrate(merchant, res)))
     .then(payments => response.json(new Response.JSON(200, "any", payments, time_started)))
     .catch(err => console.error(err) || response.status(400).json(new Response.JSON(400, "merchant_token", err, time_started)));
   }
@@ -84,22 +87,22 @@ Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
 
 interface iPaymentObject {
   id?: string | Buffer
-  amount: number;
-  currency_id: string;
-  order_id: string;
-  old_id: string;
-  card_id: string | Buffer;
-  platform_id: string | Buffer;
-  institution_id: string | Buffer;
-  cde_id: string;
-  short_id: string;
-  flag_test: boolean;
-  flag_pos: boolean;
-  flag_fee: boolean;
-  flag_secure: boolean;
-  time_created: number;
-  time_updated: number;
-  time_captured: number;
-  time_refunded: number;
-  time_released: number;
+  amount?: number;
+  currency_id?: string;
+  order_id?: string;
+  old_id?: string;
+  card_id?: string | Buffer;
+  platform_id?: string | Buffer;
+  institution_id?: string | Buffer;
+  cde_id?: string;
+  short_id?: string;
+  flag_test?: boolean;
+  flag_pos?: boolean;
+  flag_fee?: boolean;
+  flag_secure?: boolean;
+  time_created?: number;
+  time_updated?: number;
+  time_captured?: number;
+  time_refunded?: number;
+  time_released?: number;
 }

@@ -9,6 +9,7 @@ import * as path from "path";
 import {env} from "../../app";
 import * as Database from "../../modules/Database";
 import * as _ from "lodash";
+import Institution from "./master/Institution";
 
 export const databases = {customer: "aurora_customer", payments: "aurora_payments"};
 
@@ -54,15 +55,23 @@ resource_queue.promise("v5", (resolve, reject) => {
       "Visa":                                  ["4"],
       "Visa Dankort":                          ["4571"],
       "Visa Electron":                         ["4026", "417500", "4405", "4508", "4844", "4913", "4917"],
-      "Resursbank":                            ["resurs"],
-      "Viabill":                               ["viabill"],
+      "Resurs Bank":                           ["resursbank"],
+      "ViaBill":                               ["viabill"],
       "SMSPay":                                ["smspay"],
       "MobilePay":                             ["mobilepay"]
     };
-  
+    
     Promise.map(preset, (patterns, type) => Promise.map(patterns, pattern => new CardType({name: type, pattern: pattern}).save()))
     .then(res => resolve(res))
     .catch(err => reject(err));
+  });
+  
+  v5_queue.promise("institutions", (resolve, reject) => {
+    const preset = ["Unknown", "Secure Trading", "TrustPay", "Credorax", "ViaBill", "Resurs Bank", "QuickPay", "MobilePay", "Pay By Group"];
+    
+    Promise.map(preset, type => new Institution({name: type}).save())
+    .then(res => console.log(res) || resolve(res))
+    .catch(err => console.log(err) || reject(err));
   });
   
   v5_queue.execute()
