@@ -10,6 +10,11 @@ import Promise from "aigle";
 import Platform from "./Platform";
 import Institution from "./Institution";
 import Card from "./Card";
+import PaymentCapture from "./PaymentCapture";
+import PaymentRefund from "./PaymentRefund";
+import PaymentRelease from "./PaymentRelease";
+import PaymentFailure from "./PaymentFailure";
+import * as _ from "lodash";
 
 export const options: Tables.iTableOptions = {};
 export const columns: Tables.iTableColumns = {
@@ -63,23 +68,23 @@ export default class Payment extends Resource.Constructor {
   }
   
   public static migrate(merchant: Merchant, payment?: Payment) {
-    const platforms = {}, subscriptions = {}, institutions = {}, cards = {};
+    const platforms = {}, subscriptions = {}, institutions = {}, cards = {}, payments = {};
     const sql = payment && payment.exists
                 ? Database.parse("SELECT * FROM `02_payments` WHERE `merchantnumber` IN (?) AND `PaymentID` = ? LIMIT 1", [[merchant.old_id], payment.old_id])
                 : Database.parse("SELECT * FROM `02_payments` WHERE `merchantnumber` IN (?) LIMIT 3", [[merchant.old_id]]);
     return Database.namespace("aurora_payments").query(sql)
     .then((di_payments: iYourpayPaymentObject[]) => {
       return Promise.map(di_payments, di_payment => {
-    
+  
         const promises = {};
-    
+  
         if (di_payment.platform.match("/^viabill$/i")) { di_payment.payment_institute = 7; }
         if (di_payment.platform.match("/^resurs(?:bank)?$/i")) { di_payment.payment_institute = 8; }
         if (di_payment.platform.match("/^quickpay$/i")) { di_payment.payment_institute = 9; }
         const institution = {old_id: di_payment.payment_institute || 0};
         if (!institutions[di_payment.payment_institute || 0]) { (institutions[di_payment.payment_institute || 0] = new Institution(institution).validate()).then(res => res.exists ? res : res.save()); }
         promises["institution"] = new Promise((resolve, reject) => institutions[di_payment.payment_institute || 0].then(res => resolve(res), err => reject(err)));
-    
+  
         di_payment.platform = di_payment.platform || "Unknown";
         di_payment.platform_domain = di_payment.platform_domain || "Unknown";
         di_payment.version = di_payment.version || "0";
@@ -87,7 +92,7 @@ export default class Payment extends Resource.Constructor {
         const platform = {name: di_payment.platform, domain: di_payment.platform_domain, version: di_payment.version};
         if (!platforms[platform_id]) { (platforms[platform_id] = new Platform(platform).validate()).then(res => res.exists ? res : res.save()); }
         promises["platform"] = new Promise((resolve, reject) => platforms[platform_id].then(res => resolve(res), err => reject(err)));
-    
+  
         promises["card"] = new Promise((resolve, reject) =>
           Database.namespace("master").query("SELECT * FROM `card/type` WHERE LOCATE(`pattern`, ?) = 1 ORDER BY LENGTH(`pattern`) DESC LIMIT 1", di_payment.cardno.substring(0, 6))
           .then(res => {
@@ -98,10 +103,10 @@ export default class Payment extends Resource.Constructor {
           })
           .catch(err => reject(err))
         );
-    
+  
         Promise.parallel(promises)
         .then(res =>
-          new Payment({
+          payments[di_payment.PaymentID] = new Payment({
             amount:         di_payment.amount,
             currency_id:    di_payment.Currency,
             order_id:       di_payment.orderID,
@@ -114,13 +119,37 @@ export default class Payment extends Resource.Constructor {
             flag_test:      di_payment.testtrans,
             flag_pos:       di_payment.pos_trans,
             flag_fee:       di_payment.ct,
-            flag_secure:    di_payment.secure
-          }).save()
+            flag_secure:    di_payment.secure,
+            time_captured:  di_payment.req_capture_time,
+            time_refunded:  di_payment.req_refund_time,
+            time_released:  di_payment.req_delete_time
+          })
+          .validate().then(payment => _.set(payment, "time_created", di_payment.restimestamp || Date.now()).save())
         )
-        .then(payment => console.log("payment", payment) || Database.namespace("aurora_payments").query("SELECT * FROM `02_payments` WHERE `PaymentID` = ?", payment.old_id))
-        .then(actions => console.log("actions", actions) || Promise.map(actions, action => {
-      
+        .then(payment => Database.namespace("aurora_payments").query("SELECT * FROM `02_paymentcapture` WHERE `PaymentID` = ?", payment.old_id).map(di_action => {
+          let action, object = {payment_id: payment.id, old_id: di_action.ActionID};
+    
+          if (di_action.captured > 1) {
+            action = new PaymentFailure(_.merge(object, {amount: di_action.amount, code: di_action.captured, message: di_action.captured})).validate();
+          }
+          else if (di_action.handlingtype === "capture") {
+            action = new PaymentCapture(_.merge(object, {amount: di_action.amount, flag_processed: di_action.captured})).validate();
+          }
+          else if (di_action.handlingtype === "refund" && di_action.amount > 0) {
+            action = new PaymentRefund(_.merge(object, {amount: di_action.amount, flag_processed: di_action.captured})).validate();
+          }
+          else {
+            action = new PaymentRelease(_.merge(object, {amount: di_action.amount, code: di_action.captured, message: di_action.captured})).validate();
+          }
+    
+          return action.then(res => _.set(res, "time_created", di_action.req_timestamp || Date.now()).save());
         }))
+        .then(res => _.filter(res, action => action instanceof PaymentCapture).map(action => {
+          console.log(action);
+          /* Do the fee thing here */
+          return action;
+        }))
+        .then(() => payments)
         .catch(err => console.error(err));
       });
     });
@@ -142,6 +171,8 @@ Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
 ]);
 
 interface iPaymentObject {
+  [key: string]: any
+  
   id?: string | Buffer
   amount?: number;
   currency_id?: string;
