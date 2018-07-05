@@ -67,11 +67,20 @@ resource_queue.promise("v5", (resolve, reject) => {
   });
   
   v5_queue.promise("institutions", (resolve, reject) => {
-    const preset = ["Unknown", "Secure Trading", "TrustPay", "Credorax", "ViaBill", "Resurs Bank", "QuickPay", "MobilePay", "Pay By Group"];
-    
-    Promise.map(preset, type => new Institution({name: type}).save())
-    .then(res => console.log(res) || resolve(res))
-    .catch(err => console.log(err) || reject(err));
+    const preset = {
+      0:  "Unassigned",
+      1:  "Secure Trading",
+      2:  "TrustPay",
+      4:  "Credorax",
+      7:  "ViaBill",
+      8:  "Resurs Bank",
+      9:  "QuickPay",
+      10: "MobilePay",
+      25: "Pay By Group"
+    };
+    Promise.map(preset, (old_id, name) => new Institution({name: old_id, old_id: name}).save())
+    .then(res => resolve(res))
+    .catch(err => reject(err));
   });
   
   v5_queue.execute()

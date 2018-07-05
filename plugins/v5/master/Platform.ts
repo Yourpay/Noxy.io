@@ -23,17 +23,26 @@ export default class Platform extends Resources.Constructor {
   public time_created: number;
   public time_updated: number;
   
-  constructor(object?: iInstitutionObject) {
+  constructor(object?: iNewInstitutionObject | iCurrentInstitutionObject) {
     super(object);
   }
   
 }
 
-interface iInstitutionObject {
+interface iNewInstitutionObject {
   id?: string | Buffer
   name: string
   domain: string
   version: string
+  time_created?: number
+  time_updated?: number
+}
+
+interface iCurrentInstitutionObject {
+  id: string | Buffer
+  name?: string
+  domain?: string
+  version?: string
   time_created?: number
   time_updated?: number
 }

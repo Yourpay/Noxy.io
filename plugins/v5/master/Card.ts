@@ -4,7 +4,7 @@ import Table from "../../../classes/Table";
 
 export const options: Tables.iTableOptions = {};
 export const columns: Tables.iTableColumns = {
-  type_id:      {type: "binary(16)", required: true, protected: true},
+  type_id:      {type: "binary(16)", required: true, protected: true, index: ["card/type"], relations: {table: "card/type"}},
   name:         {type: "varchar(64)", required: true, protected: true, unique_index: ["card"]},
   number:       {type: "varchar(16)", required: true, protected: true, unique_index: ["card"]},
   country_id:   {type: "varchar(3)", required: true, protected: true},
@@ -25,13 +25,24 @@ export default class Card extends Resources.Constructor {
   public time_created: number;
   public time_updated: number;
   
-  constructor(object?: iCardObject) {
+  constructor(object?: iNewCardObject | iCurrentCardObject) {
     super(object);
+    this.time_created = Date.now();
   }
   
 }
 
-interface iCardObject {
+interface iNewCardObject {
+  id: string | Buffer
+  type_id?: string | Buffer
+  name?: string
+  number?: string
+  country_id?: string
+  time_created?: number
+  time_updated?: number
+}
+
+interface iCurrentCardObject {
   id?: string | Buffer
   type_id: string | Buffer
   name: string

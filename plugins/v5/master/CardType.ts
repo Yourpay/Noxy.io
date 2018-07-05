@@ -21,14 +21,22 @@ export default class CardType extends Resources.Constructor {
   public time_created: number;
   public time_updated: number;
   
-  constructor(object?: iCardTypeObject) {
+  constructor(object?: iNewCardTypeObject | iCurrentCardTypeObject) {
     super(object);
     this.time_created = Date.now();
   }
   
 }
 
-interface iCardTypeObject {
+interface iNewCardTypeObject {
+  id: string | Buffer
+  name?: string
+  pattern?: string
+  time_created?: number
+  time_updated?: number
+}
+
+interface iCurrentCardTypeObject {
   id?: string | Buffer
   name: string
   pattern: string
