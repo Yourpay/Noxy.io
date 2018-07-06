@@ -31,41 +31,37 @@ export default class PaymentRelease extends Resources.Constructor {
 }
 
 interface iNewPaymentReleaseObject {
+  [key: string]: any
+  
   id?: string | Buffer
   old_id: number
   flag_processed: number | boolean
   time_created?: number
   time_updated?: number
-  
-  [key: string]: any
 }
 
 interface iCurrentPaymentReleaseObject {
-  olid: string | Buffer
-  d_id?: number
+  id: string | Buffer
+  old_id?: number
+  
+  [key: string]: any
   flag_processed?: number | boolean
   time_created?: number
   time_updated?: number
 }
 
-[key
+interface iOldPaymentReleaseObject {
+  tiid?: string | Buffer
+  me_updated?: number
+}
+
+old_id: number;
+  flag_processed?: number | boolean
+  time_created?: number
+  
+    [key
 :
 string;
 ]:
 any;
 
-interface iOldPaymentReleaseObject {
-  [key:d?:
-  string
-  |
-  Buffer
-  old_id: number
-  flag_processed?: number | boolean
-  time_created?: number
-  time_
-  string
-  ]:
-  any
-  
-  iupdated?: number
-}

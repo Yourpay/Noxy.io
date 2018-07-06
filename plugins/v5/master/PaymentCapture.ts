@@ -33,44 +33,34 @@ export default class PaymentCapture extends Resources.Constructor {
 }
 
 interface iNewPaymentCaptureObject {
+  [key: string]: any
+  
   id?: string | Buffer
   amount: number
   old_id: number
   flag_processed: number | boolean
   time_created?: number
   time_updated?: number
-  
-  [key: string]: any
 }
 
 interface iCurrentPaymentCaptureObject {
-  amid: string | Buffer
-  ount?: number
+  [key: string]: any
+  
+  id: string | Buffer
+  amount?: number
   old_id?: number
   flag_processed?: number | boolean
   time_created?: number
   time_updated?: number
 }
 
-[key
-:
-string;
-]:
-any;
-
 interface iOldPaymentCaptureObject {
-  [key:d:
-  string
-  |
-  Buffer
+  id?: string | Buffer
+  time_updated?: number
   amount?: number
   old_id: number
   flag_processed?: number | boolean
   time_created?: number
-  time_
-  string
-  ]:
-  any
   
-  iupdated?: number
+  [key: string]: any
 }

@@ -33,6 +33,8 @@ export default class PaymentFailure extends Resources.Constructor {
 }
 
 interface iNewPaymentFailureObject {
+  [key: string]: any;
+  
   id?: string | Buffer
   old_id: number
   amount: number
@@ -40,13 +42,13 @@ interface iNewPaymentFailureObject {
   message: string
   time_created?: number
   time_updated?: number
-  
-  [key: string]: any
 }
 
 interface iCurrentPaymentFailureObject {
-  olid: string | Buffer
-  d_id?: number
+  id: string | Buffer
+  old_id?: number
+  
+  [key: string]: any;
   amount?: number
   code?: number
   message?: string
@@ -54,26 +56,20 @@ interface iCurrentPaymentFailureObject {
   time_updated?: number
 }
 
-[key
+interface iOldPaymentFailureObject {
+  tiid?: string | Buffer
+  me_updated?: number
+}
+
+old_id: number;
+  amount?: number
+  code?: number
+  message?: string
+  time_created?: number
+  
+    [key
 :
 string;
 ]:
 any;
 
-interface iOldPaymentFailureObject {
-  [key:d?:
-  string
-  |
-  Buffer
-  old_id: number
-  amount?: number
-  code?: number
-  message?: string
-  time_created?: number
-  time_
-  string
-  ]:
-  any
-  
-  iupdated?: number
-}

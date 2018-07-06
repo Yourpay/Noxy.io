@@ -33,44 +33,40 @@ export default class PaymentRefund extends Resources.Constructor {
 }
 
 interface iNewPaymentRefundObject {
+  [key: string]: any
+  
   id?: string | Buffer
   amount: number
   old_id: number
   flag_processed: number | boolean
   time_created?: number
   time_updated?: number
-  
-  [key: string]: any
 }
 
 interface iCurrentPaymentRefundObject {
-  amid: string | Buffer
-  ount?: number
+  id: string | Buffer
+  amount?: number
+  
+  [key: string]: any
   old_id?: number
   flag_processed?: number | boolean
   time_created?: number
   time_updated?: number
 }
 
-[key
+interface iOldPaymentRefundObject {
+  tiid?: string | Buffer
+  me_updated?: number
+}
+
+amount ? : number;
+  old_id: number
+  flag_processed?: number | boolean
+  time_created?: number
+  
+    [key
 :
 string;
 ]:
 any;
 
-interface iOldPaymentRefundObject {
-  [key:d:
-  string
-  |
-  Buffer
-  amount?: number
-  old_id: number
-  flag_processed?: number | boolean
-  time_created?: number
-  time_
-  string
-  ]:
-  any
-  
-  iupdated?: number
-}

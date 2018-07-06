@@ -4,73 +4,73 @@ import Table from "../../../classes/Table";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
-  amount:         {type: "int(11)", required: true, protected: true},
-  payment_id:     {type: "binary(16)", required: true, protected: true, index: ["pattern"], relations: {table: "payment"}},
-  old_id:         {type: "int(11)", required: true, protected: true},
-  flag_processed: {type: "tinyint(1)", required: true, protected: true},
-  time_created:   Table.generateTimeColumn("time_created"),
-  time_updated:   Table.generateTimeColumn()
+  payment_id:   {type: "binary(16)", required: true, protected: true, index: ["pattern"], relations: {table: "payment"}},
+  old_id:       {type: "int(11)", required: true, protected: true},
+  amount:       {type: "int(11)", required: true, protected: true},
+  percentage:   {type: "decimal(5,4)", required: true, protected: true},
+  time_created: Table.generateTimeColumn("time_created"),
+  time_updated: Table.generateTimeColumn()
 };
 
 @Resources.implement<Resources.iResource>()
-export default class PaymentCapture extends Resources.Constructor {
+export default class PaymentFee extends Resources.Constructor {
   
-  public static readonly __type: string = "payment/capture";
-  public static readonly __table: Table = new Table(PaymentCapture, options, columns);
+  public static readonly __type: string = "payment/fee";
+  public static readonly __table: Table = new Table(PaymentFee, options, columns);
   
   public payment_id: Buffer;
   public old_id: number;
   public amount: number;
-  public flag_processed: boolean;
+  public percentage: number;
   public time_created: number;
   public time_updated: number;
   
-  constructor(object?: iNewPaymentCaptureObject | iCurrentPaymentCaptureObject | iOldPaymentCaptureObject) {
+  constructor(object?: iNewPaymentFeeObject | iCurrentPaymentFeeObject | iOldPaymentFeeObject) {
     super(object);
     this.time_created = Date.now();
   }
   
 }
 
-interface iNewPaymentCaptureObject {
+interface iNewPaymentFeeObject {
+  percentage: number
+  
   id?: string | Buffer
   amount: number
+  payment_id: string | Buffer
   old_id: number
-  flag_processed: number | boolean
-  time_created?: number
-  time_updated?: number
   
-  [key: string]: any
-}
-
-interface iCurrentPaymentCaptureObject {
-  amid: string | Buffer
-  ount?: number
-  old_id?: number
-  flag_processed?: number | boolean
+  [key: string]: any;
   time_created?: number
   time_updated?: number
 }
 
-[key
+interface iCurrentPaymentFeeObject {
+  id: string | Buffer
+  amount?: number
+  percentage?: number
+  payment_id?: string | Buffer
+  old_id?: number
+  
+  [key: string]: any;
+  time_created?: number
+  time_updated?: number
+}
+
+interface iOldPaymentFeeObject {
+  peid?: string | Buffer
+  rcentage?: number
+  amount?: number
+  payment_id?: string | Buffer
+  old_id: number
+  time_updated?: number
+}
+
+time_created ? : number
+  
+  [key
 :
 string;
 ]:
 any;
 
-interface iOldPaymentCaptureObject {
-  [key:d:
-  string
-  |
-  Buffer
-  amount?: number
-  old_id: number
-  flag_processed?: number | boolean
-  time_created?: number
-  time_
-  string
-  ]:
-  any
-  
-  iupdated?: number
-}
