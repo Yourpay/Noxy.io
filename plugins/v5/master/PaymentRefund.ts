@@ -48,6 +48,7 @@ interface iCurrentPaymentRefundObject {
   amount?: number
   
   [key: string]: any
+  
   old_id?: number
   flag_processed?: number | boolean
   time_created?: number
@@ -55,18 +56,14 @@ interface iCurrentPaymentRefundObject {
 }
 
 interface iOldPaymentRefundObject {
-  tiid?: string | Buffer
-  me_updated?: number
-}
-
-amount ? : number;
+  [key: string]: any;
+  
+  id?: string | Buffer
+  amount?: number;
   old_id: number
   flag_processed?: number | boolean
   time_created?: number
-  
-    [key
-:
-string;
-]:
-any;
+  time_updated?: number
+}
+
 

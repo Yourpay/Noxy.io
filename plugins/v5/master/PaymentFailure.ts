@@ -45,10 +45,10 @@ interface iNewPaymentFailureObject {
 }
 
 interface iCurrentPaymentFailureObject {
+  [key: string]: any;
+
   id: string | Buffer
   old_id?: number
-  
-  [key: string]: any;
   amount?: number
   code?: number
   message?: string
@@ -57,19 +57,16 @@ interface iCurrentPaymentFailureObject {
 }
 
 interface iOldPaymentFailureObject {
-  tiid?: string | Buffer
-  me_updated?: number
-}
-
-old_id: number;
+  [key: string]: any;
+  
+  id?: string | Buffer
+  old_id: number
   amount?: number
   code?: number
   message?: string
   time_created?: number
-  
-    [key
-:
-string;
-]:
-any;
+  time_updated?: number
+}
+
+
 

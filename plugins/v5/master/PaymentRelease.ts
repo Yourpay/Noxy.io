@@ -45,23 +45,21 @@ interface iCurrentPaymentReleaseObject {
   old_id?: number
   
   [key: string]: any
+  
   flag_processed?: number | boolean
   time_created?: number
   time_updated?: number
 }
 
 interface iOldPaymentReleaseObject {
-  tiid?: string | Buffer
-  me_updated?: number
-}
+  [key : string ]: any;
 
-old_id: number;
+  id?: string | Buffer
+  old_id: number;
   flag_processed?: number | boolean
   time_created?: number
-  
-    [key
-:
-string;
-]:
-any;
+  time_updated?: number
+}
+
+
 

@@ -33,44 +33,37 @@ export default class PaymentFee extends Resources.Constructor {
 }
 
 interface iNewPaymentFeeObject {
-  percentage: number
+  [key: string]: any;
   
   id?: string | Buffer
-  amount: number
-  payment_id: string | Buffer
   old_id: number
-  
-  [key: string]: any;
+  payment_id: string | Buffer
+  amount: number
+  percentage: number
   time_created?: number
   time_updated?: number
 }
 
 interface iCurrentPaymentFeeObject {
+  [key: string]: any;
+  
   id: string | Buffer
+  old_id?: number
+  payment_id?: string | Buffer
   amount?: number
   percentage?: number
-  payment_id?: string | Buffer
-  old_id?: number
-  
-  [key: string]: any;
   time_created?: number
   time_updated?: number
 }
 
 interface iOldPaymentFeeObject {
-  peid?: string | Buffer
-  rcentage?: number
-  amount?: number
-  payment_id?: string | Buffer
+  [key: string]: any;
+  
+  id?: string | Buffer
   old_id: number
+  payment_id?: string | Buffer
+  percentage?: number
+  amount?: number
+  time_created?: number
   time_updated?: number
 }
-
-time_created ? : number
-  
-  [key
-:
-string;
-]:
-any;
-

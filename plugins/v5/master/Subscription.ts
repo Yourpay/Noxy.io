@@ -23,6 +23,8 @@ export default class Subscription extends Resources.Constructor {
     super(object);
   }
   
+  
+  
 }
 
 interface iNewSubscriptionObject {
