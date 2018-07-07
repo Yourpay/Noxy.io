@@ -71,7 +71,6 @@ export default class Merchant extends Resource.Constructor {
     const merchants: {[key: number]: Merchant} = {};
     return Merchant.getMasterMerchant(merchant_lookup.overall_id)
     .then(master => Merchant.getDomains(master_lookup = master).then(res => _.concat(master, _.flattenDeep(res))))
-    .then(res => console.log(merchants) || res)
     .map((lookup: MerchantLookup) => Database.namespace("aurora_customer").query("SELECT * FROM `customer_cvr` WHERE merchantid = ?", lookup.id).then(res => ({di_merchant: res[0]})))
     .map((migration: iYourpayMerchantMigrationObject) => new PSP({old_id: migration.di_merchant.psper}).validate().then(res => _.set(migration, "psp", res)))
     .map((migration: iYourpayMerchantMigrationObject) =>
@@ -89,8 +88,9 @@ export default class Merchant extends Resource.Constructor {
         city:           migration.di_merchant.city,
         address:        migration.di_merchant.address,
         merchant_token: migration.di_merchant.merchant_token
-      }).save().then(merchant => _.set(migration, "merchant", merchants[merchant.old_id] = merchant))
+      }).save().then(merchant => _.set(migration, "merchant", merchants[migration.di_merchant.merchantid] = merchant))
     )
+    .then(res => console.log(merchants) || res)
     .map((migration: iYourpayMerchantMigrationObject) =>
       migration.di_merchant.merchantid_prod === 0 ? migration : new MerchantProduction({
         mcc:         migration.di_merchant.mcc,
@@ -110,6 +110,7 @@ export default class Merchant extends Resource.Constructor {
   }
   
   private static getMasterMerchant(overall_id: number): Promise<MerchantLookup> {
+    /* INTERMEDIATE MERCHANT ID IS NOT ADDED TO THE TOTAL SET OF MERCHANTS */
     return Database.namespace("aurora_customer").query("SELECT `merchantid` as `id`, `overall_merchantid` as `overall_id`, `merchantid_prod` as `production_id` FROM `customer_cvr` WHERE merchantid = ?", overall_id)
     .then((res: MerchantLookup[]) => res[0].overall_id === 0 ? res[0] : Merchant.getMasterMerchant(res[0].overall_id));
   }
