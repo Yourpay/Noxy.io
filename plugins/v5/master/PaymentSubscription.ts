@@ -6,14 +6,14 @@ export const options: Tables.iTableOptions = {
   junction: true
 };
 export const columns: Tables.iTableColumns = {
-  payment_id:      {type: "binary(16)", protected: true, required: true, index: ["payment_id"], relations: {table: "payment"}},
-  subscription_id: {type: "binary(16)", protected: true, required: true, index: ["subscription_id"], relations: {table: "subscription"}}
+  payment_id:      {type: "binary(16)", primary_key: true, protected: true, required: true, index: ["payment_id"], relations: {table: "payment"}},
+  subscription_id: {type: "binary(16)", primary_key: true, protected: true, required: true, index: ["subscription_id"], relations: {table: "subscription"}}
 };
 
 @Resource.implement<Resource.iResource>()
 export default class PaymentSubscription extends Resource.Constructor {
   
-  public static readonly __type: string = "payment";
+  public static readonly __type: string = "payment/subscription";
   public static readonly __table: Table = new Table(PaymentSubscription, options, columns);
   
   public payment_id: Buffer;

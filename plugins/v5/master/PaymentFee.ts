@@ -5,7 +5,7 @@ import Table from "../../../classes/Table";
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
   payment_id:   {type: "binary(16)", required: true, protected: true, index: ["pattern"], relations: {table: "payment"}},
-  old_id:       {type: "int(11)", required: true, protected: true},
+  old_id:       {type: "int(11)", required: true, protected: true, unique_index: ["old_id"]},
   amount:       {type: "int(11)", required: true, protected: true},
   percentage:   {type: "decimal(5,4)", required: true, protected: true},
   time_created: Table.generateTimeColumn("time_created"),
