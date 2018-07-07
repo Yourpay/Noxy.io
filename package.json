@@ -54,7 +54,7 @@
     "source-map-loader": "^0.2.3",
     "style-loader": "^0.21.0",
     "typescript": "^2.9.1",
-    "webpack": "^4.15.0",
+    "webpack": "^4.15.1",
     "webpack-cli": "^3.0.8",
     "webpack-stream": "^4.0.3"
   }
