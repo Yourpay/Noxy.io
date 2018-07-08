@@ -75,7 +75,6 @@ export default class Payment extends Resource.Constructor {
   }
   
   public static migrate(merchant_ids?: number[], payment?: Payment, start = 0, limit = 1000) {
-    console.log("m", merchant_ids);
     const subscriptions = {}, cards = {}, institutions = {}, platforms = {}, merchants = {};
     let sql = ["SELECT * FROM `02_payments`"], where = [];
     if (payment && payment.exists) { where.push({sql: "`PaymentID` = ?", value: payment.id}); }
@@ -94,11 +93,12 @@ export default class Payment extends Resource.Constructor {
     })
     .map((migration: iPaymentMigrationObject) => {
       migration.di_payment.cardno = migration.di_payment.cardno.replace(/\s/g, "").match(/\d{6}x{6}\d{4}/gi) ? migration.di_payment.cardno : "000000XXXXXX0000";
-      migration.di_payment.cardholder = migration.di_payment.cardholder.replace(/\s/g, "") !== "" ? migration.di_payment.cardholder : "Unknown";
+      /* TODO: Fix filter to include card numbers */
+      migration.di_payment.cardholder = migration.di_payment.cardholder.replace(/\s/g, "") !== "" ? _.startCase(_.toLower(_.trim(migration.di_payment.cardholder, " ,.-"))) : "Unknown";
       return Database.namespace("master").query("SELECT * FROM `card/type` WHERE LOCATE(`pattern`, ?) = 1 ORDER BY LENGTH(`pattern`) DESC LIMIT 1", migration.di_payment.cardno.substring(0, 6))
       .then(card_types => {
         if (!card_types[0]) { throw new Error("Could not validate card type"); }
-        const card_id = `${migration.di_payment.cardholder}::${migration.di_payment.cardno}::${migration.di_payment.card_country}`;
+        const card_id = `${_.toLower(migration.di_payment.cardholder)}::${migration.di_payment.cardno}::${migration.di_payment.card_country}`;
         if (!cards[card_id]) { cards[card_id] = new Card({type_id: card_types[0].id, name: migration.di_payment.cardholder, number: migration.di_payment.cardno, country_id: migration.di_payment.card_country}).save(); }
         return cards[card_id].then(card => _.set(migration, "card", card));
       });
@@ -118,8 +118,8 @@ export default class Payment extends Resource.Constructor {
     .map((migration: iPaymentMigrationObject) => {
       if (!merchants[migration.di_payment.merchantnumber]) {
         merchants[migration.di_payment.merchantnumber] = new Merchant({old_id: migration.di_payment.merchantnumber}).validate()
-        .then(merchant => console.log(merchant) || merchant.exists ? merchant : Merchant.getMerchantLookup(migration.di_payment.merchantnumber)
-          .then(lookup => console.log(lookup) || Merchant.migrate(lookup)
+        .then(merchant => merchant.exists ? merchant : Merchant.getMerchantLookup(migration.di_payment.merchantnumber)
+          .then(lookup => Merchant.migrate(lookup)
             .then(() => new Merchant({old_id: lookup.id}).validate())
           )
         );

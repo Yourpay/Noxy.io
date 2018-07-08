@@ -7,7 +7,7 @@ export const columns: Tables.iTableColumns = {
   type_id:      {type: "binary(16)", required: true, protected: true, index: ["card/type"], relations: {table: "card/type"}},
   name:         {type: "varchar(64)", required: true, protected: true, unique_index: ["card"]},
   number:       {type: "varchar(16)", required: true, protected: true, unique_index: ["card"]},
-  country_id:   {type: "varchar(3)", required: true, protected: true},
+  country_id:   {type: "varchar(3)", required: true, protected: true, unique_index: ["card"]},
   time_created: Table.generateTimeColumn("time_created"),
   time_updated: Table.generateTimeColumn()
 };
