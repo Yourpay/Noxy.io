@@ -27,6 +27,7 @@ export const columns: Tables.iTableColumns = {
   currency_id:    {type: "varchar(3)", protected: true, required: true, default: 208},
   order_id:       {type: "varchar(64)", protected: true, required: true},
   old_id:         {type: "int(11)", required: true, protected: true, unique_index: ["old_id"]},
+  merchant_id:    {type: "binary(16)", required: true, protected: true, index: ["merchant"], relations: {table: "merchant"}},
   card_id:        {type: "binary(16)", required: true, protected: true, index: ["card"], relations: {table: "card"}},
   platform_id:    {type: "binary(16)", required: true, protected: true, index: ["platform"], relations: {table: "platform"}},
   institution_id: {type: "binary(16)", required: true, protected: true, index: ["institution"], relations: {table: "institution"}},
@@ -73,15 +74,18 @@ export default class Payment extends Resource.Constructor {
     super(object);
   }
   
-  public static migrate(merchant: Merchant, payment?: Payment) {
-    const subscriptions = {}, cards = {}, institutions = {}, platforms = {};
-    const sql = payment && payment.exists
-                ? Database.parse("SELECT * FROM `02_payments` WHERE `merchantnumber` IN (?) AND `PaymentID` = ? LIMIT 1", [[merchant.old_id], payment.old_id])
-                : Database.parse("SELECT * FROM `02_payments` WHERE `merchantnumber` IN (?) LIMIT 3", [[merchant.old_id]]);
-    return Database.namespace("aurora_payments").query(sql).map((di_payment: iYourpayPaymentObject) => {
-      
-      /* Get subscription and update card details. */
-      
+  public static migrate(merchant_ids?: number[], payment?: Payment, start = 0, limit = 1000) {
+    console.log("m", merchant_ids);
+    const subscriptions = {}, cards = {}, institutions = {}, platforms = {}, merchants = {};
+    let sql = ["SELECT * FROM `02_payments`"], where = [];
+    if (payment && payment.exists) { where.push({sql: "`PaymentID` = ?", value: payment.id}); }
+    if (merchant_ids) { where.push({sql: "`merchantnumber` IN (?)", value: [merchant_ids]}); }
+    if (_.size(where) > 0) {
+      sql.push("WHERE");
+      _.each(where, w => sql.push(Database.parse(w.sql, w.value)));
+    }
+    sql.push(`LIMIT ${limit} OFFSET ${start}`);
+    return Database.namespace("aurora_payments").query(_.join(sql, " ")).map((di_payment: iYourpayPaymentObject) => {
       const subscription_id = di_payment.connected_subscriptioncode;
       if (!subscription_id) { return {di_payment: di_payment}; }
       if (subscriptions[subscription_id]) { return {di_payment: _.merge(di_payment, _.pick(subscriptions[subscription_id], ["cardno", "cardholder", "card_country", "shortid_ccrg"]))}; }
@@ -89,9 +93,6 @@ export default class Payment extends Resource.Constructor {
       .then(subscription_payment => ({di_payment: _.merge(di_payment, _.pick(subscription_payment, ["cardno", "cardholder", "card_country"]))}));
     })
     .map((migration: iPaymentMigrationObject) => {
-      
-      /* Get card type, card details, and generate card */
-      
       migration.di_payment.cardno = migration.di_payment.cardno.replace(/\s/g, "").match(/\d{6}x{6}\d{4}/gi) ? migration.di_payment.cardno : "000000XXXXXX0000";
       migration.di_payment.cardholder = migration.di_payment.cardholder.replace(/\s/g, "") !== "" ? migration.di_payment.cardholder : "Unknown";
       return Database.namespace("master").query("SELECT * FROM `card/type` WHERE LOCATE(`pattern`, ?) = 1 ORDER BY LENGTH(`pattern`) DESC LIMIT 1", migration.di_payment.cardno.substring(0, 6))
@@ -114,8 +115,20 @@ export default class Payment extends Resource.Constructor {
       if (!platforms[platform_id]) { platforms[platform_id] = new Platform({name: migration.di_payment.platform, domain: migration.di_payment.platform_domain, version: migration.di_payment.version}).save(); }
       return platforms[platform_id].then(platform => _.set(migration, "platform", platform));
     })
+    .map((migration: iPaymentMigrationObject) => {
+      if (!merchants[migration.di_payment.merchantnumber]) {
+        merchants[migration.di_payment.merchantnumber] = new Merchant({old_id: migration.di_payment.merchantnumber}).validate()
+        .then(merchant => console.log(merchant) || merchant.exists ? merchant : Merchant.getMerchantLookup(migration.di_payment.merchantnumber)
+          .then(lookup => console.log(lookup) || Merchant.migrate(lookup)
+            .then(() => new Merchant({old_id: lookup.id}).validate())
+          )
+        );
+      }
+      return merchants[migration.di_payment.merchantnumber].then(merchant => _.set(migration, "merchant", merchant));
+    })
     .map((migration: iPaymentMigrationObject) =>
       new Payment({
+        merchant_id:    migration.merchant.id,
         amount:         migration.di_payment.amount,
         currency_id:    migration.di_payment.Currency,
         order_id:       migration.di_payment.orderID,
@@ -178,25 +191,28 @@ export default class Payment extends Resource.Constructor {
           time_created: capture.time_created
         }).save()))
       .then(() => migration))
-    .map((migration: iPaymentMigrationObject) => migration.payment.toObject());
+    .map((migration: iPaymentMigrationObject) => migration.payment.toObject())
+    .catch(err => console.log(err) || err);
   }
   
 }
 
 Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
   (request, response) => {
-    let merchant_lookup;
+    let merchant_lookup, merchant, ids;
     const time_started = Date.now();
     if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
-    Merchant.getMerchantId(request.body.merchant_token)
-    .then(lookup => new Merchant({old_id: lookup.id}).validate().then(merchant => (merchant_lookup = lookup) && merchant.exists ? merchant : Merchant.migrate(lookup)))
-    .then(merchant => request.body.id ? new Payment({old_id: request.body.id}).validate().then(res => Payment.migrate(merchant, res)) : Payment.migrate(merchant))
+    Merchant.getMerchantLookup(request.body.merchant_token)
+    .then(lookup => (merchant = new Merchant({old_id: lookup.id})).validate().then(merchant => (merchant_lookup = lookup) && merchant.exists ? merchant : Merchant.migrate(lookup)))
+    .then(() => Merchant.getDomains(merchant_lookup).then(lookups => ids = _.filter(_.reduce(lookups, (result, lookup) => result.concat(lookup.id, lookup.production_id), []))))
+    .then(() => request.body.id ? new Payment({old_id: request.body.id}).validate().then(payment => Payment.migrate(ids, payment)) : Payment.migrate(ids))
     .then(payments => response.json(new Response.JSON(200, "any", payments, time_started)))
-    .catch(err => console.error(err) || response.status(400).json(new Response.JSON(400, "any", err, time_started)));
+    .catch(err => response.status(400).json(new Response.JSON(400, "any", err, time_started)));
   }
 ]);
 
 interface iPaymentMigrationObject {
+  merchant?: Merchant
   card?: Card
   institution?: Institution
   platform?: Platform

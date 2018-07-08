@@ -11,10 +11,10 @@ import iYourpayMerchantObject from "../interfaces/iYourpayMerchantObject";
 import PSP from "./PSP";
 import MerchantProduction from "./MerchantProduction";
 import MerchantHierarchy from "./MerchantHierarchy";
+import iYourpayMerchantLookupObject from "../interfaces/iYourpayMerchantLookupObject";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
-  psp_id:         {type: "binary(16)", required: true, protected: true, relations: {table: "psp"}},
   old_id:         {type: "int(11)", required: true, protected: true, unique_index: ["old_id"]},
   cvr:            {type: "varchar(12)", required: true, protected: true},
   name:           {type: "varchar(128)", required: true},
@@ -25,6 +25,7 @@ const columns: Tables.iTableColumns = {
   phone:          {type: "varchar(32)", required: true},
   website:        {type: "varchar(128)", required: true},
   logo:           {type: "text", default: ""},
+  psp_id:         {type: "binary(16)", required: true, protected: true, relations: {table: "psp"}},
   type_login:     {type: "tinyint(1)", default: 0, protected: true},
   merchant_token: {type: "varchar(32)", protected: true, required: true},
   time_created:   Table.generateTimeColumn("time_created"),
@@ -58,20 +59,22 @@ export default class Merchant extends Resource.Constructor {
     this.time_created = Date.now();
   }
   
-  public static getMerchantId(merchant_token: string): Promise<MerchantLookup> {
-    return Database.namespace("aurora_customer").query("SELECT merchantid as id, merchantid_prod as production_id, overall_merchantid as overall_id FROM `customer_cvr` WHERE merchant_token = ?", merchant_token)
+  public static getMerchantLookup(merchant_identifier: string | number): Promise<iYourpayMerchantLookupObject> {
+    const type = typeof merchant_identifier === "string" ? "`merchant_token` = ?" : "`merchantid` = ? OR `merchantid_prod` = ?";
+    return Database.namespace("aurora_customer")
+    .query("SELECT `merchantid` as `id`, `merchantid_prod` as `production_id`, `overall_merchantid` as `overall_id` FROM `customer_cvr` WHERE " + type, [merchant_identifier, merchant_identifier])
     .then(res => {
-      if (!res[0]) { throw new Error("Could not validate merchant_token,"); }
+      if (!res[0]) { throw new Error("Could not validate merchant_token."); }
       return res[0];
     });
   }
   
-  public static migrate(merchant_lookup: MerchantLookup): Promise<any> {
-    let master_lookup: MerchantLookup;
+  public static migrate(merchant_lookup: iYourpayMerchantLookupObject): Promise<any> {
+    let master_lookup: iYourpayMerchantLookupObject;
     const merchants: {[key: number]: Merchant} = {};
-    return Merchant.getMasterMerchant(merchant_lookup.overall_id)
-    .then(master => Merchant.getDomains(master_lookup = master).then(res => _.concat(master, _.flattenDeep(res))))
-    .map((lookup: MerchantLookup) => Database.namespace("aurora_customer").query("SELECT * FROM `customer_cvr` WHERE merchantid = ?", lookup.id).then(res => ({di_merchant: res[0]})))
+    return Merchant.getMasterMerchant(merchant_lookup)
+    .then(master => Merchant.getDomains(master_lookup = master).then(res => _.flattenDeep(res)))
+    .map((lookup: iYourpayMerchantLookupObject) => Database.namespace("aurora_customer").query("SELECT * FROM `customer_cvr` WHERE merchantid = ?", lookup.id).then(res => ({di_merchant: res[0]})))
     .map((migration: iYourpayMerchantMigrationObject) => new PSP({old_id: migration.di_merchant.psper}).validate().then(res => _.set(migration, "psp", res)))
     .map((migration: iYourpayMerchantMigrationObject) =>
       new Merchant({
@@ -90,7 +93,6 @@ export default class Merchant extends Resource.Constructor {
         merchant_token: migration.di_merchant.merchant_token
       }).save().then(merchant => _.set(migration, "merchant", merchants[migration.di_merchant.merchantid] = merchant))
     )
-    .then(res => console.log(merchants) || res)
     .map((migration: iYourpayMerchantMigrationObject) =>
       migration.di_merchant.merchantid_prod === 0 ? migration : new MerchantProduction({
         mcc:         migration.di_merchant.mcc,
@@ -99,45 +101,42 @@ export default class Merchant extends Resource.Constructor {
       }).save().then(production => _.set(migration, "production", production))
     )
     .map((migration: iYourpayMerchantMigrationObject) =>
-      console.log(migration.di_merchant.overall_merchantid) ||
       new MerchantHierarchy({
         merchant_id: migration.merchant.id,
         master_id:   merchants[master_lookup.id].id,
         superior_id: merchants[migration.di_merchant.overall_merchantid || master_lookup.id].id
       }).save().then(hierarchy => _.set(migration, "hierarchy", hierarchy))
     );
-    
   }
   
-  private static getMasterMerchant(overall_id: number): Promise<MerchantLookup> {
-    /* INTERMEDIATE MERCHANT ID IS NOT ADDED TO THE TOTAL SET OF MERCHANTS */
-    return Database.namespace("aurora_customer").query("SELECT `merchantid` as `id`, `overall_merchantid` as `overall_id`, `merchantid_prod` as `production_id` FROM `customer_cvr` WHERE merchantid = ?", overall_id)
-    .then((res: MerchantLookup[]) => res[0].overall_id === 0 ? res[0] : Merchant.getMasterMerchant(res[0].overall_id));
+  public static getMasterMerchant(merchant: iYourpayMerchantLookupObject): Promise<iYourpayMerchantLookupObject> {
+    return Database.namespace("aurora_customer")
+    .query("SELECT `merchantid` as `id`, `overall_merchantid` as `overall_id`, `merchantid_prod` as `production_id` FROM `customer_cvr` WHERE merchantid = ?", merchant.overall_id)
+    .then((res: iYourpayMerchantLookupObject[]) => !res[0] ? merchant : (res[0].overall_id === 0 ? res[0] : Merchant.getMasterMerchant(res[0])));
   }
   
-  private static getDomains(merchant: MerchantLookup): Promise<any> {
+  public static getDomains(merchant: iYourpayMerchantLookupObject): Promise<iYourpayMerchantLookupObject[]> {
     return Database.namespace("aurora_customer")
     .query("SELECT `merchantid` as `id`, `overall_merchantid` as `overall_id`, `merchantid_prod` as `production_id` FROM `customer_cvr` WHERE overall_merchantid = ?", merchant.id)
-    .then(res => res.length > 0 ? Promise.map(res, (merchant_lookup: MerchantLookup) => Merchant.getDomains(merchant_lookup)) : [merchant]);
+    .then(res => <any>(res.length > 0 ? Promise.map(res, (merchant_lookup: iYourpayMerchantLookupObject) => Merchant.getDomains(merchant_lookup)).then(res => _.concat(<any>merchant, res)) : [merchant]))
+    .then(res => _.flattenDeep(res));
   }
   
 }
 
 Application.addRoute(env.subdomains.api, Merchant.__type, "/migrate", "POST", [
-  (request, response, next) => {
+  (request, response) => {
     const time_started = Date.now();
     if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
-    Merchant.getMerchantId(request.body.merchant_token)
+    Merchant.getMerchantLookup(request.body.merchant_token)
     .then(res =>
       Merchant.migrate(res)
       .then(res => { response.status(200).json(res); })
       .catch(err => { response.status(500).json(err); })
     )
-    .catch(err => console.log(1, err) || response.status(400).json(new Response.JSON(400, "merchant_token", err, time_started)));
+    .catch(err => response.status(400).json(new Response.JSON(400, "merchant_token", err, time_started)));
   }
 ]);
-
-type MerchantLookup = {id: number, production_id: number, overall_id: number};
 
 interface iYourpayMerchantMigrationObject {
   di_merchant: iYourpayMerchantObject
