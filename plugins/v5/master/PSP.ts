@@ -2,10 +2,12 @@ import * as Database from "../../../modules/Database";
 import * as Resource from "../../../classes/Resource";
 import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
+import * as he from "he";
+import PSPKickback from "./PSPKickback";
+import PSPFinder from "./PSPFinder";
 import Promise from "aigle";
 import {databases} from "../init";
-import PSPFinder from "./PSPFinder";
-import PSPKickback from "./PSPKickback";
+import iYourpayPSPObject from "../interfaces/iYourpayPSPObject";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -40,34 +42,24 @@ export default class PSP extends Resource.Constructor {
   }
   
   public static migrate(): Promise<any> {
-    return new Promise((resolve, reject) => {
-      Database.namespace(databases.customer).query("SELECT * FROM `crm_login_psp` WHERE deactivated = 0 OR (SELECT count(*) FROM `customer_cvr` WHERE psper = pspid) > 0")
-      .then(res =>
-        Promise.map(res, row =>
-          new Promise((resolve, reject) =>
-            new PSP({
-              name:            row.name,
-              contact:         row.response,
-              old_id:          row.pspid,
-              volume:          row.volume_total + row.total_volume,
-              settlement_days: row.settlement_days,
-              percentage:      row.merchant_percentage / 100
-            }).save()
-            .then(res =>
-              Promise.all([
-                row.finders_fee === 0 ? <any>Promise.resolve() : new PSPFinder({psp_id: res.id, amount: row.finders_fee, currency_id: row.finders_fee_currency}).save(),
-                row.percentage === 0 ? <any>Promise.resolve() : new PSPKickback({psp_id: res.id, percentage: row.percentage / 1000}).save()
-              ])
-              .then(() => resolve(res))
-              .catch(err => reject(err))
-            )
-          )
-        )
-        .then(res => resolve(res))
-        .catch(err => reject(err))
+    return Database.namespace(databases.customer).query("SELECT * FROM `crm_login_psp` WHERE deactivated = 0 OR (SELECT count(*) FROM `customer_cvr` WHERE psper = pspid) > 0")
+    .map((row: iYourpayPSPObject) =>
+      new PSP({
+        name:            he.decode(row.name),
+        contact:         row.response,
+        old_id:          row.pspid,
+        volume:          row.volume_total + row.total_volume,
+        settlement_days: row.settlement_days,
+        percentage:      row.merchant_percentage / 100
+      }).save()
+      .then(psp =>
+        Promise.all([
+          row.finders_fee === 0 ? <any>Promise.resolve() : new PSPFinder({psp_id: psp.id, amount: row.finders_fee, currency_id: `${row.finders_fee_currency}`}).save(),
+          row.percentage === 0 ? <any>Promise.resolve() : new PSPKickback({psp_id: psp.id, percentage: row.percentage / 1000}).save()
+        ])
+        .then(() => psp)
       )
-      .catch(err => reject(err));
-    });
+    );
   }
   
 }

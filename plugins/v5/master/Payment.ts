@@ -5,21 +5,22 @@ import * as Response from "../../../modules/Response";
 import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
 import {env} from "../../../app";
-import Merchant from "./Merchant";
-import Promise from "aigle";
-import Platform from "./Platform";
-import Institution from "./Institution";
-import Card from "./Card";
-import PaymentCapture from "./PaymentCapture";
-import PaymentRefund from "./PaymentRefund";
-import PaymentRelease from "./PaymentRelease";
-import PaymentFailure from "./PaymentFailure";
-import * as _ from "lodash";
-import iYourpayPaymentObject from "../interfaces/iYourpayPaymentObject";
 import iYourpayPaymentActionObject from "../interfaces/iYourpayPaymentActionObject";
-import PaymentFee from "./PaymentFee";
-import Subscription from "./Subscription";
+import iYourpayPaymentObject from "../interfaces/iYourpayPaymentObject";
 import PaymentSubscription from "./PaymentSubscription";
+import PaymentCapture from "./PaymentCapture";
+import PaymentFailure from "./PaymentFailure";
+import PaymentRelease from "./PaymentRelease";
+import PaymentRefund from "./PaymentRefund";
+import Subscription from "./Subscription";
+import Institution from "./Institution";
+import PaymentFee from "./PaymentFee";
+import Platform from "./Platform";
+import Merchant from "./Merchant";
+import Card from "./Card";
+import * as _ from "lodash";
+import * as he from "he";
+import Promise from "aigle";
 
 export const options: Tables.iTableOptions = {};
 export const columns: Tables.iTableColumns = {
@@ -93,8 +94,10 @@ export default class Payment extends Resource.Constructor {
     })
     .map((migration: iPaymentMigrationObject) => {
       migration.di_payment.cardno = migration.di_payment.cardno.replace(/\s/g, "").match(/\d{6}x{6}\d{4}/gi) ? migration.di_payment.cardno : "000000XXXXXX0000";
-      /* TODO: Fix filter to include card numbers */
-      migration.di_payment.cardholder = migration.di_payment.cardholder.replace(/\s/g, "") !== "" ? _.startCase(_.toLower(_.trim(migration.di_payment.cardholder, " ,.-"))) : "Unknown";
+      migration.di_payment.cardholder = !migration.di_payment.cardholder.match(/(?: *\d *){16,}|^\s*$/) ? he.decode(migration.di_payment.cardholder) : "Unknown";
+      if (migration.di_payment.cardholder.match(/^[\u00C0-\u1FFF\u2C00-\uD7FF\w\s]+$/)) {
+        migration.di_payment.cardholder = _.toLower(_.trim(migration.di_payment.cardholder, " .,")).replace(/^[\u00C0-\u1FFF\u2C00-\uD7FF\w]|\s[\u00C0-\u1FFF\u2C00-\uD7FF\w]/g, l => l.toUpperCase());
+      }
       return Database.namespace("master").query("SELECT * FROM `card/type` WHERE LOCATE(`pattern`, ?) = 1 ORDER BY LENGTH(`pattern`) DESC LIMIT 1", migration.di_payment.cardno.substring(0, 6))
       .then(card_types => {
         if (!card_types[0]) { throw new Error("Could not validate card type"); }
@@ -155,8 +158,8 @@ export default class Payment extends Resource.Constructor {
         .then(payment_subscription => _.set(migration, "payment_subscription", payment_subscription))
       )
     )
-    .map((migration: iPaymentMigrationObject) => {
-      return Database.namespace("aurora_payments").query("SELECT * FROM `02_paymentcapture` WHERE `PaymentID` = ? AND NOT (`req_timestamp` = 0 AND `captured` != 0)", migration.payment.old_id)
+    .map((migration: iPaymentMigrationObject) =>
+      Database.namespace("aurora_payments").query("SELECT * FROM `02_paymentcapture` WHERE `PaymentID` = ? AND NOT (`req_timestamp` = 0 AND `captured` != 0)", migration.payment.old_id)
       .map((di_action: iYourpayPaymentActionObject) => {
         let new_action;
         const base = {payment_id: migration.payment.id, old_id: di_action.ActionID, time_created: di_action.req_timestamp};
@@ -178,8 +181,7 @@ export default class Payment extends Resource.Constructor {
         }
         return new_action.then(res => migration[res.constructor.__type][di_action.ActionID] = res);
       })
-      .then(() => migration);
-    })
+      .then(() => migration))
     .map((migration: iPaymentMigrationObject) =>
       Promise.map(_.filter(migration.capture, capture => (<any>capture).date_id > 0), capture =>
         Database.namespace("aurora_customer").query("SELECT `daily_percentage` FROM `merchant_transfer_accounts_daily_overview` WHERE `dateid` = ?", (<any>capture).date_id)
@@ -199,9 +201,9 @@ export default class Payment extends Resource.Constructor {
 
 Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
   (request, response) => {
+    let merchant_lookup, merchant, ids;
     const start = request.body.start;
     const limit = request.body.limit;
-    let merchant_lookup, merchant, ids;
     const time_started = Date.now();
     if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
     Merchant.getMerchantLookup(request.body.merchant_token)
@@ -213,9 +215,9 @@ Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
   }
 ]);
 
-Application.addRoute(env.subdomain.api, Payment.__type, "/", "GET", [
+Application.addRoute(env.subdomains.api, Payment.__type, "/", "GET", [
   (request, response) => {
-    
+  
   }
 ]);
 
