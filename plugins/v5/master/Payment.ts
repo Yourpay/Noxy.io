@@ -217,7 +217,9 @@ Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
 
 Application.addRoute(env.subdomains.api, Payment.__type, "/", "GET", [
   (request, response) => {
-  
+    const start = request.body.start > 0 ? request.body.start : 0;
+    const limit = request.body.limit > 0 && request.body.limit < 100 ? request.body.limit : 100;
+    
   }
 ]);
 

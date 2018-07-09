@@ -106,7 +106,10 @@ export default class Merchant extends Resource.Constructor {
         master_id:   merchants[master_lookup.id].id,
         superior_id: merchants[migration.di_merchant.overall_merchantid || master_lookup.id].id
       }).save().then(hierarchy => _.set(migration, "hierarchy", hierarchy))
-    );
+    )
+    .map((migration: iYourpayMerchantMigrationObject) => {
+    
+    })
   }
   
   public static getMasterMerchant(merchant: iYourpayMerchantLookupObject): Promise<iYourpayMerchantLookupObject> {
