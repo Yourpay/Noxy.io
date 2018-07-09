@@ -9,9 +9,9 @@ import Promise from "aigle";
 import * as _ from "lodash";
 import iYourpayMerchantObject from "../interfaces/iYourpayMerchantObject";
 import PSP from "./PSP";
-import MerchantProduction from "./MerchantProduction";
 import MerchantHierarchy from "./MerchantHierarchy";
 import iYourpayMerchantLookupObject from "../interfaces/iYourpayMerchantLookupObject";
+import User from "../../../resources/User";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -26,6 +26,7 @@ const columns: Tables.iTableColumns = {
   website:        {type: "varchar(128)", required: true},
   logo:           {type: "text", default: ""},
   psp_id:         {type: "binary(16)", required: true, protected: true, relations: {table: "psp"}},
+  mcc:            {type: "smallint(4)", default: 0, protected: true},
   type_login:     {type: "tinyint(1)", default: 0, protected: true},
   merchant_token: {type: "varchar(32)", protected: true, required: true},
   time_created:   Table.generateTimeColumn("time_created"),
@@ -49,6 +50,7 @@ export default class Merchant extends Resource.Constructor {
   public phone: string;
   public website: string;
   public logo: string;
+  public mcc: number;
   public type_login: number;
   public merchant_token: string;
   public time_created: number;
@@ -71,7 +73,7 @@ export default class Merchant extends Resource.Constructor {
   
   public static migrate(merchant_lookup: iYourpayMerchantLookupObject): Promise<any> {
     let master_lookup: iYourpayMerchantLookupObject;
-    const merchants: {[key: number]: Merchant} = {};
+    const merchants: {[key: number]: Merchant} = {}, users: {[key: number]: User} = {};
     return Merchant.getMasterMerchant(merchant_lookup)
     .then(master => Merchant.getDomains(master_lookup = master).then(res => _.flattenDeep(res)))
     .map((lookup: iYourpayMerchantLookupObject) => Database.namespace("aurora_customer").query("SELECT * FROM `customer_cvr` WHERE merchantid = ?", lookup.id).then(res => ({di_merchant: res[0]})))
@@ -79,6 +81,7 @@ export default class Merchant extends Resource.Constructor {
     .map((migration: iYourpayMerchantMigrationObject) =>
       new Merchant({
         psp_id:         migration.psp.id,
+        mcc:            migration.di_merchant.mcc,
         type_login:     migration.di_merchant.alternate_dashboard,
         website:        migration.di_merchant.website,
         postal:         migration.di_merchant.postal,
@@ -94,13 +97,6 @@ export default class Merchant extends Resource.Constructor {
       }).save().then(merchant => _.set(migration, "merchant", merchants[migration.di_merchant.merchantid] = merchant))
     )
     .map((migration: iYourpayMerchantMigrationObject) =>
-      migration.di_merchant.merchantid_prod === 0 ? migration : new MerchantProduction({
-        mcc:         migration.di_merchant.mcc,
-        merchant_id: migration.merchant.id,
-        old_id:      migration.di_merchant.merchantid_prod
-      }).save().then(production => _.set(migration, "production", production))
-    )
-    .map((migration: iYourpayMerchantMigrationObject) =>
       new MerchantHierarchy({
         merchant_id: migration.merchant.id,
         master_id:   merchants[master_lookup.id].id,
@@ -108,8 +104,12 @@ export default class Merchant extends Resource.Constructor {
       }).save().then(hierarchy => _.set(migration, "hierarchy", hierarchy))
     )
     .map((migration: iYourpayMerchantMigrationObject) => {
-    
-    })
+      return Database.namespace("aurora_customer").query("SELECT * FROM `customer_logins` WHERE merchantid = ? LIMIT 1", migration.merchant.old_id)
+      .then(login_lookup => {
+        if (!(login_lookup = login_lookup[0])) { return users[migration.merchant.old_id]; }
+        new User({email: login_lookup[0].uemail});
+      });
+    });
   }
   
   public static getMasterMerchant(merchant: iYourpayMerchantLookupObject): Promise<iYourpayMerchantLookupObject> {
@@ -145,7 +145,6 @@ interface iYourpayMerchantMigrationObject {
   di_merchant: iYourpayMerchantObject
   merchant: Merchant
   psp: PSP
-  production: MerchantProduction
   hierarchy: MerchantHierarchy
 }
 
@@ -162,6 +161,7 @@ interface iMerchantObject {
   phone?: string
   website?: string
   logo?: string
+  mcc?: number
   type_login?: number
   merchant_token?: string
   time_created?: number
