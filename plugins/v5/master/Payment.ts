@@ -199,15 +199,23 @@ export default class Payment extends Resource.Constructor {
 
 Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
   (request, response) => {
+    const start = request.body.start;
+    const limit = request.body.limit;
     let merchant_lookup, merchant, ids;
     const time_started = Date.now();
     if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
     Merchant.getMerchantLookup(request.body.merchant_token)
     .then(lookup => (merchant = new Merchant({old_id: lookup.id})).validate().then(merchant => (merchant_lookup = lookup) && merchant.exists ? merchant : Merchant.migrate(lookup)))
     .then(() => Merchant.getDomains(merchant_lookup).then(lookups => ids = _.filter(_.reduce(lookups, (result, lookup) => result.concat(lookup.id, lookup.production_id), []))))
-    .then(() => request.body.id ? new Payment({old_id: request.body.id}).validate().then(payment => Payment.migrate(ids, payment)) : Payment.migrate(ids))
+    .then(() => request.body.id ? new Payment({old_id: request.body.id}).validate().then(payment => Payment.migrate(ids, payment, start, limit)) : Payment.migrate(ids, null, start, limit))
     .then(payments => response.json(new Response.JSON(200, "any", payments, time_started)))
     .catch(err => response.status(400).json(new Response.JSON(400, "any", err, time_started)));
+  }
+]);
+
+Application.addRoute(env.subdomain.api, Payment.__type, "/", "GET", [
+  (request, response) => {
+    
   }
 ]);
 
