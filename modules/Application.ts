@@ -86,13 +86,6 @@ export function publicize() {
   }));
 }
 
-interface AuthObject {
-  route: Route
-  user_roles: Buffer[]
-  route_roles: Buffer[]
-  user: User
-}
-
 function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
   const subdomain = request.vhost ? request.vhost.host.replace(/\.\w*$/, "") : env.subdomains.default;
@@ -125,3 +118,10 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
 export type Param = {middleware: Middleware, subdomain: string, namespace: string, name: string}
 export type Middleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void
 export type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
+
+interface AuthObject {
+  route: Route
+  user_roles: Buffer[]
+  route_roles: Buffer[]
+  user: User
+}

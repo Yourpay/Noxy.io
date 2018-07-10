@@ -31,21 +31,22 @@ export class Constructor {
     this.__database = <string>$this.__table.__options.database;
   }
   
-  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
-    const time_started = Date.now();
+  public save(db?: Database.Pool): Promise<this> {
+    const $this = (<typeof Constructor>this.constructor);
     const database = db || Database.namespace("master");
-    start = start > 0 ? start : 0;
-    limit = limit > 0 && limit < 100 ? limit : 100;
-    return database.query(this.__table.selectSQL(start, limit, where))
-    .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
-    .catch(err => new Responses.JSON(500, "any", err, time_started));
+    return this.validate(this.__validated, database)
+    .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
+    .then(() => this);
   }
   
-  public validate(db?: Database.Pool): Promise<this> {
+  public validate(ignore_protections?: boolean, db?: Database.Pool): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const database = db || Database.namespace("master");
     return database.query($this.__table.validationSQL(this))
-    .then(res => _.merge(_.reduce(res[0], (r, v, k) => $this.__table.__columns[k].protected || !this[k] ? _.set(r, k, v) : r, this), {__validated: true, __exists: !!res[0], __database: database.id}));
+    .then(res => _.merge(
+      _.reduce(res[0], (r, v, k) => !ignore_protections && ($this.__table.__columns[k].protected || !this[k]) ? _.set(r, k, v) : r, this),
+      {__validated: true, __exists: !!res[0], __database: database.id}
+    ));
   }
   
   public toObject(): Partial<this> {
@@ -69,12 +70,14 @@ export class Constructor {
     return this.__database;
   }
   
-  public save(db?: Database.Pool): Promise<this> {
-    const $this = (<typeof Constructor>this.constructor);
+  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
+    const time_started = Date.now();
     const database = db || Database.namespace("master");
-    return this.validate()
-    .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
-    .then(() => this);
+    start = start > 0 ? start : 0;
+    limit = limit > 0 && limit < 100 ? limit : 100;
+    return database.query(this.__table.selectSQL(start, limit, where))
+    .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
+    .catch(err => new Responses.JSON(500, "any", err, time_started));
   }
   
   public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
@@ -129,9 +132,9 @@ export interface iResourceInstance {
   
   validated: boolean
   
-  save: (db: Database.Pool) => Promise<this>
-  validate: (db: Database.Pool) => Promise<this>
-  delete: (db: Database.Pool) => Promise<this>
+  save: (db?: Database.Pool) => Promise<this>
+  validate: (ignore_protections?: boolean, db?: Database.Pool) => Promise<this>
+  delete: (db?: Database.Pool) => Promise<this>
 }
 
 export interface iResourceObject {

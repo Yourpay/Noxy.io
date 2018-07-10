@@ -15,7 +15,7 @@ export default class Table {
   constructor(constructor: typeof Resource.Constructor, options: iTableOptions, columns: iTableColumns) {
     this.__database = (options.database instanceof DatabaseService.Pool ? options.database.id : options.database) || (options.coextensive ? "coextensive" : "master");
     
-    if (_.get(Table.__tables, [this.__database, constructor.__type])) { return Table.__tables[this.__database][constructor.__type]; }
+    if (_.get(Table.__tables, [this.__database, constructor.__type])) { throw new Error("Trying to overwrite already existing table."); }
     _.set(Table.__tables, [this.__database, constructor.__type], this);
     
     this.__resource = constructor;
