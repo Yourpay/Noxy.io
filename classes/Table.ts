@@ -63,7 +63,7 @@ export default class Table {
       start: start || 0,
       where: where ? DatabaseService.parse("WHERE ?", where) : ""
     };
-    return _.template("SELECT * FROM ${table} ${where} LIMIT ${limit} OFFSET ${start}")(replacers);
+    return _.template("SELECT * FROM `${table}` ${where} LIMIT ${limit} OFFSET ${start}")(replacers);
   }
   
   public toSQL(): string {

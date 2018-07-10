@@ -1,13 +1,19 @@
 import * as Resource from "../classes/Resource";
+import * as Responses from "../modules/Response";
+import * as Database from "../modules/Database";
 import * as express from "express";
 import * as vhost from "vhost";
 import * as _ from "lodash";
 import Route from "../resources/Route";
 import Promise from "aigle";
 import {env} from "../app";
+import * as jwt from "jsonwebtoken";
 import * as http from "http";
 import * as bodyParser from "body-parser";
 import * as methodOverride from "method-override";
+import User from "../resources/User";
+import RoleUser from "../resources/RoleUser";
+import RoleRoute from "../resources/RoleRoute";
 
 let __published: Promise<any>;
 const __methods: Method[] = ["GET", "POST", "PUT", "DELETE", "PATCH"];
@@ -31,12 +37,12 @@ export function addParam(subdomain: string, ns_pm: string, pm_fn: string | Middl
 }
 
 export function addRoute(subdomain: string, namespace: string, path: string, method: Method, fn: Middleware | Middleware[]): Route {
-  const route = new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: Array.isArray(fn) ? fn : [fn]});
+  const route = new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: [auth].concat(Array.isArray(fn) ? fn : [fn])});
   return __routes[route.key] = route;
 }
 
 export function addRoutes(subdomain: string, namespace: string, routes: {[path: string]: {[method: string]: Middleware | Middleware[]}}): {[key: string]: Route} {
-  return _.transform(routes, (r, rt, p) => _.set(r, p, _.transform(rt, (r, mw, m) => _.includes(__methods, m) ? _.set(r, m, addRoute(subdomain, namespace, p, <Method>m, Array.isArray(mw) ? mw : [mw])) : r, {})), {});
+  return _.transform(routes, (r, rt, p) => _.set(r, p, _.transform(rt, (r, mw, m) => _.includes(__methods, m) ? _.set(r, m, addRoute(subdomain, namespace, p, <Method>m, mw)) : r, {})), {});
 }
 
 export function addResource(resource: typeof Resource.Constructor) {
@@ -80,70 +86,41 @@ export function publicize() {
   }));
 }
 
-// export function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
-//   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
-//   const subdomain = request.vhost ? request.vhost.host.replace(/\.\w*$/, "") : "www";
-//   return new Promise<[User, Buffer[], Buffer[]]>((resolve, reject) =>
-//     authRoute(request.method, subdomain, path)
-//     .then(route => {
-//       if (!route.flag_active) {
-//         return authUser(request.get("Authorization"))
-//         .then(res => _.some(res[1], v => v.equals(Resource.Constructor.bufferFromUuid(env.roles.admin.id))) ? resolve([res[0], res[1], []]) : reject(new Response(403, "any")))
-//         .catch(err => reject(err.code === 401 && err.type === "jwt" ? new Response.JSON(404, "any") : err));
-//       }
-//       authRoleRoute(route)
-//       .then(route_roles => {
-//         authUser(request.get("Authorization"))
-//         .then(res => (route_roles.length === 0 || _.intersection(route_roles, res[1]).length > 0) ? resolve([res[0], res[1], []]) : reject(new Response(403, "any")))
-//         .catch(err => err.code === 401 && err.type === "jwt" ? resolve([null, [], route_roles]) : reject(err));
-//       });
-//     })
-//     .catch(err => reject(err))
-//   )
-//   .then(res => {
-//     response.locals.user = res[0];
-//     response.locals.roles = {user: res[1], route: res[2]};
-//     next();
-//   })
-//   .catch(err => response.status(err.code).json(HTTPService.response(err)));
-// }
-//
-// function authUser(token): Promise<[User, Buffer[]]> {
-//   return new Promise<[User, Buffer[]]>((resolve, reject) =>
-//     new Promise<User>((resolve, reject) =>
-//       jwt.verify(token, env.tokens.jwt, (err, decoded) =>
-//         !err ? resolve(new User(decoded)) : reject(new Response(401, "jwt"))
-//       )
-//     )
-//     .then(user => user.validate().then(user => authRoleUser(user).then(res => resolve([user, res]))))
-//     .catch(err => reject(err || new Response(401, "any")))
-//   );
-// }
-//
-// function authRoute(method, subdomain, path): Promise<Route> {
-//   return new Promise<Route>((resolve, reject) => {
-//     const key = `${method}:${subdomain}:${path}`;
-//     if (__routes[key]) { return resolve(__routes[key]); }
-//     new Route({method: method, subdomain: subdomain, path: path}).validate()
-//     .then(res => resolve(__routes[key] = res))
-//     .catch(err => reject(err));
-//   });
-// }
-//
-// function authRoleRoute(route): Promise<Buffer[]> {
-//   return new Promise<Buffer[]>((resolve, reject) => {
-//     const key = `${route.method}:${route.path}`;
-//     if (__roles[key]) { return resolve(__roles[key]); }
-//     Database.namespace("master").query(RoleRoute.__table.selectSQL(0, 1000, {route_id: route.id}))
-//     .then(res => resolve(__roles[key] = _.map(res, v => new RoleRoute(v).role_id)))
-//     .catch(err => reject(err));
-//   });
-// }
-//
-// function authRoleUser(user): Promise<Buffer[]> {
-//   return Database.namespace("master").query(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
-//   .then(res => _.map(res, v => new RoleUser(v).role_id))
-// }
+interface AuthObject {
+  route: Route
+  user_roles: Buffer[]
+  route_roles: Buffer[]
+  user: User
+}
+
+function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
+  const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
+  const subdomain = request.vhost ? request.vhost.host.replace(/\.\w*$/, "") : env.subdomains.default;
+  const key = `${subdomain}:${request.method}:${path}`;
+  
+  __routes[key] ? Promise.resolve(__routes[key]) : new Route({method: request.method, subdomain: subdomain, path: path}).validate()
+  .then(route => route.exists ? Promise.resolve(<AuthObject>{route: route}) : Promise.reject(new Responses.JSON(404, "any")))
+  .then(auth => Database.namespace("master").query(RoleRoute.__table.selectSQL(0, 1000, {route_id: auth.route.id})).reduce((r, v: RoleRoute) => r.concat(v.role_id), []).then(roles => _.set(auth, "route_roles", roles)))
+  .then(auth => {
+    if (!auth.route_roles.length && auth.route.flag_active) { return Promise.resolve(auth); }
+    return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
+    .then(user => user.exists ? Promise.resolve(_.set(auth, "user", response.locals.user = user)) : Promise.reject(request.get("Authorization")));
+  })
+  .catch(err => Promise.reject(err instanceof Responses.JSON ? err : new Responses.JSON(401, "jwt", err)))
+  .then(auth =>
+    !auth.user
+    ? Promise.resolve(auth)
+    : Database.namespace("master").query(RoleUser.__table.selectSQL(0, 1000, {user_id: auth.user.id})).reduce((r, v: RoleUser) => r.concat(v.role_id), []).then(roles => _.set(auth, "user_roles", roles))
+  )
+  .then(auth => {
+    if (!auth.user) { return Promise.resolve(auth); }
+    if (!auth.route.flag_active) { return _.some(auth.user_roles, role => Resource.Constructor.uuidFromBuffer(role) === env.roles.admin.id) ? Promise.resolve(auth) : Promise.reject(new Responses.JSON(404, "any")); }
+    if (_.some(auth.route_roles, route_role => _.some(auth.user_roles, user_role => _.isEqual(user_role, route_role)))) { return Promise.resolve(auth); }
+    return Promise.reject(new Responses.JSON(403, "any"));
+  })
+  .then(() => next())
+  .catch(err => err instanceof Responses.JSON ? response.status(err.code).json(err) : response.status(500).json(new Responses.JSON(500, "any", err)));
+}
 
 export type Param = {middleware: Middleware, subdomain: string, namespace: string, name: string}
 export type Middleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void

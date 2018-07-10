@@ -31,15 +31,14 @@ export class Constructor {
     this.__database = <string>$this.__table.__options.database;
   }
   
-  public validate(db?: Database.Pool): Promise<this> {
-    const $this = (<typeof Constructor>this.constructor);
+  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
+    const time_started = Date.now();
     const database = db || Database.namespace("master");
-    return new Promise((resolve, reject) => {
-      if (this.__validated && database.id === this.__database) { return resolve(this); }
-      database.query($this.__table.validationSQL(this))
-      .then(res => resolve(_.merge(_.reduce(res[0], (r, v, k) => $this.__table.__columns[k].protected ? _.set(r, k, v) : r, this), {__validated: true, __exists: !!res[0], __database: database.id})))
-      .catch(err => reject(err));
-    });
+    start = start > 0 ? start : 0;
+    limit = limit > 0 && limit < 100 ? limit : 100;
+    return database.query(this.__table.selectSQL(start, limit, where))
+    .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
+    .catch(err => new Responses.JSON(500, "any", err, time_started));
   }
   
   public save(db?: Database.Pool): Promise<this> {
@@ -78,14 +77,18 @@ export class Constructor {
     return this.__database;
   }
   
-  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
-    const time_started = Date.now();
+  public validate(db?: Database.Pool): Promise<this> {
+    const $this = (<typeof Constructor>this.constructor);
     const database = db || Database.namespace("master");
-    start = start > 0 ? start : 0;
-    limit = limit > 0 && limit < 100 ? limit : 100;
-    return database.query(this.__table.selectSQL(start, limit, where))
-    .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
-    .catch(err => new Responses.JSON(500, "any", {}, time_started));
+    return new Promise((resolve, reject) => {
+      if (this.__validated && database.id === this.__database) { return resolve(this); }
+      database.query($this.__table.validationSQL(this))
+      .then(res => resolve(_.merge(
+        _.reduce(res[0], (r, v, k) => $this.__table.__columns[k].protected || !this[k] ? _.set(r, k, v) : r, this),
+        {__validated: true, __exists: !!res[0], __database: database.id}
+      )))
+      .catch(err => reject(err));
+    });
   }
   
   public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {

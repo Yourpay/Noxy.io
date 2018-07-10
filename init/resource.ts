@@ -1,5 +1,5 @@
 import PromiseQueue from "../classes/PromiseQueue";
-import {env, init_queue, roles, users} from "../app";
+import {env, init_queue} from "../app";
 import Promise from "aigle";
 import User from "../resources/User";
 import Role from "../resources/Role";
@@ -13,17 +13,17 @@ resource_queue.promise("user", (resolve, reject) =>
     new Promise((resolve, reject) =>
       (new User(user)).validate()
       .then(res => {
-        if ((users[key] = res).exists) {
+        if (res.exists) {
           let update = false;
-          if (user.password) { (users[key].password = user.password) && (update = true); }
-          if (user.email !== users[key].email) { (users[key].email = user.email) && (update = true); }
-          if (user.username !== users[key].username) { (users[key].username = user.username) && (update = true); }
-          if (!update) { return resolve(users[key]); }
+          if (user.password) { (res.password = user.password) && (update = true); }
+          if (user.email !== res.email) { (res.email = user.email) && (update = true); }
+          if (user.username !== res.username) { (res.username = user.username) && (update = true); }
+          if (!update) { return resolve(res); }
         }
-        users[key].save()
+        res.save()
         .then(res => {
           delete env.users[key].password;
-          env.users[key].id = users[key].uuid;
+          env.users[key].id = res.uuid;
           resolve(res);
         })
         .catch(err => reject(err));
@@ -41,14 +41,14 @@ resource_queue.promise("role", (resolve, reject) =>
     new Promise((resolve, reject) =>
       (new Role(role)).validate()
       .then(res => {
-        if ((roles[key] = res).exists) {
+        if (res.exists) {
           let update = false;
-          if (role.name !== roles[key].name) { (roles[key].name = role.name) && (update = true); }
-          if (!update) { return resolve(roles[key]); }
+          if (role.name !== res.name) { (res.name = role.name) && (update = true); }
+          if (!update) { return resolve(res); }
         }
-        roles[key].save()
+        res.save()
         .then(res => {
-          env.roles[key].id = roles[key].uuid;
+          env.roles[key].id = res.uuid;
           resolve(res);
         })
         .catch(err => reject(err));

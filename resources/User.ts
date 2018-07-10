@@ -1,18 +1,18 @@
-import * as Resources from "../classes/Resource";
+import * as Resource from "../classes/Resource";
+import * as Responses from "../modules/Response";
 import * as Application from "../modules/Application";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 import * as JWT from "jsonwebtoken";
 import * as crypto from "crypto";
 import * as _ from "lodash";
-import Response from "../classes/Response";
 import Promise from "aigle";
 import {env} from "../app";
 import {publicize_queue} from "../init/publicize";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
-  username:     {type: "varchar(32)", required: true, protected: true, unique_index: ["username"]},
+  username:     {type: "varchar(64)", required: true, protected: true, unique_index: ["username"]},
   email:        {type: "varchar(128)", required: true, protected: true, unique_index: ["email"]},
   salt:         {type: "binary(64)", required: true, protected: true, hidden: true},
   hash:         {type: "binary(64)", required: true, protected: true, hidden: true},
@@ -21,8 +21,8 @@ const columns: Tables.iTableColumns = {
   time_updated: Table.generateTimeColumn()
 };
 
-@Resources.implement<Resources.iResource>()
-export default class User extends Resources.Constructor {
+@Resource.implement<Resource.iResource>()
+export default class User extends Resource.Constructor {
   
   public static readonly __type: string = "user";
   public static readonly __table: Table = new Table(User, options, columns);
@@ -51,18 +51,14 @@ export default class User extends Resources.Constructor {
     this.hash = User.generateHash(value, this.salt);
   }
   
-  public static login(credentials: User | {username?: string, email?: string, password: string}): Promise<Response> {
-    return new Promise((resolve, reject) => {
-      if (credentials instanceof User) { return resolve(credentials); }
-      if (!(credentials.username || credentials.password) && !credentials.password) { return reject(reject(new Response(401, "any"))); }
-      new User(credentials).validate()
-      .then(res => !res.exists ? reject(new Response(401, "any")) : _.set(res, "time_login", Date.now()).save()
-        .then(res => resolve(res))
-        .catch(err => reject(err))
-      )
-      .catch(err => reject(err));
-    })
-    .then((res: User) => new Response(200, "any", JWT.sign(_.merge({id: res.uuid}, _.pick(res, ["username", "email", "time_login", "time_created"])), env.tokens.jwt, {expiresIn: "7d"})));
+  public static login(credentials: User | {username?: string, email?: string, password: string}): Promise<Responses.JSON> {
+    let promise;
+    if (credentials instanceof User && credentials.exists) { promise = Promise.resolve(credentials); }
+    if (!(credentials.username || credentials.email) && !credentials.password) { promise = Promise.reject(new Responses.JSON(401, "any")); }
+    return (promise || new User(<iUserObject>credentials).validate())
+    .then(user => !user.exists ? Promise.reject(new Responses.JSON(401, "any")) : _.set(user, "time_login", Date.now()).save())
+    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? Promise.resolve(user) : Promise.reject(new Responses.JSON(401, "any")))
+    .then(user => new Responses.JSON(200, "any", JWT.sign(_.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login", "time_created"])), env.tokens.jwt, {expiresIn: "7d"})));
   }
   
   public static generateSalt(): Buffer {
@@ -75,12 +71,13 @@ export default class User extends Resources.Constructor {
   
 }
 
-publicize_queue.promise("register", (resolve, reject) => {
-  
+publicize_queue.promise("setup", resolve => {
   Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) => {
-  
-  })
-  
+    User.login(request.body)
+    .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any"))
+    .then(res => response.status(res.code).json(res));
+  });
+  resolve();
 });
 
 interface iUserObject {
