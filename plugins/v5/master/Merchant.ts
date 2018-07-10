@@ -16,6 +16,7 @@ import User from "../../../resources/User";
 import iYourpayLoginObject from "../interfaces/iYourpayLoginObject";
 import RoleUser from "../../../resources/RoleUser";
 import MerchantUser from "./MerchantUser";
+import {publicize_queue} from "../../../init/publicize";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -150,19 +151,22 @@ export default class Merchant extends Resource.Constructor {
   
 }
 
-Application.addRoute(env.subdomains.api, Merchant.__type, "/migrate", "POST", [
-  (request, response) => {
-    const time_started = Date.now();
-    if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
-    Merchant.getMerchantLookup(request.body.merchant_token)
-    .then(res =>
-      Merchant.migrate(res)
-      .then(res => { response.status(200).json(res); })
-      .catch(err => { response.status(500).json(err); })
-    )
-    .catch(err => response.status(400).json(new Response.JSON(400, "merchant_token", err, time_started)));
-  }
-]);
+publicize_queue.promise("setup", resolve => {
+  Application.addRoute(env.subdomains.api, Merchant.__type, "/migrate", "POST", [
+    (request, response) => {
+      const time_started = Date.now();
+      if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
+      Merchant.getMerchantLookup(request.body.merchant_token)
+      .then(res =>
+        Merchant.migrate(res)
+        .then(res => { response.status(200).json(res); })
+        .catch(err => { response.status(500).json(err); })
+      )
+      .catch(err => response.status(400).json(new Response.JSON(400, "merchant_token", err, time_started)));
+    }
+  ]);
+  resolve();
+});
 
 interface iYourpayMerchantMigrationObject {
   di_merchant: iYourpayMerchantObject
@@ -174,7 +178,7 @@ interface iYourpayMerchantMigrationObject {
 }
 
 interface iMerchantObject {
-  id?: string
+  id?: string | Buffer
   psp_id?: string | Buffer
   old_id?: number
   cvr?: string

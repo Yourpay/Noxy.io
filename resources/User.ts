@@ -8,6 +8,7 @@ import * as crypto from "crypto";
 import * as _ from "lodash";
 import Promise from "aigle";
 import {env} from "../app";
+import {publicize_queue} from "../init/publicize";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -56,6 +57,7 @@ export default class User extends Resource.Constructor {
     if (!(credentials.username || credentials.email) && !credentials.password) { promise = Promise.reject(new Responses.JSON(401, "any")); }
     return (promise || new User(<iUserObject>credentials).validate())
     .then(user => !user.exists ? Promise.reject(new Responses.JSON(401, "any")) : _.set(user, "time_login", Date.now()).save())
+    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? Promise.resolve(user) : Promise.reject(new Responses.JSON(401, "any")))
     .then(user => new Responses.JSON(200, "any", JWT.sign(_.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login", "time_created"])), env.tokens.jwt, {expiresIn: "7d"})));
   }
   
@@ -69,10 +71,13 @@ export default class User extends Resource.Constructor {
   
 }
 
-Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) => {
-  User.login(request.body)
-  .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any"))
-  .then(res => response.status(res.code).json(res));
+publicize_queue.promise("setup", resolve => {
+  Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) => {
+    User.login(request.body)
+    .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any"))
+    .then(res => response.status(res.code).json(res));
+  });
+  resolve();
 });
 
 interface iUserObject {

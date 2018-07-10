@@ -88,7 +88,7 @@ export class Constructor {
     limit = limit > 0 && limit < 100 ? limit : 100;
     return database.query(this.__table.selectSQL(start, limit, where))
     .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
-    .catch(err => new Responses.JSON(500, "any", {}, time_started));
+    .catch(err => new Responses.JSON(500, "any", err, time_started));
   }
   
   public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {

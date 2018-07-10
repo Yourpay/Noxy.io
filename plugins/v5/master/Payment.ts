@@ -1,7 +1,8 @@
 import * as Resource from "../../../classes/Resource";
 import * as Application from "../../../modules/Application";
-import * as Database from "../../../modules/Database";
+import * as Responses from "../../../modules/Response";
 import * as Response from "../../../modules/Response";
+import * as Database from "../../../modules/Database";
 import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
 import {env} from "../../../app";
@@ -21,6 +22,8 @@ import Card from "./Card";
 import * as _ from "lodash";
 import * as he from "he";
 import Promise from "aigle";
+import MerchantUser from "./MerchantUser";
+import {publicize_queue} from "../../../init/publicize";
 
 export const options: Tables.iTableOptions = {};
 export const columns: Tables.iTableColumns = {
@@ -199,29 +202,46 @@ export default class Payment extends Resource.Constructor {
   
 }
 
-Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
-  (request, response) => {
-    let merchant_lookup, merchant, ids;
-    const start = request.body.start;
-    const limit = request.body.limit;
-    const time_started = Date.now();
-    if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
-    Merchant.getMerchantLookup(request.body.merchant_token)
-    .then(lookup => (merchant = new Merchant({old_id: lookup.id})).validate().then(merchant => (merchant_lookup = lookup) && merchant.exists ? merchant : Merchant.migrate(lookup)))
-    .then(() => Merchant.getDomains(merchant_lookup).then(lookups => ids = _.filter(_.reduce(lookups, (result, lookup) => result.concat(lookup.id, lookup.production_id), []))))
-    .then(() => request.body.id ? new Payment({old_id: request.body.id}).validate().then(payment => Payment.migrate(ids, payment, start, limit)) : Payment.migrate(ids, null, start, limit))
-    .then(payments => response.json(new Response.JSON(200, "any", payments, time_started)))
-    .catch(err => response.status(400).json(new Response.JSON(400, "any", err, time_started)));
-  }
-]);
-
-Application.addRoute(env.subdomains.api, Payment.__type, "/", "GET", [
-  (request, response) => {
-    const start = request.body.start > 0 ? request.body.start : 0;
-    const limit = request.body.limit > 0 && request.body.limit < 100 ? request.body.limit : 100;
-    
-  }
-]);
+publicize_queue.promise("setup", resolve => {
+  Application.addRoute(env.subdomains.api, Payment.__type, "/migrate", "POST", [
+    (request, response) => {
+      let merchant_lookup, merchant, ids;
+      const start = request.body.start;
+      const limit = request.body.limit;
+      const time_started = Date.now();
+      if (!request.body.merchant_token) { return response.status(400).json(new Response.JSON(400, "merchant_token", {merchant_token: request.body.merchant_token || ""}, time_started)); }
+      Merchant.getMerchantLookup(request.body.merchant_token)
+      .then(lookup => (merchant = new Merchant({old_id: lookup.id})).validate().then(merchant => (merchant_lookup = lookup) && merchant.exists ? merchant : Merchant.migrate(lookup)))
+      .then(() => Merchant.getDomains(merchant_lookup).then(lookups => ids = _.filter(_.reduce(lookups, (result, lookup) => result.concat(lookup.id, lookup.production_id), []))))
+      .then(() => request.body.id ? new Payment({old_id: request.body.id}).validate().then(payment => Payment.migrate(ids, payment, start, limit)) : Payment.migrate(ids, null, start, limit))
+      .then(payments => response.json(new Response.JSON(200, "any", payments, time_started)))
+      .catch(err => response.status(400).json(new Response.JSON(400, "any", err, time_started)));
+    }
+  ]);
+  
+  Application.addRoute(env.subdomains.api, Payment.__type, "/", "GET", [
+    (request, response) => {
+      
+      const start = request.body.start > 0 ? request.body.start : 0;
+      const limit = request.body.limit > 0 && request.body.limit < 100 ? request.body.limit : 100;
+      
+      if (request.query.merchant_id) {
+        new MerchantUser({merchant_id: request.query.merchant_id, user_id: response.locals.user});
+      }
+      else {
+        Database.namespace("master").query(MerchantUser.__table.selectSQL(0, 1000, {user_id: response.locals.user.id})).map(
+          (merchant_user: MerchantUser) => new Merchant({id: merchant_user.merchant_id}).validate()
+        )
+        .then(res => Database.namespace("master").query("SELECT * FROM ?? WHERE merchant_id IN (?) LIMIT ? OFFSET ?", [Payment.__type, _.map(res, "id"), limit, start]))
+        .map(payment => new Payment(payment).toObject())
+        .then(res => response.json(new Responses.JSON(200, "any", res)))
+        .catch(err => console.log(err) || response.json(new Responses.JSON(500, "any", err)));
+      }
+      
+    }
+  ]);
+  resolve();
+});
 
 interface iPaymentMigrationObject {
   merchant?: Merchant

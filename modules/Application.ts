@@ -104,7 +104,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   .then(auth => {
     if (!auth.route_roles.length && auth.route.flag_active) { return Promise.resolve(auth); }
     return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
-    .then(user => user.exists ? Promise.resolve(_.set(auth, "user", user)) : Promise.reject(request.get("Authorization")));
+    .then(user => user.exists ? Promise.resolve(_.set(auth, "user", response.locals.user = user)) : Promise.reject(request.get("Authorization")));
   })
   .catch(err => Promise.reject(err instanceof Responses.JSON ? err : new Responses.JSON(401, "jwt", err)))
   .then(auth =>
