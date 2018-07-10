@@ -1,12 +1,13 @@
 import PromiseQueue from "../classes/PromiseQueue";
 import {env, init_queue} from "../app";
-import * as Application from "../modules/Application";
 import * as _ from "lodash";
 import Table from "../classes/Table";
 
 export const publicize_queue = new PromiseQueue(["setup", "listen"]);
 
 publicize_queue.promise("setup", (resolve, reject) => {
+  
+  const Application = require("../modules/Application");
   
   Application.addParam(env.subdomains.api, "id", (request, response, next, id) => (request.query.id = id) && next());
   
@@ -16,12 +17,10 @@ publicize_queue.promise("setup", (resolve, reject) => {
   
 });
 
-publicize_queue.promise("listen", (resolve, reject) => {
-  
-  Application.publicize()
+publicize_queue.promise("listen", (resolve, reject) =>
+  require("../modules/Application").publicize()
   .then(res => resolve(res))
-  .catch(err => reject(err));
-  
-});
+  .catch(err => reject(err))
+);
 
 init_queue.promise("publicize", (resolve, reject) => publicize_queue.execute().then(res => resolve(res), err => reject(err)));

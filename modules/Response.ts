@@ -16,6 +16,10 @@ const codes: {[status: number]: {[type: string]: string}} = {
     "any": "Unauthorized",
     "jwt": "Could not authorize user token."
   },
+  403: {
+    "any": "Forbiddden.",
+    "get": "Could not get non-existant resource."
+  },
   404: {
     "any": "Resource not found.",
     "get": "Could not get non-existant resource."

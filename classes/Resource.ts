@@ -37,7 +37,10 @@ export class Constructor {
     return new Promise((resolve, reject) => {
       if (this.__validated && database.id === this.__database) { return resolve(this); }
       database.query($this.__table.validationSQL(this))
-      .then(res => resolve(_.merge(_.reduce(res[0], (r, v, k) => $this.__table.__columns[k].protected ? _.set(r, k, v) : r, this), {__validated: true, __exists: !!res[0], __database: database.id})))
+      .then(res => resolve(_.merge(
+        _.reduce(res[0], (r, v, k) => $this.__table.__columns[k].protected || !this[k] ? _.set(r, k, v) : r, this),
+        {__validated: true, __exists: !!res[0], __database: database.id}
+      )))
       .catch(err => reject(err));
     });
   }

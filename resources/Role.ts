@@ -2,8 +2,8 @@ import * as Resources from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 import User from "./User";
-import {users} from "../app";
 import * as _ from "lodash";
+import {env} from "../app";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -29,7 +29,7 @@ export default class Role extends Resources.Constructor {
   constructor(object?: iRoleObject) {
     super(object);
     this.time_created = Date.now();
-    this.user_created = _.get(object, "user_created.id", users["server"].id);
+    this.user_created = Resources.Constructor.bufferFromUuid(_.get(object, "user_created.id", env.users["server"].id));
   }
   
 }

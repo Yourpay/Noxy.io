@@ -7,11 +7,15 @@ import Table from "../../../classes/Table";
 import {env} from "../../../app";
 import Promise from "aigle";
 import * as _ from "lodash";
+import * as he from "he";
 import iYourpayMerchantObject from "../interfaces/iYourpayMerchantObject";
 import PSP from "./PSP";
 import MerchantHierarchy from "./MerchantHierarchy";
 import iYourpayMerchantLookupObject from "../interfaces/iYourpayMerchantLookupObject";
 import User from "../../../resources/User";
+import iYourpayLoginObject from "../interfaces/iYourpayLoginObject";
+import RoleUser from "../../../resources/RoleUser";
+import MerchantUser from "./MerchantUser";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -72,8 +76,8 @@ export default class Merchant extends Resource.Constructor {
   }
   
   public static migrate(merchant_lookup: iYourpayMerchantLookupObject): Promise<any> {
-    let master_lookup: iYourpayMerchantLookupObject;
-    const merchants: {[key: number]: Merchant} = {}, users: {[key: number]: User} = {};
+    let master_lookup: iYourpayMerchantLookupObject, master_user: User;
+    const merchants: {[key: number]: Merchant} = {}, users = {}, role_users = {}, merchant_user = {}, di_logins = {};
     return Merchant.getMasterMerchant(merchant_lookup)
     .then(master => Merchant.getDomains(master_lookup = master).then(res => _.flattenDeep(res)))
     .map((lookup: iYourpayMerchantLookupObject) => Database.namespace("aurora_customer").query("SELECT * FROM `customer_cvr` WHERE merchantid = ?", lookup.id).then(res => ({di_merchant: res[0]})))
@@ -83,16 +87,16 @@ export default class Merchant extends Resource.Constructor {
         psp_id:         migration.psp.id,
         mcc:            migration.di_merchant.mcc,
         type_login:     migration.di_merchant.alternate_dashboard,
-        website:        migration.di_merchant.website,
+        website:        he.decode(decodeURIComponent(_.trim(migration.di_merchant.website, " ,."))),
         postal:         migration.di_merchant.postal,
         phone:          migration.di_merchant.phone,
         old_id:         migration.di_merchant.merchantid,
-        name:           migration.di_merchant.cvr_name,
+        name:           he.decode(decodeURIComponent(_.trim(migration.di_merchant.cvr_name, " ,."))),
         logo:           migration.di_merchant.logo,
         cvr:            migration.di_merchant.cvr,
-        country:        migration.di_merchant.country,
-        city:           migration.di_merchant.city,
-        address:        migration.di_merchant.address,
+        country:        he.decode(decodeURIComponent(_.trim(migration.di_merchant.country, " ,."))),
+        city:           he.decode(decodeURIComponent(_.trim(migration.di_merchant.city, " ,."))),
+        address:        he.decode(decodeURIComponent(_.trim(migration.di_merchant.address, " ,."))),
         merchant_token: migration.di_merchant.merchant_token
       }).save().then(merchant => _.set(migration, "merchant", merchants[migration.di_merchant.merchantid] = merchant))
     )
@@ -103,13 +107,32 @@ export default class Merchant extends Resource.Constructor {
         superior_id: merchants[migration.di_merchant.overall_merchantid || master_lookup.id].id
       }).save().then(hierarchy => _.set(migration, "hierarchy", hierarchy))
     )
+    .map((migration: iYourpayMerchantMigrationObject) =>
+      Database.namespace("aurora_customer").query("SELECT * FROM `customer_logins` WHERE merchantid = ? LIMIT 1", migration.merchant.old_id)
+      .then((login_lookup: iYourpayLoginObject[]) => _.set(migration, "di_login", login_lookup[0] ? di_logins[migration.merchant.old_id] = login_lookup[0] : null))
+    )
     .map((migration: iYourpayMerchantMigrationObject) => {
-      return Database.namespace("aurora_customer").query("SELECT * FROM `customer_logins` WHERE merchantid = ? LIMIT 1", migration.merchant.old_id)
-      .then(login_lookup => {
-        if (!(login_lookup = login_lookup[0])) { return users[migration.merchant.old_id]; }
-        new User({email: login_lookup[0].uemail});
-      });
-    });
+      if (!migration.di_login) { migration.di_login = di_logins[master_lookup.id] || _.values(di_logins)[0]; }
+      const email = migration.di_login.uemail || migration.di_login.username;
+      if (!users[email]) {
+        users[email] = new User({
+          username: migration.di_login.name || migration.di_login.username || migration.di_login.uemail,
+          email:    migration.di_login.uemail || migration.di_login.username,
+          password: "wJEgyiE99ie?W?&I"
+        }).save();
+      }
+      return users[email].then(user => _.set(migration, "user", user));
+    })
+    .map((migration: iYourpayMerchantMigrationObject) => {
+      if (!role_users[migration.user.uuid]) { role_users[migration.user.uuid] = new RoleUser({user_id: migration.user.id, role_id: env.roles.user.id}).save(); }
+      return role_users[migration.user.uuid].then(role_user => _.set(migration, "role_user ", role_user));
+    })
+    .map((migration: iYourpayMerchantMigrationObject) => {
+      if (!merchant_user[migration.merchant.uuid]) { merchant_user[migration.merchant.uuid] = new MerchantUser({user_id: migration.user.id, merchant_id: migration.merchant.id}).save(); }
+      return merchant_user[migration.merchant.uuid].then(merchant_user => _.set(migration, "merchant_user", merchant_user));
+    })
+    .map((migration: iYourpayMerchantMigrationObject) => migration.merchant)
+    .catch(err => console.log(err) || err);
   }
   
   public static getMasterMerchant(merchant: iYourpayMerchantLookupObject): Promise<iYourpayMerchantLookupObject> {
@@ -143,8 +166,10 @@ Application.addRoute(env.subdomains.api, Merchant.__type, "/migrate", "POST", [
 
 interface iYourpayMerchantMigrationObject {
   di_merchant: iYourpayMerchantObject
+  di_login: iYourpayLoginObject
   merchant: Merchant
   psp: PSP
+  user: User
   hierarchy: MerchantHierarchy
 }
 

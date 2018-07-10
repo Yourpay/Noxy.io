@@ -45,8 +45,8 @@ export default class PSP extends Resource.Constructor {
     return Database.namespace(databases.customer).query("SELECT * FROM `crm_login_psp` WHERE deactivated = 0 OR (SELECT count(*) FROM `customer_cvr` WHERE psper = pspid) > 0")
     .map((row: iYourpayPSPObject) =>
       new PSP({
-        name:            he.decode(row.name),
-        contact:         row.response,
+        name:            decodeURIComponent(he.decode(row.name)),
+        contact:         decodeURIComponent(row.response),
         old_id:          row.pspid,
         volume:          row.volume_total + row.total_volume,
         settlement_days: row.settlement_days,

@@ -1,4 +1,4 @@
-import * as Resources from "../classes/Resource";
+import * as Resource from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 
@@ -10,8 +10,8 @@ const columns: Tables.iTableColumns = {
   user_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: ["user_id"], relations: {table: "user"}}
 };
 
-@Resources.implement<Resources.iResource>()
-export default class RoleUser extends Resources.Constructor {
+@Resource.implement<Resource.iResource>()
+export default class RoleUser extends Resource.Constructor {
   
   public static readonly __type: string = "role/user";
   public static readonly __table: Table = new Table(RoleUser, options, columns);
@@ -21,6 +21,8 @@ export default class RoleUser extends Resources.Constructor {
   
   constructor(object?: iRoleUserObject) {
     super(object);
+    this.role_id = typeof object.role_id === "string" ? Resource.Constructor.bufferFromUuid(object.role_id) : object.role_id;
+    this.user_id = typeof object.user_id === "string" ? Resource.Constructor.bufferFromUuid(object.user_id) : object.user_id;
   }
   
 }

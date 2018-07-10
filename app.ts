@@ -1,12 +1,8 @@
-import Role from "./resources/Role";
-import User from "./resources/User";
 import * as Include from "./modules/Include";
 import PromiseQueue from "./classes/PromiseQueue";
 import * as environmentals from "./env.json";
 
 export const env = environmentals;
-export const users: {[id: string]: User} = {};
-export const roles: {[id: string]: Role} = {};
 
 export const init_queue = new PromiseQueue(["db", "resource", "publicize"]);
 
