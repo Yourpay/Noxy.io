@@ -1,11 +1,11 @@
-import Table from "./Table";
 import Promise from "aigle";
-
-import * as Database from "../modules/Database";
-import * as Responses from "../modules/Response";
 
 import * as _ from "lodash";
 import * as uuid from "uuid";
+
+import * as Database from "../modules/Database";
+import * as Responses from "../modules/Response";
+import Table from "./Table";
 
 @implement<iResource>()
 export class Constructor {
@@ -29,33 +29,6 @@ export class Constructor {
       this.uuid = this.uuid || Constructor.uuidFromBuffer(this.id);
     }
     this.__database = <string>$this.__table.__options.database;
-  }
-  
-  public save(db?: Database.Pool): Promise<this> {
-    const $this = (<typeof Constructor>this.constructor);
-    const database = db || Database.namespace("master");
-    return this.validate(this.__validated, database)
-    .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
-    .then(() => this);
-  }
-  
-  public validate(ignore_protections?: boolean, db?: Database.Pool): Promise<this> {
-    const $this = (<typeof Constructor>this.constructor);
-    const database = db || Database.namespace("master");
-    return database.query($this.__table.validationSQL(this))
-    .then(res => _.merge(
-      _.reduce(res[0], (r, v, k) => !ignore_protections && ($this.__table.__columns[k].protected || !this[k]) ? _.set(r, k, v) : r, this),
-      {__validated: true, __exists: !!res[0], __database: database.id}
-    ));
-  }
-  
-  public toObject(): Partial<this> {
-    const $this = (<typeof Constructor>this.constructor);
-    return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
-  }
-  
-  public delete(db?: Database.Pool): Promise<this> {
-    return new Promise((resolve, reject) => { return resolve(this); });
   }
   
   public get exists() {
@@ -101,6 +74,33 @@ export class Constructor {
     return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
   }
   
+  public save(db?: Database.Pool): Promise<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    const database = db || Database.namespace("master");
+    return this.validate(this.__validated, database)
+    .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
+    .then(() => this);
+  }
+  
+  public validate(ignore_protections?: boolean, db?: Database.Pool): Promise<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    const database = db || Database.namespace("master");
+    return database.query($this.__table.validationSQL(this))
+    .then(res => _.merge(
+      _.reduce(res[0], (r, v, k) => !ignore_protections && ($this.__table.__columns[k].protected || !this[k]) ? _.set(r, k, v) : r, this),
+      {__validated: true, __exists: !!res[0], __database: database.id}
+    ));
+  }
+  
+  public toObject(): Partial<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
+  }
+  
+  public delete(db?: Database.Pool): Promise<this> {
+    return new Promise((resolve, reject) => { return resolve(this); });
+  }
+  
 }
 
 export function implement<T>() {
@@ -109,14 +109,12 @@ export function implement<T>() {
 
 export interface iResource {
   __type: string;
-  
-  [key: string]: any
-  
   __table: Table;
-  
   isUuid: (uuid: string) => boolean
   bufferFromUuid: (uuid: string) => Buffer
   uuidFromBuffer: (buffer: Buffer) => string
+  
+  [key: string]: any
   
   new(object?: {[key: string]: any}): iResourceInstance;
 }
@@ -130,14 +128,12 @@ export interface iResourceInstance {
   
   [key: string]: any;
   
-  validated: boolean
-  
   save: (db?: Database.Pool) => Promise<this>
   validate: (ignore_protections?: boolean, db?: Database.Pool) => Promise<this>
   delete: (db?: Database.Pool) => Promise<this>
 }
 
-export interface iResourceObject {
+interface iResourceObject {
   id?: Buffer
   uuid?: string
   

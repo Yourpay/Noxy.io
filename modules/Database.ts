@@ -1,6 +1,6 @@
-import * as mysql from "mysql";
-import * as _ from "lodash";
 import Promise from "aigle";
+import * as _ from "lodash";
+import * as mysql from "mysql";
 
 const __cluster = mysql.createPoolCluster();
 const __pools: {[namespace: string]: Pool} = {};

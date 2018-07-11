@@ -1,16 +1,15 @@
 import * as _ from "lodash";
-import * as Resource from "./Resource";
 import * as mysql from "mysql";
 import * as DatabaseService from "../modules/Database";
+import * as Resource from "./Resource";
 
 export default class Table {
   
+  private static __tables: {[data: string]: {[key: string]: Table}} = {};
   public readonly __resource: typeof Resource.Constructor;
   public readonly __database: string;
   public readonly __columns: iTableColumns;
   public readonly __options: iTableOptions;
-  
-  private static __tables: {[data: string]: {[key: string]: Table}} = {};
   
   constructor(constructor: typeof Resource.Constructor, options: iTableOptions, columns: iTableColumns) {
     this.__database = (options.database instanceof DatabaseService.Pool ? options.database.id : options.database) || (options.coextensive ? "coextensive" : "master");
@@ -27,12 +26,27 @@ export default class Table {
     return _.clone(this.__tables);
   }
   
-  public static generateTimeColumn(index?: string): iTableColumn {
-    return {type: "bigint(14)", required: true, protected: true, default: null, index: index ? [index] : null};
+  public static generateTimeColumn(index?: string, hidden: boolean = false): iTableColumn {
+    return {
+      type:      "bigint(14)",
+      required:  true,
+      protected: true,
+      default:   null,
+      index:     index ? [index] : null,
+      hidden:    hidden
+    };
   }
   
-  public static generateUserColumn(index?: string): iTableColumn {
-    return {type: "binary(16)", required: true, protected: true, default: null, index: index ? [index] : null, relations: [{table: "user", column: "id", "on_update": "CASCADE", "on_delete": "NO ACTION"}]};
+  public static generateUserColumn(index?: string, hidden: boolean = false): iTableColumn {
+    return {
+      type:      "binary(16)",
+      required:  true,
+      protected: true,
+      default:   null,
+      index:     index ? [index] : null,
+      relations: [{table: "user", column: "id", "on_update": "CASCADE", "on_delete": "NO ACTION"}],
+      hidden:    hidden
+    };
   }
   
   public validationSQL(resource: Resource.Constructor) {

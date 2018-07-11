@@ -1,9 +1,9 @@
+import * as _ from "lodash";
+import {env} from "../app";
 import * as Resources from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 import User from "./User";
-import * as _ from "lodash";
-import {env} from "../app";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {

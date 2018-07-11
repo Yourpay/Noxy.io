@@ -1,6 +1,6 @@
-import * as SocketIO from "socket.io";
-import * as https from "https";
 import * as http from "http";
+import * as https from "https";
+import * as SocketIO from "socket.io";
 import WebSocket from "../classes/WebSocket";
 
 export namespace WebSocketService {

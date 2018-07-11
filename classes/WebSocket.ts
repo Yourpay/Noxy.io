@@ -1,11 +1,10 @@
-import * as SocketIO from "socket.io";
 import * as Promise from "bluebird";
+import * as SocketIO from "socket.io";
 
 export default class WebSocket {
   
-  private __socket: SocketIO.Socket;
-  
   private static __timeout: number = 10000;
+  private __socket: SocketIO.Socket;
   
   constructor(socket: SocketIO.Socket) {
     this.__socket = socket;
