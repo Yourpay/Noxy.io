@@ -2,9 +2,6 @@ Alter tables:
     - Read information schema.
     - Pattern match.
 
-Promises:
-    - Use proper promise then-ability to resolve async functions.
-
 Documentation:
     - Create different endpoints descriptors.
 
@@ -12,12 +9,11 @@ Websockets:
     - Build websocket integration with promise queues.
     - Add to application logic in the same way as adding routes.
 
-HTTP:
-    - Add Authenticating functionality.
-
 Errors:
     - Create error response handler
 
 Administration panel:
     - Add an easier way of managing user rights.
 
+Application:
+    - Add public folders and ensure their rights can be controlled from the administration panel

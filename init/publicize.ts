@@ -1,6 +1,7 @@
-import PromiseQueue from "../classes/PromiseQueue";
-import {env, init_queue} from "../app";
+import Promise from "aigle";
 import * as _ from "lodash";
+import {env, init_queue} from "../app";
+import PromiseQueue from "../classes/PromiseQueue";
 import Table from "../classes/Table";
 import Route from "../resources/Route";
 
