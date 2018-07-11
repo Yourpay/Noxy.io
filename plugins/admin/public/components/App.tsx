@@ -6,11 +6,8 @@ export default class App extends React.Component<any, any> {
   }
   
   render() {
-    
-    const location = window.location;
-    
     return (
-      <div>Should be something here.</div>
+      <div>Something here</div>
     );
   }
   
