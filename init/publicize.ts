@@ -1,6 +1,4 @@
 import Promise from "aigle";
-import PromiseQueue from "../classes/PromiseQueue";
-import {env, init_queue} from "../app";
 import * as _ from "lodash";
 import {env, init_queue} from "../app";
 import PromiseQueue from "../classes/PromiseQueue";

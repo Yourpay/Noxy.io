@@ -1,16 +1,15 @@
 import * as _ from "lodash";
-import * as Resource from "./Resource";
 import * as mysql from "mysql";
 import * as DatabaseService from "../modules/Database";
+import * as Resource from "./Resource";
 
 export default class Table {
   
+  private static __tables: {[data: string]: {[key: string]: Table}} = {};
   public readonly __resource: typeof Resource.Constructor;
   public readonly __database: string;
   public readonly __columns: iTableColumns;
   public readonly __options: iTableOptions;
-  
-  private static __tables: {[data: string]: {[key: string]: Table}} = {};
   
   constructor(constructor: typeof Resource.Constructor, options: iTableOptions, columns: iTableColumns) {
     this.__database = (options.database instanceof DatabaseService.Pool ? options.database.id : options.database) || (options.coextensive ? "coextensive" : "master");

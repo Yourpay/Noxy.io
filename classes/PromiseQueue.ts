@@ -1,5 +1,5 @@
-import * as _ from "lodash";
 import Promise from "aigle";
+import * as _ from "lodash";
 
 export default class PromiseQueue {
   
@@ -14,8 +14,23 @@ export default class PromiseQueue {
     });
   }
   
+  private static resolve(promise_list: PromiseStage[]): Promise<any> {
+    const stage = promise_list.pop();
+    return promise_list.length === 0 ? stage.execute() : new Promise((resolve, reject) => {
+      return this.resolve(promise_list)
+      .then(res1 =>
+        stage.execute()
+        .then(res2 => resolve(_.concat(res1, res2)))
+        .catch(err => reject(err))
+      )
+      .catch(err => reject(err));
+    });
+  }
+  
   public stage(): {[stage: string]: Promise<any>}
+  
   public stage(stage_id: string): Promise<any>
+  
   public stage(stage_id?: string): Promise<any> | {[stage: string]: Promise<any>} {
     if (!stage_id) { return _.mapValues(this.__stages, stage => stage.promise); }
     if (!this.__stages[stage_id]) { this.__order.push(this.__stages[stage_id] = new PromiseStage(stage_id)); }
@@ -30,19 +45,6 @@ export default class PromiseQueue {
   public execute(): Promise<any> {
     if (this.__state > 0) { throw new Error("Cannot execute a promise chain which has already been executed."); }
     return PromiseQueue.resolve(_.clone(this.__order));
-  }
-  
-  private static resolve(promise_list: PromiseStage[]): Promise<any> {
-    const stage = promise_list.pop();
-    return promise_list.length === 0 ? stage.execute() : new Promise((resolve, reject) => {
-      return this.resolve(promise_list)
-      .then(res1 =>
-        stage.execute()
-        .then(res2 => resolve(_.concat(res1, res2)))
-        .catch(err => reject(err))
-      )
-      .catch(err => reject(err));
-    });
   }
   
 }

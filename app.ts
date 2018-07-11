@@ -1,6 +1,6 @@
-import * as Include from "./modules/Include";
 import PromiseQueue from "./classes/PromiseQueue";
 import * as environmentals from "./env.json";
+import * as Include from "./modules/Include";
 
 export const env = environmentals;
 

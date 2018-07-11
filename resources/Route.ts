@@ -1,9 +1,9 @@
 import * as express from "express";
+import * as _ from "lodash";
 import * as Resources from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 import * as Application from "../modules/Application";
-import * as _ from "lodash";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {

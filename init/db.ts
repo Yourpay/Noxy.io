@@ -1,11 +1,11 @@
-import * as Database from "../modules/Database";
-import * as Include from "../modules/Include";
+import Promise from "aigle";
+import * as _ from "lodash";
+import * as path from "path";
+import {env, init_queue} from "../app";
 import PromiseQueue from "../classes/PromiseQueue";
 import Table from "../classes/Table";
-import {env, init_queue} from "../app";
-import * as path from "path";
-import * as _ from "lodash";
-import Promise from "aigle";
+import * as Database from "../modules/Database";
+import * as Include from "../modules/Include";
 
 export const db_queue = new PromiseQueue(["connect", "register", "create", "alter"]);
 

@@ -1,6 +1,4 @@
 import Promise from "aigle";
-import PromiseQueue from "../classes/PromiseQueue";
-import {env, init_queue} from "../app";
 import * as fs from "fs";
 import * as path from "path";
 import {env, init_queue} from "../app";
