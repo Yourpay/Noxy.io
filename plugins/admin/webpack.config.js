@@ -7,7 +7,7 @@ const out   = path.resolve(__dirname, "../../build/plugins/admin/public");
 module.exports = {
   mode:    "development",
   entry:   entry,
-  output:  {path: out, filename: "bundle.js"},
+  output:  {path: out, filename: "bundle.js", publicPath: "/"},
   watch:   true,
   module:  {
     rules: [

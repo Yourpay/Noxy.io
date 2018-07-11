@@ -5,6 +5,8 @@ import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
 import * as methodOverride from "method-override";
+import * as path from "path";
+import * as favicon from "serve-favicon";
 import * as vhost from "vhost";
 import {env} from "../app";
 import * as Resource from "../classes/Resource";
@@ -28,6 +30,7 @@ const __application: express.Application = express();
 __application.use(bodyParser.json());
 __application.use(bodyParser.urlencoded({extended: false}));
 __application.use(methodOverride("X-HTTP-Method-Override"));
+__application.use(favicon(path.join(__dirname, "../favicon.ico")));
 
 export const routes = new Proxy(__routes, {get: (routes: {[key: string]: Route}, prop: string) => routes[prop]});
 

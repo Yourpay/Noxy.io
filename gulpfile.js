@@ -20,7 +20,7 @@ gulp.task("watch-plugin-typescript", cb => {
   .on("close", () => console.log("[TS-PLUGIN]", "Finished watching") || cb());
 });
 
-gulp.task("copy", () => gulp.src(["./env.json", "./package.json"]).pipe(gulp.dest("./build/")));
+gulp.task("copy", () => gulp.src(["./env.json", "./package.json", "./favicon.ico"]).pipe(gulp.dest("./build/")));
 
 gulp.task("create-directories", () => gulp.src("*.*", {read: false}).pipe(gulp.dest("./build/plugins")));
 
