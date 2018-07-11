@@ -5,6 +5,7 @@ import {db_queue} from "../../init/db";
 import CardType from "./master/CardType";
 import PSP from "./master/PSP";
 import * as Include from "../../modules/Include";
+import * as Responses from "../../modules/Response";
 import * as path from "path";
 import {env} from "../../app";
 import * as Database from "../../modules/Database";
@@ -12,6 +13,18 @@ import * as _ from "lodash";
 import Institution from "./master/Institution";
 
 export const databases = {customer: "aurora_customer", payments: "aurora_payments"};
+
+_.merge(Responses.codes,
+  {
+    400: {
+      "merchant_token": "Could not validate merchant token.",
+      "merchant_id":    "Merchant ID doesn't exist."
+    },
+    403: {
+      "merchant_id": "Merchant ID doesn't exist or isn't attached to your user account."
+    }
+  }
+);
 
 db_queue.promise("connect", (resolve, reject) => {
   Promise.map(_.pick(env.databases, ["aurora_payments", "aurora_customer"]), (set, namespace) => Promise.map(Array.isArray(set) ? set : [set], database => Database.register(<string>namespace, database)))

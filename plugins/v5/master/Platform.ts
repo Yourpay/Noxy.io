@@ -7,8 +7,8 @@ const columns: Tables.iTableColumns = {
   name:         {type: "varchar(64)", required: true, protected: true, unique_index: ["platform"]},
   domain:       {type: "varchar(64)", required: true, protected: true, unique_index: ["platform"]},
   version:      {type: "varchar(15)", required: true, protected: true, unique_index: ["platform"]},
-  time_created: Table.generateTimeColumn("time_created"),
-  time_updated: Table.generateTimeColumn()
+  time_created: Table.generateTimeColumn("time_created", true),
+  time_updated: Table.generateTimeColumn(null, true)
 };
 
 @Resources.implement<Resources.iResource>()

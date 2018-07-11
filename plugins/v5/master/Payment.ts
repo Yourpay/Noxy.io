@@ -24,29 +24,30 @@ import * as he from "he";
 import Promise from "aigle";
 import MerchantUser from "./MerchantUser";
 import {publicize_queue} from "../../../init/publicize";
+import CardType from "./CardType";
+import PSP from "./PSP";
 
 export const options: Tables.iTableOptions = {};
 export const columns: Tables.iTableColumns = {
-  amount:         {type: "int(11)", protected: true, required: true},
-  currency_id:    {type: "varchar(3)", protected: true, required: true, default: 208},
-  order_id:       {type: "varchar(64)", protected: true, required: true},
-  old_id:         {type: "int(11)", required: true, protected: true, unique_index: ["old_id"]},
-  merchant_id:    {type: "binary(16)", required: true, protected: true, index: ["merchant"], relations: {table: "merchant"}},
+  amount:        {type: "int(11)", protected: true, required: true},
+  currency_id:   {type: "varchar(3)", protected: true, required: true, default: 208},
+  order_id:      {type: "varchar(64)", protected: true, required: true},
+  old_id:        {type: "int(11)", required: true, protected: true, unique_index: ["old_id"]},
+  merchant_id:   {type: "binary(16)", required: true, protected: true, index: ["merchant"], relations: {table: "merchant"}},
   card_id:        {type: "binary(16)", required: true, protected: true, index: ["card"], relations: {table: "card"}},
   platform_id:    {type: "binary(16)", required: true, protected: true, index: ["platform"], relations: {table: "platform"}},
   institution_id: {type: "binary(16)", required: true, protected: true, index: ["institution"], relations: {table: "institution"}},
   cde_id:         {type: "varchar(64)", required: true, protected: true},
-  short_id:       {type: "varchar(15)", required: true, protected: true},
-  flag_test:      {type: "tinyint(1)", protected: true, default: 1},
-  flag_pos:       {type: "tinyint(1)", protected: true, default: 0},
-  flag_fee:       {type: "tinyint(1)", protected: true, default: 0},
-  flag_secure:    {type: "tinyint(1)", protected: true, default: 0},
-  time_created:   Table.generateTimeColumn("time_created"),
-  time_captured:  Table.generateTimeColumn(),
-  time_refunded:  Table.generateTimeColumn(),
-  time_released:  Table.generateTimeColumn(),
-  time_updated:   Table.generateTimeColumn()
-  
+  short_id:      {type: "varchar(15)", required: true, protected: true},
+  flag_test:     {type: "tinyint(1)", protected: true, default: 1},
+  flag_pos:      {type: "tinyint(1)", protected: true, default: 0},
+  flag_fee:      {type: "tinyint(1)", protected: true, default: 0},
+  flag_secure:   {type: "tinyint(1)", protected: true, default: 0},
+  time_created:  Table.generateTimeColumn("time_created"),
+  time_captured: Table.generateTimeColumn(),
+  time_refunded: Table.generateTimeColumn(),
+  time_released: Table.generateTimeColumn(),
+  time_updated:  Table.generateTimeColumn(null, true)
 };
 
 @Resource.implement<Resource.iResource>()
@@ -221,26 +222,65 @@ publicize_queue.promise("setup", resolve => {
   
   Application.addRoute(env.subdomains.api, Payment.__type, "/", "GET", [
     (request, response) => {
-      
-      const start = request.body.start > 0 ? request.body.start : 0;
-      const limit = request.body.limit > 0 && request.body.limit < 100 ? request.body.limit : 100;
+  
+      let payments_promise;
+      const start = request.query.start > 0 ? request.query.start : 0;
+      const limit = request.query.limit > 0 && request.query.limit < 100 ? request.query.limit : 100;
+      const type_map = {
+        "new":     0, "0": 0,
+        "capture": 1, "captured": 1, "1": 1,
+        "refund":  2, "refunded": 2, "2": 2,
+        "release": 3, "released": 3, "3": 3
+      };
+      const type = {
+        0: " AND time_captured = 0 AND time_released = 0 ",
+        1: " AND time_captured > 0 AND time_refunded = 0 ",
+        2: " AND time_refunded > 0 ",
+        3: " AND time_released = 0 "
+      };
+      const where_type = type[_.get(type_map, request.query.type, "")] || "";
+      const collection = {institution_id: Institution, platform_id: Platform, merchant_id: Merchant, card_id: Card};
+      const constants = {};
       
       if (request.query.merchant_id) {
-        new MerchantUser({merchant_id: request.query.merchant_id, user_id: response.locals.user});
+        payments_promise = new MerchantUser({merchant_id: request.query.merchant_id, user_id: response.locals.user.id}).validate()
+        .then(merchant_user => merchant_user.exists ? new Merchant({id: merchant_user.merchant_id}).validate() : Promise.reject(new Responses.JSON(403, "merchant_id", {merchant_id: merchant_user.merchant_id})))
+        .then(merchant => merchant.exists ? Promise.resolve([merchant]) : Promise.reject(new Responses.JSON(400, "merchant_id", {merchant_id: merchant.id}))
+        );
       }
       else {
-        Database.namespace("master").query(MerchantUser.__table.selectSQL(0, 1000, {user_id: response.locals.user.id})).map(
-          (merchant_user: MerchantUser) => new Merchant({id: merchant_user.merchant_id}).validate()
-        )
-        .then(res => Database.namespace("master").query("SELECT * FROM ?? WHERE merchant_id IN (?) LIMIT ? OFFSET ?", [Payment.__type, _.map(res, "id"), limit, start]))
-        .map(payment => new Payment(payment).toObject())
-        .then(res => response.json(new Responses.JSON(200, "any", res)))
-        .catch(err => console.log(err) || response.json(new Responses.JSON(500, "any", err)));
+        payments_promise = Database.namespace("master").query(MerchantUser.__table.selectSQL(0, 1000, {user_id: response.locals.user.id}))
+        .map((merchant_user: MerchantUser) => new Merchant({id: merchant_user.merchant_id}).validate());
       }
-      
+      return payments_promise
+      .then(res => Database.namespace("master").query("SELECT * FROM ?? WHERE `merchant_id` IN (?) " + where_type + " LIMIT ? OFFSET ?", [Payment.__type, _.map(res, "id"), limit, start]))
+      .map(payment => new Payment(payment).toObject())
+      .map(payment_object => {
+        return Promise.map(collection, (resource: typeof Resource.Constructor, id) => {
+          const key = Resource.Constructor.uuidFromBuffer(payment_object[id]);
+          if (!_.get(constants, [resource.__type, key])) { _.set(constants, [resource.__type, key], new resource({id: payment_object[id]}).validate()); }
+          return _.get(constants, [resource.__type, key]).then(result => _.set(payment_object, resource.__type, result.toObject()));
+        })
+        .then(res => _.omit(payment_object, _.keys(collection)));
+      })
+      .map(payment_object => {
+        const key = Resource.Constructor.uuidFromBuffer(payment_object.card.type_id);
+        if (!_.get(constants, [CardType.__type, key])) { _.set(constants, [CardType.__type, key], new CardType({id: payment_object.card.type_id}).validate()); }
+        return _.get(constants, [CardType.__type, key]).then(result => delete payment_object.card.type_id && _.set(payment_object, [Card.__type, CardType.__type], result.toObject()));
+      })
+      .map(payment_object => {
+        const key = Resource.Constructor.uuidFromBuffer(payment_object.merchant.psp_id);
+        if (!_.get(constants, [PSP.__type, key])) { _.set(constants, [PSP.__type, key], new PSP({id: payment_object.merchant.psp_id}).validate()); }
+        return _.get(constants, [PSP.__type, key]).then(result => delete payment_object.merchant.psp_id && _.set(payment_object, [Merchant.__type, PSP.__type], result.toObject()));
+      })
+      .then(res => new Responses.JSON(200, "any", res))
+      .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any", err))
+      .then((res: Responses.JSON) => response.status(res.code).json(res));
     }
   ]);
+  
   resolve();
+  
 });
 
 interface iPaymentMigrationObject {

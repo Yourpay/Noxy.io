@@ -35,7 +35,7 @@ const columns: Tables.iTableColumns = {
   type_login:     {type: "tinyint(1)", default: 0, protected: true},
   merchant_token: {type: "varchar(32)", protected: true, required: true},
   time_created:   Table.generateTimeColumn("time_created"),
-  time_updated:   Table.generateTimeColumn()
+  time_updated:   Table.generateTimeColumn(null, true)
 };
 
 @Resource.implement<Resource.iResource>()
@@ -126,7 +126,7 @@ export default class Merchant extends Resource.Constructor {
     })
     .map((migration: iYourpayMerchantMigrationObject) => {
       if (!role_users[migration.user.uuid]) { role_users[migration.user.uuid] = new RoleUser({user_id: migration.user.id, role_id: env.roles.user.id}).save(); }
-      return role_users[migration.user.uuid].then(role_user => _.set(migration, "role_user ", role_user));
+      return role_users[migration.user.uuid].then(role_user => _.set(migration, "role_user", role_user));
     })
     .map((migration: iYourpayMerchantMigrationObject) => {
       if (!merchant_user[migration.merchant.uuid]) { merchant_user[migration.merchant.uuid] = new MerchantUser({user_id: migration.user.id, merchant_id: migration.merchant.id}).save(); }

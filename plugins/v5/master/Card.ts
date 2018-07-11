@@ -8,8 +8,8 @@ export const columns: Tables.iTableColumns = {
   name:         {type: "varchar(70)", required: true, protected: true, unique_index: ["card"]},
   number:       {type: "varchar(16)", required: true, protected: true, unique_index: ["card"]},
   country_id:   {type: "varchar(3)", required: true, protected: true, unique_index: ["card"]},
-  time_created: Table.generateTimeColumn("time_created"),
-  time_updated: Table.generateTimeColumn()
+  time_created: Table.generateTimeColumn("time_created", true),
+  time_updated: Table.generateTimeColumn(null, true)
 };
 
 @Resources.implement<Resources.iResource>()

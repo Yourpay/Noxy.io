@@ -27,12 +27,27 @@ export default class Table {
     return _.clone(this.__tables);
   }
   
-  public static generateTimeColumn(index?: string): iTableColumn {
-    return {type: "bigint(14)", required: true, protected: true, default: null, index: index ? [index] : null};
+  public static generateTimeColumn(index?: string, hidden: boolean = false): iTableColumn {
+    return {
+      type:      "bigint(14)",
+      required:  true,
+      protected: true,
+      default:   null,
+      index:     index ? [index] : null,
+      hidden:    hidden
+    };
   }
   
-  public static generateUserColumn(index?: string): iTableColumn {
-    return {type: "binary(16)", required: true, protected: true, default: null, index: index ? [index] : null, relations: [{table: "user", column: "id", "on_update": "CASCADE", "on_delete": "NO ACTION"}]};
+  public static generateUserColumn(index?: string, hidden: boolean = false): iTableColumn {
+    return {
+      type:      "binary(16)",
+      required:  true,
+      protected: true,
+      default:   null,
+      index:     index ? [index] : null,
+      relations: [{table: "user", column: "id", "on_update": "CASCADE", "on_delete": "NO ACTION"}],
+      hidden:    hidden
+    };
   }
   
   public validationSQL(resource: Resource.Constructor) {

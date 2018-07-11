@@ -17,8 +17,8 @@ const columns: Tables.iTableColumns = {
   volume:          {type: "int(11)", required: true},
   settlement_days: {type: "int(3)", required: true},
   percentage:      {type: "decimal(5,2)", required: true},
-  time_created:    Table.generateTimeColumn("time_created"),
-  time_updated:    Table.generateTimeColumn()
+  time_created:    Table.generateTimeColumn("time_created", true),
+  time_updated:    Table.generateTimeColumn(null, true)
 };
 
 @Resource.implement<Resource.iResource>()
