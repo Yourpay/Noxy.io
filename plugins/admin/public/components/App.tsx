@@ -12,12 +12,15 @@ export default class App extends React.Component<any, any> {
     console.log("App received props", props);
   }
   
+  
+  
   render() {
     return (
       <Router>
         <div>
-          <Route exact path="/" component={Home}/>
+          
           <Route exact path="/login" component={Login}/>
+          <Route exact path="/" component={Home}/>
         </div>
       </Router>
     );

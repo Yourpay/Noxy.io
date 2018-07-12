@@ -6,9 +6,21 @@ export default class Home extends React.Component<any, any> {
     super(props);
   }
   
-  componentWillMount() {
-    createBrowserHistory().push("/login");
+  componentWillReceiveProps(props) {
+    console.log("Home received props", props);
   }
+  
+  componentDidMount() {
+    console.log("Home did mount");
+    
+  }
+  
+  componentWillMount() {
+    console.log("Home will mount");
+    createBrowserHistory().replace("/login");
+  }
+  
+  
   
   render() {
     return (
