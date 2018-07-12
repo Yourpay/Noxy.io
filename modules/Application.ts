@@ -20,7 +20,6 @@ import User from "../resources/User";
 let __published: Promise<any>;
 const __domain: string = "localhost";
 const __methods: Method[] = ["GET", "POST", "PUT", "DELETE", "PATCH"];
-const __roles: {[key: string]: Buffer[]} = {};
 const __params: {[key: string]: Param} = {};
 const __routes: {[key: string]: Route} = {};
 const __statics: {[key: string]: Static} = {};
@@ -32,8 +31,6 @@ __application.use(bodyParser.json());
 __application.use(bodyParser.urlencoded({extended: false}));
 __application.use(methodOverride("X-HTTP-Method-Override"));
 __application.use(favicon(path.join(__dirname, "../favicon.ico")));
-
-export const routes = new Proxy(__routes, {get: (routes: {[key: string]: Route}, prop: string) => routes[prop]});
 
 export function addStatic(resource_path: string, subdomain: string, namespace?: string): Static {
   const key = _.join(_.filter([subdomain, namespace]), "::");
