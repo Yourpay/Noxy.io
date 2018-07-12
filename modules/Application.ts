@@ -18,6 +18,7 @@ import Route from "../resources/Route";
 import User from "../resources/User";
 
 let __published: Promise<any>;
+const __domain: string = "localhost";
 const __methods: Method[] = ["GET", "POST", "PUT", "DELETE", "PATCH"];
 const __roles: {[key: string]: Buffer[]} = {};
 const __params: {[key: string]: Param} = {};
@@ -73,7 +74,7 @@ export function publicize(): Promise<any> {
   return __published || (__published = Promise.map(_.orderBy(__routes, ["weight"], ["desc"]), route => {
     if (!(subdomain = __subdomains[route.subdomain])) {
       subdomain = __subdomains[route.subdomain] = express.Router();
-      if (route.subdomain !== env.subdomains.default) { __application.use(vhost(route.subdomain + ".localhost", subdomain)); }
+      if (route.subdomain !== env.subdomains.default) { __application.use(vhost(route.subdomain + "." + __domain, subdomain)); }
     }
     if (!(router = _.get(__routers, [route.subdomain, route.namespace]))) {
       _.set(__routers, [route.subdomain, route.namespace], router = express.Router());
@@ -96,7 +97,7 @@ export function publicize(): Promise<any> {
 
 function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction): void {
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
-  const subdomain = request.vhost ? request.vhost.host.replace(/\.\w*$/, "") : env.subdomains.default;
+  const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
   const key = `${subdomain}:${request.method}:${path}`;
   __routes[key] ? Promise.resolve(__routes[key]) : new Route({method: request.method, subdomain: subdomain, path: path}).validate()
   .then(route => route.exists ? Promise.resolve(<AuthObject>{route: route}) : Promise.reject(new Responses.JSON(404, "any")))
