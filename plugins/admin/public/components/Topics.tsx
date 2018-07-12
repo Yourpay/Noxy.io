@@ -28,11 +28,7 @@ export default class Topics extends React.Component<any, any> {
         </ul>
         
         <Route path={`${this.match.url}/:topicId`} component={Topic}/>
-        <Route
-          exact
-          path={this.match.url}
-          render={() => <h3>Please select a topic.</h3>}
-        />
+        <Route exact path={this.match.url} render={() => <h3>Please select a topic.</h3>}/>
       </div>
     );
   }

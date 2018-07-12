@@ -5,6 +5,7 @@ export default class Topic extends React.Component<any, any> {
   
   constructor(props) {
     super(props);
+    console.log(props);
     this.match = props.match;
   }
   

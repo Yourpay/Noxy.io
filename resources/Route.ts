@@ -50,7 +50,7 @@ interface iRouteObject {
   subdomain: string
   namespace?: string
   flag_active?: boolean
-  time_created: number
+  time_created?: number
   
   middleware?: Middleware[]
 }
