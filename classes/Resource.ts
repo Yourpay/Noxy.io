@@ -43,6 +43,33 @@ export class Constructor {
     return this.__database;
   }
   
+  public save(db?: Database.Pool): Promise<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    const database = db || Database.namespace("master");
+    return this.validate(this.__validated, database)
+    .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
+    .then(() => this);
+  }
+  
+  public validate(ignore_protections: boolean = false, db?: Database.Pool): Promise<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    const database = db || Database.namespace("master");
+    return database.query($this.__table.validationSQL(this))
+    .then(res => _.merge(
+      _.reduce(res[0], (r, v, k) => $this.__table.__columns[k].primary_key || (!ignore_protections && ($this.__table.__columns[k].protected || !this[k])) ? _.set(r, k, v) : r, this),
+      {__validated: true, __exists: !!res[0], __database: database.id}
+    ));
+  }
+  
+  public toObject(): Partial<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
+  }
+  
+  public delete(db?: Database.Pool): Promise<this> {
+    return new Promise((resolve, reject) => { return resolve(this); });
+  }
+  
   public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
     const time_started = Date.now();
     const database = db || Database.namespace("master");
@@ -72,33 +99,6 @@ export class Constructor {
   public static uuidFromBuffer(buffer: Buffer): string {
     const hex = buffer.toString("hex");
     return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
-  }
-  
-  public save(db?: Database.Pool): Promise<this> {
-    const $this = (<typeof Constructor>this.constructor);
-    const database = db || Database.namespace("master");
-    return this.validate(this.__validated, database)
-    .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
-    .then(() => this);
-  }
-  
-  public validate(ignore_protections?: boolean, db?: Database.Pool): Promise<this> {
-    const $this = (<typeof Constructor>this.constructor);
-    const database = db || Database.namespace("master");
-    return database.query($this.__table.validationSQL(this))
-    .then(res => _.merge(
-      _.reduce(res[0], (r, v, k) => !ignore_protections && ($this.__table.__columns[k].protected || !this[k]) ? _.set(r, k, v) : r, this),
-      {__validated: true, __exists: !!res[0], __database: database.id}
-    ));
-  }
-  
-  public toObject(): Partial<this> {
-    const $this = (<typeof Constructor>this.constructor);
-    return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
-  }
-  
-  public delete(db?: Database.Pool): Promise<this> {
-    return new Promise((resolve, reject) => { return resolve(this); });
   }
   
 }

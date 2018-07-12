@@ -28,7 +28,7 @@ export default class Table {
   
   public static generateTimeColumn(index?: string, hidden: boolean = false): iTableColumn {
     return {
-      type:      "bigint(14)",
+      type:      "bigint(13)",
       required:  true,
       protected: true,
       default:   null,
