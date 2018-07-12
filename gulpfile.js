@@ -7,6 +7,7 @@ const webpack      = require("webpack");
 const gulp_webpack = require("webpack-stream");
 const spawn        = require("child_process").spawn;
 const tsc          = path.resolve(__dirname, "node_modules/.bin/tsc.cmd");
+const clean        = require("gulp-clean");
 
 gulp.task("watch-server-typescript", cb =>
   spawn(tsc, ["--project", path.resolve(__dirname, "tsconfig.json")], {cwd: __dirname, stdio: ["ignore", "pipe", "ignore"]})
@@ -19,6 +20,8 @@ gulp.task("watch-plugin-typescript", cb => {
   .stdout.on("data", line => console.log("[TS-PLUGIN]", line.toString("utf8")))
   .on("close", () => console.log("[TS-PLUGIN]", "Finished watching") || cb());
 });
+
+gulp.task("clean", () => gulp.src("./build/*", {read: false}).pipe(clean()));
 
 gulp.task("copy", () => gulp.src(["./env.json", "./package.json", "./favicon.ico"]).pipe(gulp.dest("./build/")));
 
@@ -60,6 +63,7 @@ gulp.task("build-plugins", gulp.parallel([
 
 gulp.task("default",
   gulp.series([
+    "clean",
     gulp.parallel([
       "copy",
       "create-directories"
