@@ -36,10 +36,9 @@ export default class Route extends Resources.Constructor {
   constructor(object?: iRouteObject) {
     super(object);
     this.path = ("/" + (object.namespace || "") + object.path).replace(/\/{2,}/g, "/").replace(/(\w)\/$/, "$1");
-    this.time_created = Date.now();
+    this.time_created = object.time_created ? object.time_created : Date.now();
     this.key = `${this.subdomain}::${this.method}::${this.path}`;
     this.weight = _.reduce(_.tail(this.path.split("/")), (r, v) => r + 10000 + (v.match(/:[a-z]+$/) ? 1 : v.length), 0);
-    // if (object.middleware) { this.middleware.unshift(Application.auth); }
   }
   
 }
@@ -51,6 +50,7 @@ interface iRouteObject {
   subdomain: string
   namespace?: string
   flag_active?: boolean
+  time_created: number
   
   middleware?: Middleware[]
 }

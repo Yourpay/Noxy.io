@@ -43,7 +43,7 @@ export default class User extends Resource.Constructor {
       this.hash = User.generateHash(this.password, this.salt);
       delete this.password;
     }
-    this.time_created = Date.now();
+    this.time_created = object.time_created ? object.time_created : Date.now();
   }
   
   public set password(value) {

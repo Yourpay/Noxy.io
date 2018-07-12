@@ -28,7 +28,7 @@ export default class Role extends Resources.Constructor {
   
   constructor(object?: iRoleObject) {
     super(object);
-    this.time_created = Date.now();
+    this.time_created = object.time_created ? object.time_created : Date.now();
     this.user_created = Resources.Constructor.bufferFromUuid(_.get(object, "user_created.id", env.users["server"].id));
   }
   
