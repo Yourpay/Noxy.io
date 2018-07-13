@@ -13,8 +13,8 @@ export class Constructor {
   public static readonly __type: string;
   public static readonly __table: Table;
   
-  public id: Buffer;
-  public uuid: string;
+  private __uuid: string;
+  private __id: Buffer;
   
   protected __exists: boolean = false;
   protected __validated: boolean = false;
@@ -41,6 +41,23 @@ export class Constructor {
   
   public get database() {
     return this.__database;
+  }
+  
+  public get id() {
+    return this.__id;
+  }
+  
+  public set id(value: Buffer) {
+    this.__id = value;
+    this.__uuid = Constructor.uuidFromBuffer(value);
+  }
+  
+  public get uuid() {
+    return this.__uuid;
+  }
+  
+  public set uuid(value: string) {
+    this.__id = Constructor.bufferFromUuid(value);
   }
   
   public save(db?: Database.Pool): Promise<this> {

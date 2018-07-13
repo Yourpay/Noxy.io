@@ -32,10 +32,10 @@ export default class User extends Resource.Constructor {
   public salt: Buffer;
   public hash: Buffer;
   public time_login: number;
-  public time_created: number;
+  public time_created?: number;
   
   private __password: string;
-  private static __login_callbacks: ((user: User) => Promise<Object>)[] = [];
+  private static __login_callbacks: ((user: iUserJWTObject) => Promise<Object>)[] = [];
   
   constructor(object?: iUserObject) {
     super(object);
@@ -64,7 +64,7 @@ export default class User extends Resource.Constructor {
     return crypto.pbkdf2Sync(password, salt.toString("base64"), 10000, 64, "sha512");
   }
   
-  public static addLoginCallback(callback: (user: User) => Promise<Object>): void {
+  public static addLoginCallback(callback: (user: iUserJWTObject) => Promise<Object>): void {
     User.__login_callbacks.push(callback);
   }
   
@@ -89,13 +89,21 @@ export default class User extends Resource.Constructor {
 publicize_queue.promise("setup", resolve => {
   Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) => {
     User.login(request.body, request.get("Authorization"))
-    .then(user => Promise.all(_.map(User.login_callbacks, fn => fn(user))).reduce(res => _.merge(user, res), user))
-    .then(user => new Responses.JSON(200, "any", jwt.sign(_.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])), env.tokens.jwt, {expiresIn: "7d"})))
+    .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
+    .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
+    .then(user => new Responses.JSON(200, "any", jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})))
     .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any", err))
     .then(res => response.status(res.code).json(res));
   });
   resolve();
 });
+
+interface iUserJWTObject {
+  id: string
+  username: string
+  email: string
+  time_login: number
+}
 
 interface iUserCredentials {
   username?: string
