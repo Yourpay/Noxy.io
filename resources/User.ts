@@ -35,6 +35,7 @@ export default class User extends Resource.Constructor {
   public time_created: number;
   
   private __password: string;
+  private static __login_callbacks: (() => Promise<User>)[] = [];
   
   constructor(object?: iUserObject) {
     super(object);
@@ -51,9 +52,8 @@ export default class User extends Resource.Constructor {
     this.hash = User.generateHash(value, this.salt);
   }
   
-  public static login(credentials: User | iUserCredentials, jwt?: string): Promise<Responses.JSON> {
-    return User.loginPW(credentials)
-    .catch(err => jwt ? User.loginJWT(jwt) : err);
+  public static get login_callbacks() {
+    return _.clone(User.__login_callbacks);
   }
   
   public static generateSalt(): Buffer {
@@ -64,17 +64,24 @@ export default class User extends Resource.Constructor {
     return crypto.pbkdf2Sync(password, salt.toString("base64"), 10000, 64, "sha512");
   }
   
-  private static loginPW(credentials: User | iUserCredentials): Promise<Responses.JSON> {
-    return (credentials instanceof User ? credentials : new User(credentials)).validate()
-    .then(user => user.exists ? Promise.resolve(user) : Promise.reject(new Responses.JSON(401, "any")))
-    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? _.set(user, "time_login", Date.now()).save() : Promise.reject(new Responses.JSON(401, "any")))
-    .then(user => new Responses.JSON(200, "any", jwt.sign(_.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])), env.tokens.jwt, {expiresIn: "7d"})));
+  public static addLoginCallback(callback: () => Promise<User>): void {
+    User.__login_callbacks.push(callback);
   }
   
-  private static loginJWT(token?: string): Promise<Responses.JSON> {
+  public static login(credentials: User | iUserCredentials, jwt?: string): Promise<User> {
+    return User.loginPW(credentials)
+    .catch(err => jwt ? User.loginJWT(jwt) : err);
+  }
+  
+  private static loginPW(credentials: User | iUserCredentials): Promise<User> {
+    return (credentials instanceof User ? credentials : new User(credentials)).validate()
+    .then(user => user.exists ? Promise.resolve(user) : Promise.reject(new Responses.JSON(401, "any")))
+    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? _.set(user, "time_login", Date.now()).save() : Promise.reject(new Responses.JSON(401, "any")));
+  }
+  
+  private static loginJWT(token?: string): Promise<User> {
     return (<any>Promise.promisify(jwt.verify))(token, env.tokens.jwt)
-    .then(decoded => new User(decoded).validate().then(user => _.set(user, "time_login", Date.now()).save()))
-    .then(user => new Responses.JSON(200, "any", jwt.sign(_.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])), env.tokens.jwt, {expiresIn: "7d"})));
+    .then(decoded => new User(decoded).validate().then(user => _.set(user, "time_login", Date.now()).save()));
   }
   
 }
@@ -82,6 +89,8 @@ export default class User extends Resource.Constructor {
 publicize_queue.promise("setup", resolve => {
   Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) => {
     User.login(request.body, request.get("Authorization"))
+    .then(user => Promise.all(_.map(User.login_callbacks, fn => fn())).reduce(res => _.merge(user, res), user))
+    .then(user => new Responses.JSON(200, "any", jwt.sign(_.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])), env.tokens.jwt, {expiresIn: "7d"})))
     .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any", err))
     .then(res => response.status(res.code).json(res));
   });
