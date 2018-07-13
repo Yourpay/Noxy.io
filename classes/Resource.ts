@@ -2,6 +2,7 @@ import Promise from "aigle";
 
 import * as _ from "lodash";
 import * as uuid from "uuid";
+import {env} from "../app";
 
 import * as Database from "../modules/Database";
 import * as Responses from "../modules/Response";
@@ -62,7 +63,7 @@ export class Constructor {
   
   public save(db?: Database.Pool): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
-    const database = db || Database.namespace("master");
+    const database = db || Database.namespace(env.mode);
     return this.validate(this.__validated, database)
     .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
     .then(() => this);
@@ -70,7 +71,7 @@ export class Constructor {
   
   public validate(ignore_protections: boolean = false, db?: Database.Pool): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
-    const database = db || Database.namespace("master");
+    const database = db || Database.namespace(env.mode);
     return database.query($this.__table.validationSQL(this))
     .then(res => _.merge(
       _.reduce(res[0], (r, v, k) => $this.__table.__columns[k].primary_key || (!ignore_protections && ($this.__table.__columns[k].protected || !this[k])) ? _.set(r, k, v) : r, this),
@@ -89,7 +90,7 @@ export class Constructor {
   
   public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
     const time_started = Date.now();
-    const database = db || Database.namespace("master");
+    const database = db || Database.namespace(env.mode);
     start = start > 0 ? start : 0;
     limit = limit > 0 && limit < 100 ? limit : 100;
     return database.query(this.__table.selectSQL(start, limit, where))
@@ -99,7 +100,7 @@ export class Constructor {
   
   public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
     const time_started = Date.now();
-    const database = db || Database.namespace("master");
+    const database = db || Database.namespace(env.mode);
     return database.query(this.__table.selectSQL(0, 1, where))
     .then(res => res.length > 0 ? new Responses.JSON(200, "any", new this(res[0]).toObject(), time_started) : new Responses.JSON(404, "any", null, time_started))
     .catch(() => new Responses.JSON(500, "any", {}, time_started));

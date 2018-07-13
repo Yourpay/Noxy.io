@@ -10,7 +10,7 @@ import * as Include from "../modules/Include";
 export const db_queue = new PromiseQueue(["connect", "register", "create", "alter"]);
 
 db_queue.promise("connect", (resolve, reject) =>
-  Promise.map(_.pick(env.databases, ["master"]), (set, namespace) => Promise.map(Array.isArray(set) ? set : [set], database => Database.register(<string>namespace, database)))
+  Promise.map(Array.isArray(env.databases[env.mode]) ? env.databases[env.mode] : [env.databases[env.mode]], database => Database.register(env.mode, database))
   .then(res => resolve(res))
   .catch(err => reject(err))
 );

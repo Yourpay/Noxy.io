@@ -18,7 +18,7 @@ import Route from "../resources/Route";
 import User from "../resources/User";
 
 let __published: Promise<any>;
-const __domain: string = "localhost";
+const __domain: string = env.domains[env.mode];
 const __methods: Method[] = ["GET", "POST", "PUT", "DELETE", "PATCH"];
 const __params: {[key: string]: Param} = {};
 const __routes: {[key: string]: Route} = {};
@@ -98,7 +98,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   const key = `${subdomain}:${request.method}:${path}`;
   __routes[key] ? Promise.resolve(__routes[key]) : new Route({method: request.method, subdomain: subdomain, path: path}).validate()
   .then(route => route.exists ? Promise.resolve(<AuthObject>{route: route}) : Promise.reject(new Responses.JSON(404, "any")))
-  .then(auth => Database.namespace("master").query(RoleRoute.__table.selectSQL(0, 1000, {route_id: auth.route.id})).reduce((r, v: RoleRoute) => r.concat(v.role_id), []).then(roles => _.set(auth, "route_roles", roles)))
+  .then(auth => Database.namespace(env.mode).query(RoleRoute.__table.selectSQL(0, 1000, {route_id: auth.route.id})).reduce((r, v: RoleRoute) => r.concat(v.role_id), []).then(roles => _.set(auth, "route_roles", roles)))
   .then(auth => {
     if (!auth.route_roles.length && auth.route.flag_active) { return Promise.resolve(auth); }
     return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
@@ -108,7 +108,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   .then(auth =>
     !auth.user
     ? Promise.resolve(auth)
-    : Database.namespace("master").query(RoleUser.__table.selectSQL(0, 1000, {user_id: auth.user.id})).reduce((r, v: RoleUser) => r.concat(v.role_id), []).then(roles => _.set(auth, "user_roles", roles))
+    : Database.namespace(env.mode).query(RoleUser.__table.selectSQL(0, 1000, {user_id: auth.user.id})).reduce((r, v: RoleUser) => r.concat(v.role_id), []).then(roles => _.set(auth, "user_roles", roles))
   )
   .then(auth => {
     if (!auth.user) { return Promise.resolve(auth); }

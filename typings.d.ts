@@ -40,10 +40,16 @@ declare module "*env.json" {
   
     mode: ModeEnvironmental
   
+    domains: {
+      development: string
+      production: string
+    }
+    
     databases: {
       [key: string]: DatabaseEnvironmental | DatabaseEnvironmental[]
-    
-      master: DatabaseEnvironmental
+  
+      development: DatabaseEnvironmental
+      production: DatabaseEnvironmental
     },
     
     ports: {

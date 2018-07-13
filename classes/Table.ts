@@ -1,5 +1,6 @@
 import * as _ from "lodash";
 import * as mysql from "mysql";
+import {env} from "../app";
 import * as DatabaseService from "../modules/Database";
 import * as Resource from "./Resource";
 
@@ -12,7 +13,7 @@ export default class Table {
   public readonly __options: iTableOptions;
   
   constructor(constructor: typeof Resource.Constructor, options: iTableOptions, columns: iTableColumns) {
-    this.__database = (options.database instanceof DatabaseService.Pool ? options.database.id : options.database) || (options.coextensive ? "coextensive" : "master");
+    this.__database = (options.database instanceof DatabaseService.Pool ? options.database.id : options.database) || env.mode;
     
     if (_.get(Table.__tables, [this.__database, constructor.__type])) { throw new Error("Trying to overwrite already existing table."); }
     _.set(Table.__tables, [this.__database, constructor.__type], this);
