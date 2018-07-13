@@ -6,6 +6,7 @@ export default class Home extends React.Component<any, any> {
   }
   
   render() {
+    console.log("Login being rendered");
     return (
       <div>
         <h2>Login</h2>

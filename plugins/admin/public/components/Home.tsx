@@ -1,4 +1,3 @@
-import createBrowserHistory from "history/createBrowserHistory";
 import * as React from "react";
 
 export default class Home extends React.Component<any, any> {
@@ -17,10 +16,7 @@ export default class Home extends React.Component<any, any> {
   
   componentWillMount() {
     console.log("Home will mount");
-    createBrowserHistory().replace("/login");
   }
-  
-  
   
   render() {
     return (

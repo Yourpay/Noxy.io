@@ -6,7 +6,8 @@ import App from "./components/App";
 import "./main.less";
 
 const initial_state: iReduxState = {
-  route: "/"
+  route:         "/",
+  authenticated: false
 };
 
 export const render = () => ReactDOM.render(
@@ -20,6 +21,7 @@ export const store = redux.createStore((state: any = initial_state, action) => {
 
 export interface iReduxState {
   route: string
+  authenticated: boolean
 }
 
 store.subscribe(render);
