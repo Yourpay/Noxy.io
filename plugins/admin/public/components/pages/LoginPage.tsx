@@ -1,6 +1,7 @@
 import * as React from "react";
+import Login from "../fragments/Login";
 
-export default class Home extends React.Component<any, any> {
+export default class LoginPage extends React.Component<any, any> {
   constructor(props) {
     super(props);
   }
@@ -10,6 +11,7 @@ export default class Home extends React.Component<any, any> {
     return (
       <div>
         <h2>Login</h2>
+        <Login/>
       </div>
     );
   }

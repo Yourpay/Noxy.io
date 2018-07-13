@@ -20,12 +20,12 @@ service.async = (options: iIncludeOptions): Promise<{[key: string]: any}> => {
     const parsed_path = path.parse(options.path);
     walkDirAsync(path.resolve(options.path))
     .then(res => resolve(_.transform(res, (result, full_path: string) => {
-      const file_path = full_path.substring(offset + 1);
+      const file_path = full_path.substring(offset + 1).replace(/\\/g, "/");
       if (options.filter) {
         if (options.filter instanceof RegExp && !file_path.match(options.filter)) { return result; }
-        if (typeof options.filter === "function" && !options.filter(file_path, _.last(file_path.split("\\")))) { return result; }
+        if (typeof options.filter === "function" && !options.filter(file_path, _.last(file_path.split("/")))) { return result; }
       }
-      return _.merge(result, flat.unflatten({[file_path]: require(full_path)}, {delimiter: "\\"}));
+      return _.merge(result, flat.unflatten({[file_path]: require(full_path)}, {delimiter: "/"}));
     }, {})))
     .catch(err => reject(err));
   })

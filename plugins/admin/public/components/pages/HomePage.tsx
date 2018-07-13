@@ -1,6 +1,6 @@
 import * as React from "react";
 
-export default class About extends React.Component<any, any> {
+export default class HomePage extends React.Component<any, any> {
   constructor(props) {
     super(props);
   }
@@ -8,7 +8,7 @@ export default class About extends React.Component<any, any> {
   render() {
     return (
       <div>
-        <h2>About</h2>
+        <h2>Home</h2>
       </div>
     );
   }
