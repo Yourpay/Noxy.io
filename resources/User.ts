@@ -70,13 +70,13 @@ export default class User extends Resource.Constructor {
   
   public static login(credentials: User | iUserCredentials, jwt?: string): Promise<User> {
     return User.loginPW(credentials)
-    .catch(err => jwt ? User.loginJWT(jwt) : err);
+    .catch(err => jwt ? User.loginJWT(jwt) : Promise.reject(err));
   }
   
   private static loginPW(credentials: User | iUserCredentials): Promise<User> {
     return (credentials instanceof User ? credentials : new User(credentials)).validate()
-    .then(user => user.exists ? Promise.resolve(user) : Promise.reject(new Responses.JSON(401, "any")))
-    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? _.set(user, "time_login", Date.now()).save() : Promise.reject(new Responses.JSON(401, "any")));
+    .then(user => user.exists ? Promise.resolve(user) : Promise.reject(new Responses.JSON(400, "any")))
+    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? _.set(user, "time_login", Date.now()).save() : Promise.reject(new Responses.JSON(400, "any")));
   }
   
   private static loginJWT(token?: string): Promise<User> {
@@ -87,14 +87,14 @@ export default class User extends Resource.Constructor {
 }
 
 publicize_queue.promise("setup", resolve => {
-  Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) => {
+  Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) =>
     User.login(request.body, request.get("Authorization"))
     .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
     .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
     .then(user => new Responses.JSON(200, "any", jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})))
     .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any", err))
-    .then(res => response.status(res.code).json(res));
-  });
+    .then(res => response.status(res.code).json(res))
+  );
   resolve();
 });
 

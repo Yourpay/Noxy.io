@@ -10,7 +10,7 @@ export default class TextInput extends React.Component<any, any> {
     return (
       <div>
         <label htmlFor={this.props.id}>{this.props.label}</label>
-        <input id={this.props.id} type="text"/>
+        <input type={this.props.type || "text"} id={this.props.id} value={this.props.value} onChange={this.props.onChange}/>
       </div>
     );
   }

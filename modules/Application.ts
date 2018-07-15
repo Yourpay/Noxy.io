@@ -31,6 +31,11 @@ __application.use(bodyParser.json());
 __application.use(bodyParser.urlencoded({extended: false}));
 __application.use(methodOverride("X-HTTP-Method-Override"));
 __application.use(favicon(path.join(__dirname, "../favicon.ico")));
+__application.use((request, response, next) => {
+  response.header("Access-Control-Allow-Origin", `http://admin.${__domain}`);
+  response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  next();
+});
 
 export function addStatic(resource_path: string, subdomain: string, namespace?: string): Static {
   const key = _.join(_.filter([subdomain, namespace]), "::");
