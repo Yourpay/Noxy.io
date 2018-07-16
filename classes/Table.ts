@@ -67,7 +67,7 @@ export default class Table {
   
   public updateSQL(resource: Resource.Constructor) {
     const update = _.pick(resource, _.keys(this.__columns));
-    const where = _.join(_.reduce(this.__columns, (r, v, k) => v.primary_key ? r.concat(DatabaseService.parse(`${k} = ?`, resource[k])) : r, []), " AND ");
+    const where = _.join(_.reduce(this.__columns, (r, v, k) => v.primary_key ? r.concat(DatabaseService.parse(`\`${k}\` = ?`, resource[k])) : r, []), " AND ");
     return DatabaseService.parse(`UPDATE \`${this.__resource.__type}\` SET ? WHERE ${where}`, update);
   }
   

@@ -17,7 +17,6 @@ function Include(path_or_options: string | iIncludeOptions): Promise<{[key: stri
 service.async = (options: iIncludeOptions): Promise<{[key: string]: any}> => {
   return new Promise<{[key: string]: any}>((resolve, reject) => {
     const offset = options.path.length;
-    const parsed_path = path.parse(options.path);
     walkDirAsync(path.resolve(options.path))
     .then(res => resolve(_.transform(res, (result, full_path: string) => {
       const file_path = full_path.substring(offset + 1).replace(/\\/g, "/");

@@ -36,13 +36,20 @@ export function configuration(id: string) { return _.clone(__configurations[id])
 
 export function configurations() { return _.clone(__configurations); }
 
-export function parse2(sql: string, replacers: any | any[]) {
-  if (_.isPlainObject(replacers)) { _.each(replacers, (v, k) => sql = sql.replace(new RegExp(`:${k}`, "g"), v)); }
-  return sql;
-}
-
 export function parse(sql: string, replacers: any | any[]) {
-  return mysql.format(sql, replacers);
+  const init = sql;
+  const matches = sql.match(/\?+/g);
+  _.each(_.isArray(replacers) ? replacers : [replacers], (replacer, key) => {
+    sql = sql.replace(/\?+/, _.isPlainObject(replacer) && _.size(replacer) === 1 && _.isArray(_.values(replacer)[0])
+                             ? `${mysql.escapeId(_.keys(replacer)[0])} IN (${mysql.escape(_.values(replacer)[0])})`
+                             : _.get(matches, key, []).length > 1
+                               ? mysql.escapeId(replacer)
+                               : mysql.escape(replacer)
+    );
+  });
+  console.log(init)
+  console.log(sql)
+  return sql;
 }
 
 export class Pool implements Pool {
@@ -81,13 +88,13 @@ export class Pool implements Pool {
   
   public all(expression: string, replacers?: any[]): Promise<any> {
     return Promise.map(this.__databases, database => new Promise((resolve, reject) => {
-      database.query(expression, replacers, (err, result) => err ? reject(err) : resolve(result));
+      database.query(parse(expression, replacers), (err, result) => err ? reject(err) : resolve(result));
     }));
   }
   
   public query(expression: string, replacers?: any): Promise<any> {
     return new Promise((resolve, reject) =>
-      __cluster.of(`${this.id}::*`).query(expression, replacers || [], (err, res) =>
+      __cluster.of(`${this.id}::*`).query(parse(expression, replacers), (err, res) =>
         err ? reject(err) : resolve(res)
       )
     );
@@ -120,7 +127,7 @@ class DatabaseConnection implements IDatabaseConnection {
   
   public query(expression: string, replacers?: any): Promise<any> {
     return new Promise((resolve, reject) =>
-      this.__connection.query(expression, replacers || [], (err, res) =>
+      this.__connection.query(parse(expression, replacers), (err, res) =>
         err ? reject(err) : resolve(res)
       )
     );
