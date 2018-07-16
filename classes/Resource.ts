@@ -91,8 +91,8 @@ export class Constructor {
   public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
-    start = start > 0 ? start : 0;
-    limit = limit > 0 && limit < 100 ? limit : 100;
+    start = start > 0 ? +start : 0;
+    limit = limit > 0 && limit < 100 ? +limit : 100;
     return database.query(this.__table.selectSQL(start, limit, where))
     .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
     .catch(err => new Responses.JSON(500, "any", err, time_started));
