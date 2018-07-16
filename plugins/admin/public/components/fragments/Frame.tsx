@@ -3,7 +3,7 @@ import {Route, Switch} from "react-router";
 import {Link} from "react-router-dom";
 import HomePage from "../pages/HomePage";
 import NotFoundPage from "../pages/NotFoundPage";
-import ResourcePage from "../pages/ResourcePage";
+import ResourceListPage from "../pages/ResourceListPage";
 
 export default class Frame extends React.Component<any, any> {
   constructor(props) {
@@ -19,7 +19,7 @@ export default class Frame extends React.Component<any, any> {
         </div>
         <Switch>
           <Route exact path="/" component={HomePage}/>
-          <Route path="/resource" component={ResourcePage}/>
+          <Route path="/resource" component={ResourceListPage}/>
           <Route component={NotFoundPage}/>
         </Switch>
       </div>

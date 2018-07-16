@@ -1,38 +1,43 @@
-import axios from "axios";
-import * as _ from "lodash";
 import * as React from "react";
-import {Link} from "react-router-dom";
-import {store} from "../../main";
 
-export default class ResourcePage extends React.Component<any, any> {
+export default class ResourceListPage extends React.Component<any, any> {
+  
   constructor(props) {
     super(props);
+    console.log(props);
   }
   
-  componentWillMount() {
-    this.setState({loading: true});
-    axios({
-      method:  "GET",
-      baseURL: store.getState().api,
-      url:     "/db",
-      headers: {
-        "Authorization": window.localStorage.jwt
-      }
-    })
-    .then(res => {
-      store.dispatch({reducer: "resource", type: "list", value: res.data.content});
-      this.setState({loading: false});
-    });
+  componentDidMount() {
+    console.log("Resource page mounted", this.state);
+    this.setState({loading: true, resource: this.props.match.params.resource});
+    console.log(this.state);
+  }
+  
+  componentWillReceiveProps(props) {
+    console.log("Resource page propped", this.state);
+    console.log(props);
+    // if (this.state && this.state.resource !== props.match.params.resource) {
+    //   const resource = props.match.params.resource.replace(/_/g, "/");
+    //   this.setState({loading: true, resource: resource});
+    //   axios({
+    //     method:  "GET",
+    //     baseURL: store.getState().api,
+    //     url:     `/${resource}`,
+    //     headers: {
+    //       "Authorization": window.localStorage.jwt
+    //     }
+    //   })
+    //   .then(res => {
+    //     if (this.state.resource === resource) { this.setState({loading: false}); }
+    //     store.dispatch({reducer: "resource", type: "update", value: {[resource]: res.data.content}});
+    //   });
+    // }
   }
   
   render() {
+    console.log("Resource page rendered", this.state);
     return (
-      <div>
-        <h2>Resources</h2>
-        {
-          console.log("test", store.getState(), store.getState().resource.list) ||
-          _.map(store.getState().resource.list, (answer, key) => (<Link key={`resource-${key}`} to={`/resource/${key}`}>{key}</Link>))}
-      </div>
+      <div>This is a resource page</div>
     );
   }
 }

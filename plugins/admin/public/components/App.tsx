@@ -9,8 +9,6 @@ export default class App extends React.Component<any, any> {
     super(props);
   }
   
-  
-  
   render() {
     return (
       <Router>

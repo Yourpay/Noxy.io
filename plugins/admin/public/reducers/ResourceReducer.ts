@@ -5,5 +5,5 @@ export function update(value, state?) {
 }
 
 export function list(value, state?) {
-  return {resource: {list: value}};
+  return {list: {resource: value}};
 }

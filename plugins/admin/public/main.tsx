@@ -8,6 +8,7 @@ import "./main.less";
 const initial_state: iReduxState = {
   api:           window.location.protocol + "//api." + _.tail(window.location.hostname.split(".")).join("."),
   authenticated: false,
+  list:          {},
   resource:      {}
 };
 
@@ -28,8 +29,9 @@ export interface iReduxAction {
 
 export interface iReduxState {
   api: string
+  list: {[key: string]: {[key: string]: any}}
+  resource: {[key: string]: any[]}
   authenticated: boolean
-  resource: {[key: string]: {[key: string]: any}}
 }
 
 export interface iAPIResponse {
