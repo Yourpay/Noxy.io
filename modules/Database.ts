@@ -37,7 +37,6 @@ export function configuration(id: string) { return _.clone(__configurations[id])
 export function configurations() { return _.clone(__configurations); }
 
 export function parse(sql: string, replacers: any | any[]) {
-  const init = sql;
   const matches = sql.match(/\?+/g);
   _.each(_.isArray(replacers) ? replacers : [replacers], (replacer, key) => {
     sql = sql.replace(/\?+/, _.isPlainObject(replacer) && _.size(replacer) === 1 && _.isArray(_.values(replacer)[0])
@@ -47,8 +46,6 @@ export function parse(sql: string, replacers: any | any[]) {
                                : mysql.escape(replacer)
     );
   });
-  console.log(init)
-  console.log(sql)
   return sql;
 }
 
