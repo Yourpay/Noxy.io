@@ -1,4 +1,5 @@
 import ms = require("ms");
+import * as _ from "lodash";
 
 export const codes: {[status: number]: {[type: string]: string}} = {
   200: {
@@ -46,8 +47,12 @@ export class JSON {
       this.time_elapsed = ms(this.time_finished - start);
     }
     if (content) {
-      this.content = content;
+      this.content = _.isPlainObject(content) || Array.isArray(content) ? JSON.parseKeys(content) : content;
     }
+  }
+  
+  private static parseKeys(content) {
+    return _.transform(content, (r, v, k) => _.set(r, `${k}`.replace(/\//g, "_"), _.isPlainObject(v) || Array.isArray(v) ? JSON.parseKeys(v) : v), <any>(Array.isArray(content) ? [] : {}));
   }
   
 }
