@@ -28,8 +28,6 @@ export function register(key: string, options: DatabaseOptions | DatabaseOptions
   );
 }
 
-export function parse(sql: string, replacers: any | any[]) { return mysql.format(sql, replacers); }
-
 export function namespace(id: string): Pool { return _.clone(__pools[id]); }
 
 export function namespaces() { return _.clone(__pools); }
@@ -37,6 +35,15 @@ export function namespaces() { return _.clone(__pools); }
 export function configuration(id: string) { return _.clone(__configurations[id]); }
 
 export function configurations() { return _.clone(__configurations); }
+
+export function parse2(sql: string, replacers: any | any[]) {
+  if (_.isPlainObject(replacers)) { _.each(replacers, (v, k) => sql = sql.replace(new RegExp(`:${k}`, "g"), v)); }
+  return sql;
+}
+
+export function parse(sql: string, replacers: any | any[]) {
+  return mysql.format(sql, replacers);
+}
 
 export class Pool implements Pool {
   
@@ -80,7 +87,7 @@ export class Pool implements Pool {
   
   public query(expression: string, replacers?: any): Promise<any> {
     return new Promise((resolve, reject) =>
-      __cluster.of(`${this.id}::*`).query(expression, replacers, (err, res) =>
+      __cluster.of(`${this.id}::*`).query(expression, replacers || [], (err, res) =>
         err ? reject(err) : resolve(res)
       )
     );
