@@ -89,7 +89,6 @@ export function publicize(): Promise<any> {
       if (__statics[route.subdomain] && !__statics[route.subdomain].namespace) { subdomain.use(express.static(__statics[route.subdomain].resource_path)); }
       subdomain.use(router);
     }
-    console.log(route.url);
     router[_.toLower(route.method)].apply(router, _.concat(<any>route.url, route.middleware));
     return route.save();
   }))
@@ -106,7 +105,6 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
   const key = `${subdomain}::${request.method}::${path}`;
-  console.log(key, __routes[key]);
   (__routes[key] && __routes[key].exists ? Promise.resolve(<AuthObject>{route: __routes[key]}) : Promise.reject(new Responses.JSON(404, "any")))
   .then(auth => Database.namespace(env.mode).query(RoleRoute.__table.selectSQL(0, 1000, {route_id: auth.route.id})).reduce((r, v: RoleRoute) => r.concat(v.role_id), []).then(roles => _.set(auth, "route_roles", roles)))
   .then(auth => {
