@@ -52,7 +52,7 @@ export class JSON {
   }
   
   private static parseKeys(content) {
-    return _.transform(content, (r, v, k) => _.set(r, `${k}`.replace(/\//g, "_"), _.isPlainObject(v) || Array.isArray(v) ? JSON.parseKeys(v) : v), <any>(Array.isArray(content) ? [] : {}));
+    return _.transform(content, (r, v, k) => _.set(r, `${k}`.replace(/\//g, "__"), _.isPlainObject(v) || Array.isArray(v) ? JSON.parseKeys(v) : v), <any>(Array.isArray(content) ? [] : {}));
   }
   
 }

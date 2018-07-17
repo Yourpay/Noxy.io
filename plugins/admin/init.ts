@@ -10,8 +10,8 @@ import Route from "../../resources/Route";
 publicize_queue.promise("setup", resolve => {
   
   Application.addStatic(path.resolve(__dirname, "./public"), "admin");
-  Application.addRoute(env.subdomains.api, "/db", "/", "GET", (request, response, next) => {
-    response.json(new Responses.JSON(200, "any", _.transform(Table.tables[env.mode], (result, value, key) => _.merge(result, {[key.replace(/\//g, "_")]: _.keys(value.__columns)}), {})));
+  Application.addRoute(env.subdomains.api, "db", "/", "GET", (request, response, next) => {
+    response.json(new Responses.JSON(200, "any", _.transform(Table.tables[env.mode], (result, value, key) => _.merge(result, {[key]: _.keys(value.__columns)}), {})));
   });
   Application.addRoute("admin", "/", "*", "GET", (request, response, next) => {
     response.sendFile(path.resolve(__dirname, "./public/index.html"));

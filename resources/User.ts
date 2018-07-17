@@ -9,6 +9,7 @@ import Table from "../classes/Table";
 import {publicize_queue} from "../init/publicize";
 import * as Application from "../modules/Application";
 import * as Responses from "../modules/Response";
+import Route from "./Route";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -96,6 +97,14 @@ publicize_queue.promise("setup", resolve => {
     .then(res => response.status(res.code).json(res))
   );
   resolve();
+});
+
+publicize_queue.promise("publish", (resolve, reject) => {
+  Promise.all([
+    new Route({subdomain: env.subdomains.api, method: "POST", namespace: require("../resources/User").default.__type, path: "/login", flag_active: true}).save()
+  ])
+  .then(res => resolve(res))
+  .catch(err => reject(err));
 });
 
 interface iUserJWTObject {

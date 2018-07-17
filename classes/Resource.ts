@@ -111,6 +111,7 @@ export class Constructor {
   }
   
   public static bufferFromUuid(uuid: string): Buffer {
+    if (!uuid.match(/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/)) { return Buffer.alloc(0, "", "hex"); }
     return Buffer.alloc(16, uuid.replace(/-/g, ""), "hex");
   }
   

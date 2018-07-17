@@ -64,7 +64,11 @@ export function addResource(resource: typeof Resource.Constructor) {
       "POST": []
     },
     "/:id": {
-      "GET":    (request, response) => resource.getBy({id: Resource.Constructor.bufferFromUuid(request.query.id)}).then(res => response.status(res.code).json(res)),
+      "GET":    (request, response) => {
+        resource.getBy({id: Resource.Constructor.bufferFromUuid(request.query.id)})
+        .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(404, "any", {id: request.query.id}))
+        .then(res => response.status(res.code).json(res));
+      },
       "PUT":    [],
       "DELETE": []
     }
@@ -85,7 +89,8 @@ export function publicize(): Promise<any> {
       if (__statics[route.subdomain] && !__statics[route.subdomain].namespace) { subdomain.use(express.static(__statics[route.subdomain].resource_path)); }
       subdomain.use(router);
     }
-    router[_.toLower(route.method)].apply(router, _.concat(<any>route.path, route.middleware));
+    console.log(route.url);
+    router[_.toLower(route.method)].apply(router, _.concat(<any>route.url, route.middleware));
     return route.save();
   }))
   .then(() => {
@@ -100,9 +105,9 @@ export function publicize(): Promise<any> {
 function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction): void {
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
-  const key = `${subdomain}:${request.method}:${path}`;
-  __routes[key] ? Promise.resolve(__routes[key]) : new Route({method: request.method, subdomain: subdomain, path: path}).validate()
-  .then(route => route.exists ? Promise.resolve(<AuthObject>{route: route}) : Promise.reject(new Responses.JSON(404, "any")))
+  const key = `${subdomain}::${request.method}::${path}`;
+  console.log(key, __routes[key]);
+  (__routes[key] && __routes[key].exists ? Promise.resolve(<AuthObject>{route: __routes[key]}) : Promise.reject(new Responses.JSON(404, "any")))
   .then(auth => Database.namespace(env.mode).query(RoleRoute.__table.selectSQL(0, 1000, {route_id: auth.route.id})).reduce((r, v: RoleRoute) => r.concat(v.role_id), []).then(roles => _.set(auth, "route_roles", roles)))
   .then(auth => {
     if (!auth.route_roles.length && auth.route.flag_active) { return Promise.resolve(auth); }
