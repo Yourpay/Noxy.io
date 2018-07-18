@@ -34,6 +34,7 @@ export default class ResourceListPage extends React.Component<any, any> {
       <div id="resource-list">
         {_.map(store.getState().resource[this.state.resource], (resource, key) => (
           <div className="resource" key={key}>
+            
             {JSON.stringify(resource, null, 2)}
           </div>
         ))}
@@ -42,4 +43,12 @@ export default class ResourceListPage extends React.Component<any, any> {
     
     );
   }
+}
+
+class Resource extends React.Component<any, any> {
+  
+  constructor(props) {
+    super(props);
+  }
+  
 }
