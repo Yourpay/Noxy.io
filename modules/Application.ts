@@ -59,11 +59,11 @@ export function addRoutes(subdomain: string, namespace: string, routes: {[path: 
 
 export function addResource(resource: typeof Resource.Constructor) {
   return addRoutes(env.subdomains.api, resource.__type, {
-    "/":    {
+    "/":      {
       "GET":  (request, response) => resource.get(request.query.start, request.query.limit).then(res => response.status(res.code).json(res)),
       "POST": []
     },
-    "/:id": {
+    "/:id":   {
       "GET":    (request, response) => {
         resource.getBy({id: Resource.Constructor.bufferFromUuid(request.query.id)})
         .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(404, "any", {id: request.query.id}))
@@ -71,6 +71,9 @@ export function addResource(resource: typeof Resource.Constructor) {
       },
       "PUT":    [],
       "DELETE": []
+    },
+    "/count": {
+      "GET": (request, response) => resource.count().then(res => response.status(res.code).json(res))
     }
   });
 }

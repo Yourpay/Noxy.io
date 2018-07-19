@@ -5,7 +5,7 @@ import * as uuid from "uuid";
 import {env} from "../app";
 
 import * as Database from "../modules/Database";
-import * as Responses from "../modules/Response";
+import * as Response from "../modules/Response";
 import Table from "./Table";
 
 @implement<iResource>()
@@ -85,25 +85,33 @@ export class Constructor {
   }
   
   public delete(db?: Database.Pool): Promise<this> {
-    return new Promise((resolve, reject) => { return resolve(this); });
+    return new Promise(resolve => { return resolve(this); });
   }
   
-  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
+  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.JSON> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
     start = start > 0 ? +start : 0;
     limit = limit > 0 && limit < 100 ? +limit : 100;
     return database.query(this.__table.selectSQL(start, limit, where))
-    .then(res => new Responses.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
-    .catch(err => new Responses.JSON(500, "any", err, time_started));
+    .then(res => new Response.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
+    .catch(err => new Response.JSON(500, "any", err, time_started));
   }
   
-  public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Responses.JSON> {
+  public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.JSON> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
     return database.query(this.__table.selectSQL(0, 1, where))
-    .then(res => res.length > 0 ? new Responses.JSON(200, "any", new this(res[0]).toObject(), time_started) : new Responses.JSON(404, "any", null, time_started))
-    .catch(() => new Responses.JSON(500, "any", {}, time_started));
+    .then(res => res.length > 0 ? new Response.JSON(200, "any", new this(res[0]).toObject(), time_started) : new Response.JSON(404, "any", null, time_started))
+    .catch(() => new Response.JSON(500, "any", {}, time_started));
+  }
+  
+  public static count(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.JSON> {
+    const time_started = Date.now();
+    const database = db || Database.namespace(env.mode);
+    return database.query(this.__table.countSQL(where))
+    .then(res => new Response.JSON(200, "any", new this(res[0].count), time_started))
+    .catch(() => new Response.JSON(500, "any", {}, time_started));
   }
   
   public static isUuid(uuid: string): boolean {

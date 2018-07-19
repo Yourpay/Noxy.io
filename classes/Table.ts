@@ -71,6 +71,15 @@ export default class Table {
     return DatabaseService.parse(`UPDATE \`${this.__resource.__type}\` SET ? WHERE ${where}`, update);
   }
   
+  public countSQL(where?: string | {[key: string]: any}) {
+    const replacers = {
+      table: this.__resource.__type,
+      where: where ? (_.isString(where) ? where : _.join(_.map(where, (v, k) => DatabaseService.parse("?? = ?", [k, v])), "AND")) : ""
+    };
+    console.log(_.template("SELECT COUNT(1) as `count` FROM `${table}` WHERE ${where} LIMIT ${limit} OFFSET ${start}")(replacers));
+    return _.template("SELECT COUNT(1) as `count` FROM `${table}` WHERE ${where} LIMIT ${limit} OFFSET ${start}")(replacers);
+  }
+  
   public selectSQL(start?: number, limit?: number, where?: {[key: string]: any}) {
     const replacers = {
       table: this.__resource.__type,
