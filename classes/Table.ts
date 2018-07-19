@@ -76,8 +76,8 @@ export default class Table {
       table: this.__resource.__type,
       where: where ? (_.isString(where) ? where : _.join(_.map(where, (v, k) => DatabaseService.parse("?? = ?", [k, v])), "AND")) : ""
     };
-    console.log(_.template("SELECT COUNT(1) as `count` FROM `${table}` WHERE ${where} LIMIT ${limit} OFFSET ${start}")(replacers));
-    return _.template("SELECT COUNT(1) as `count` FROM `${table}` WHERE ${where} LIMIT ${limit} OFFSET ${start}")(replacers);
+    console.log(_.template("SELECT COUNT(1) as `count` FROM `${table}` WHERE ${where}")(replacers));
+    return _.template("SELECT COUNT(1) as `count` FROM `${table}` WHERE ${where}")(replacers);
   }
   
   public selectSQL(start?: number, limit?: number, where?: {[key: string]: any}) {
