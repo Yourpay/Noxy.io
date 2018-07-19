@@ -84,7 +84,7 @@ export default class Table {
       table: this.__resource.__type,
       limit: limit || 18446744073709551615,
       start: start || 0,
-      where: where ? DatabaseService.parse("WHERE ?", where) : ""
+      where: where ? "WHERE " + (_.isString(where) ? where : _.join(_.map(where, (v, k) => DatabaseService.parse("?? = ?", [k, v])), "AND")) : ""
     };
     return _.template("SELECT * FROM `${table}` ${where} LIMIT ${limit} OFFSET ${start}")(replacers);
   }

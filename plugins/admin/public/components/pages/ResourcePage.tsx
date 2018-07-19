@@ -30,25 +30,23 @@ export default class ResourceListPage extends React.Component<any, any> {
   }
   
   render() {
+    console.log(store.getState());
     return (
       <div id="resource-list">
-        {_.map(store.getState().resource[this.state.resource], (resource, key) => (
-          <div className="resource" key={key}>
-            
-            {JSON.stringify(resource, null, 2)}
+        <div className="resource-header">
+          {_.map(_.get(store.getState(), ["list", "resource", this.state.resource], []), (header, i) => (
+            <div className="resource-header-column" key={"header-" + i}>{"asd"}</div>
+          ))}
+        </div>
+        {_.map(_.get(store.getState(), ["resource", this.state.resource], []), (resource, i) => (
+          <div className="resource-row" key={"row-" + i}>
+            {_.map(_.get(store.getState(), ["list", "resource", this.state.resource], []), (header, j) => (
+              <div className="resource-row-column" key={"row-" + i + "-column-" + j}>{JSON.stringify(resource[header])}</div>
+            ))}
           </div>
         ))}
-      
       </div>
     
     );
   }
-}
-
-class Resource extends React.Component<any, any> {
-  
-  constructor(props) {
-    super(props);
-  }
-  
 }

@@ -11,7 +11,6 @@ export default class ResourceListPage extends React.Component<any, any> {
   }
   
   componentDidMount() {
-    console.log("Resource list mounted", this.state);
     this.setState({loading: true});
     axios({
       method:  "GET",
@@ -28,20 +27,18 @@ export default class ResourceListPage extends React.Component<any, any> {
   }
   
   render() {
-    console.log("Resource list rendered", this.state);
     return (
       <div>
         <h2>Resources</h2>
         <div id="resource-link">
-          {_.map(store.getState().list.resource, (answer, key) => (<Link key={`resource-${key}`} to={`/resource/${key}`}>{key}</Link>))}
+          {_.map(store.getState().list.resource, (answer, key) => (<Link key={`resource-${key}`} to={`/resource/${key.replace(/__/g, "/")}`}>{key.replace(/__/g, "/")}</Link>))}
         </div>
         <div id="resource-info">
           <Switch>
-            <Route path="/resource/:resource" component={ResourcePage}/>
+            <Route path="/resource/:resource*" component={ResourcePage}/>
             <Route component={ResourceInfoPage}/>
           </Switch>
         </div>
-      
       </div>
     );
   }

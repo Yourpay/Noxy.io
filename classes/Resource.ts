@@ -79,6 +79,8 @@ export class Constructor {
     ));
   }
   
+  /* TODO: Should have a flag checking if the object should be recursively filled. Should have a flag to check if id should remain or be replaced by object data. */
+  
   public toObject(): Partial<this> {
     const $this = (<typeof Constructor>this.constructor);
     return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
