@@ -76,7 +76,6 @@ export default class Table {
       table: this.__resource.__type,
       where: where ? "WHERE " + (_.isString(where) ? where : _.join(_.map(where, (v, k) => DatabaseService.parse("?? = ?", [k, v])), "AND")) : ""
     };
-    console.log(_.template("SELECT COUNT(1) as `count` FROM `${table}` ${where}")(replacers));
     return _.template("SELECT COUNT(1) as `count` FROM `${table}` ${where}")(replacers);
   }
   
