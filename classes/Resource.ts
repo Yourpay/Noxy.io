@@ -110,7 +110,7 @@ export class Constructor {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
     return database.query(this.__table.countSQL(where))
-    .then(res => new Response.JSON(200, "any", new this(res[0].count), time_started))
+    .then(res => new Response.JSON(200, "any", res[0].count, time_started))
     .catch(() => new Response.JSON(500, "any", {}, time_started));
   }
   

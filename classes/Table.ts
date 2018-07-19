@@ -74,10 +74,10 @@ export default class Table {
   public countSQL(where?: string | {[key: string]: any}) {
     const replacers = {
       table: this.__resource.__type,
-      where: where ? (_.isString(where) ? where : _.join(_.map(where, (v, k) => DatabaseService.parse("?? = ?", [k, v])), "AND")) : ""
+      where: where ? "WHERE " + (_.isString(where) ? where : _.join(_.map(where, (v, k) => DatabaseService.parse("?? = ?", [k, v])), "AND")) : ""
     };
-    console.log(_.template("SELECT COUNT(1) as `count` FROM `${table}` WHERE ${where}")(replacers));
-    return _.template("SELECT COUNT(1) as `count` FROM `${table}` WHERE ${where}")(replacers);
+    console.log(_.template("SELECT COUNT(1) as `count` FROM `${table}` ${where}")(replacers));
+    return _.template("SELECT COUNT(1) as `count` FROM `${table}` ${where}")(replacers);
   }
   
   public selectSQL(start?: number, limit?: number, where?: {[key: string]: any}) {
