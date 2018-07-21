@@ -85,8 +85,8 @@ export class Constructor {
       const [datatype, type, value] = v.type.match(/(.*)\((.*)\)/);
       if (type === "binary") {
         if (value === "16") {
-          if (v.relations && _.isPlainObject(v.relations) || _.size(v.relations) === 1) {
-            return new Table.tables[this.__database || env.mode][(v.relations[0] || v.relations).table].__resource({id: this[k]}).validate()
+          if (v.relation && _.isPlainObject(v.relation) || _.size(v.relation) === 1) {
+            return new Table.tables[this.__database || env.mode][v.relation.table].__resource({id: this[k]}).validate()
             .then(res => res.toObject())
             .then(res => _.set(r, k, res));
           }
@@ -99,8 +99,6 @@ export class Constructor {
     }, {})
     .then(res => res)
     .catch(err => err);
-    
-    // return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
   }
   
   public delete(db?: Database.Pool): Promise<this> {
