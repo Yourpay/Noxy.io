@@ -45,7 +45,7 @@ export default class Table {
       protected: true,
       default:   null,
       index:     index ? [index] : null,
-      relations: [{table: "user", column: "id", "on_update": "CASCADE", "on_delete": "NO ACTION"}],
+      relation:  {table: "user", column: "id", "on_update": "CASCADE", "on_delete": "NO ACTION"},
       hidden:    hidden
     };
   }
@@ -135,7 +135,7 @@ export default class Table {
   private getRelationSQL(): string[] {
     return _.reduce(
       this.__columns,
-      (result, options, col) => result.concat(_.map(Array.isArray(options.relations) ? options.relations : _.filter([options.relations]), rel =>
+      (result, options, col) => result.concat(_.map(Array.isArray(options.relation) ? options.relation : _.filter([options.relation]), rel =>
         _.template("CONSTRAINT `${cs}` FOREIGN KEY (`${fk}`) REFERENCES `${db}`.`${tbl}` (`${cl}`) ON UPDATE ${ou} ON DELETE ${od}")({
           cs: this.__resource.__type + ":" + col, fk: col, db: rel.database || "master", tbl: rel.table, cl: rel.column || "id", ou: rel.on_update || "NO ACTION", od: rel.on_delete || "NO ACTION"
         })
@@ -194,14 +194,14 @@ export interface iTableColumn {
   /* Is this part of the primary key? */
   primary_key?: boolean
   /* Defines the foreign key relations this column has to another */
-  relations?: iTableRelations | iTableRelations[]
+  relation?: iTableRelation
   /* The default collation to use with the column */
   collation?: "utf8mb4_unicode_ci" | string
   /* Add a comment to the column in the database */
   comment?: string
 }
 
-export interface iTableRelations {
+export interface iTableRelation {
   database?: "master" | string
   table: string
   column?: string

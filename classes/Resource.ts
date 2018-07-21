@@ -79,9 +79,7 @@ export class Constructor {
     ));
   }
   
-  /* TODO: Should have a flag checking if the object should be recursively filled. Should have a flag to check if id should remain or be replaced by object data. */
-  
-  public toObject(): Promise<{[key: string]: any}> {
+  public toObject(): Promise<Partial<this>> {
     const $this = (<typeof Constructor>this.constructor);
     return Promise.reduce(_.omitBy($this.__table.__columns, v => v.hidden), (r, v, k) => {
       const [datatype, type, value] = v.type.match(/(.*)\((.*)\)/);
@@ -115,7 +113,7 @@ export class Constructor {
     start = start > 0 ? +start : 0;
     limit = limit > 0 && limit < 100 ? +limit : 100;
     return database.query(this.__table.selectSQL(start, limit, where))
-    .map(res => new this(res).toObject())
+    .map(row => row => new this(row).toObject())
     .then(res => new Response.JSON(200, "any", res, time_started))
     .catch(err => new Response.JSON(500, "any", err, time_started));
   }
