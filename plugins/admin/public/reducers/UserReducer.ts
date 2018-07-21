@@ -6,6 +6,5 @@ export function login(value, state?) {
 }
 
 export function update(value, state?) {
-  console.log("update", JSON.parse(atob(value.split(".")[1])));
   return value;
 }

@@ -1,4 +1,5 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const LessGlobPlugin    = require("less-plugin-glob");
 const path              = require("path");
 
 const entry = path.resolve(__dirname, "./public/main.tsx");
@@ -11,7 +12,14 @@ module.exports = {
   watch:   true,
   module:  {
     rules: [
-      {test: /\.less$/, use: [{loader: "style-loader"}, {loader: "css-loader"}, {loader: "less-loader", options: {strictMath: true, noIeCompat: true}}]},
+      {
+        test: /\.less$/,
+        use:  [
+          {loader: "style-loader"},
+          {loader: "css-loader"},
+          {loader: "less-loader", options: {strictMath: true, noIeCompat: true, paths: [path.resolve(__dirname)], plugins: [require("less-plugin-glob")]}}
+        ]
+      },
       {test: /\.tsx?$/, loader: "awesome-typescript-loader", options: {configFileName: path.resolve(__dirname, "./tsconfig.json")}}
     ]
   },

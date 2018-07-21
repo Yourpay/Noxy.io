@@ -11,7 +11,7 @@ const columns: Tables.iTableColumns = {
   key:          {type: "varchar(32)", required: true, protected: true, unique_index: ["key"]},
   user_created: Table.generateUserColumn("user_created"),
   time_created: Table.generateTimeColumn("time_created"),
-  time_updated: Table.generateTimeColumn()
+  time_updated: Table.generateTimeColumn(null, true)
 };
 
 @Resources.implement<Resources.iResource>()

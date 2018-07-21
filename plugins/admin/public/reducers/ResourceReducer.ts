@@ -1,9 +1,11 @@
+import * as _ from "lodash";
+
 export const reducer = "resource";
 
 export function update(value, state?) {
-  return {resource: value};
+  return _.assign({}, state, {resource: value});
 }
 
 export function list(value, state?) {
-  return {list: {resource: value}};
+  return _.assign({}, state, {list: {resource: value}});
 }

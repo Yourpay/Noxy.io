@@ -16,7 +16,7 @@ const reducers_ctx = require.context("./reducers", true, /\.ts$/);
 
 export const reducers = _.transform(reducers_ctx.keys(), (result, key) => _.merge(result, {[reducers_ctx(key).reducer]: _.omit(reducers_ctx(key), ["reducer"])}), {});
 export const render = () => ReactDOM.render(<App/>, document.getElementById("admin-app"));
-export const store = redux.createStore((state: any = initial_state, action: iReduxAction) => _.assign({}, state, _.invoke(reducers, [action.reducer, action.type], action.value) || {}));
+export const store = redux.createStore((state: any = initial_state, action: iReduxAction) => _.assign({}, state, _.invoke(reducers, [action.reducer, action.type], action.value, state) || {}));
 
 store.subscribe(render);
 render();

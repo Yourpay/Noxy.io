@@ -12,7 +12,7 @@ export default class ResourceListPage extends React.Component<any, any> {
   
   componentWillReceiveProps(props) {
     const resource = props.match.params.resource;
-    if (this.state.resource !== resource) {
+    if (resource && this.state.resource !== resource) {
       this.setState({resource: resource, loading: true});
       axios({
         method:  "GET",
@@ -35,7 +35,7 @@ export default class ResourceListPage extends React.Component<any, any> {
       <div id="resource-list">
         <div className="resource-header">
           {_.map(_.get(store.getState(), ["list", "resource", this.state.resource], []), (header, i) => (
-            <div className="resource-header-column" key={"header-" + i}>{"asd"}</div>
+            <div className="resource-header-column" key={"header-" + i}>{header}</div>
           ))}
         </div>
         {_.map(_.get(store.getState(), ["resource", this.state.resource], []), (resource, i) => (

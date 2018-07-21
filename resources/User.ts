@@ -19,7 +19,7 @@ const columns: Tables.iTableColumns = {
   hash:         {type: "binary(64)", required: true, protected: true, hidden: true},
   time_login:   Table.generateTimeColumn("time_login"),
   time_created: Table.generateTimeColumn("time_created"),
-  time_updated: Table.generateTimeColumn()
+  time_updated: Table.generateTimeColumn(null, true)
 };
 
 @Resource.implement<Resource.iResource>()
