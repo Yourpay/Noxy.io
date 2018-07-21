@@ -57,7 +57,8 @@ publicize_queue.promise("setup", resolve => {
     Database.namespace(env.mode).query("SELECT DISTINCT subdomain, namespace FROM `route` LIMIT ? OFFSET ?", [limit, start])
     .reduce((result: any, route) => {
       return Database.namespace(env.mode).query("SELECT * FROM `route` WHERE `subdomain` = ? AND `namespace` = ?", [route.subdomain, route.namespace])
-      .then(routes => _.concat(result, {subdomain: route.subdomain, namespace: route.namespace, routes: _.map(routes, route => new Route(route).toObject())}));
+      .map(route => new Route(route).toObject())
+      .then(routes => _.concat(result, {subdomain: route.subdomain, namespace: route.namespace, routes: routes}));
     }, [])
     .then(routes => new Responses.JSON(200, "any", routes))
     .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any", err))

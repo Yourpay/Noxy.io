@@ -10,7 +10,7 @@
     "build-plugins": "./node_modules/.bin/webpack"
   },
   "dependencies": {
-    "aigle": "^1.13.0-alpha.3",
+    "aigle": "^1.13.0-alpha.6",
     "axios": "^0.18.0",
     "body-parser": "^1.18.3",
     "express": "^4.16.3",
@@ -20,7 +20,7 @@
     "lodash": "^4.17.10",
     "method-override": "^2.3.10",
     "ms": "^2.1.1",
-    "mysql": "^2.15.0",
+    "mysql": "^2.16.0",
     "request": "^2.87.0",
     "request-promise": "^4.2.2",
     "serve-favicon": "^2.5.0",
@@ -40,8 +40,8 @@
     "@types/mysql": "^2.15.5",
     "@types/react": "^16.4.6",
     "@types/react-dom": "^16.0.6",
-    "@types/react-router": "^4.0.28",
-    "@types/react-router-dom": "^4.2.7",
+    "@types/react-router": "^4.0.29",
+    "@types/react-router-dom": "^4.3.0",
     "@types/serve-favicon": "^2.2.30",
     "@types/socket.io": "^1.4.36",
     "@types/uuid": "^3.4.3",
@@ -64,8 +64,8 @@
     "source-map-loader": "^0.2.3",
     "style-loader": "^0.21.0",
     "typescript": "^2.9.1",
-    "webpack": "^4.16.0",
-    "webpack-cli": "^3.0.8",
+    "webpack": "^4.16.1",
+    "webpack-cli": "^3.1.0",
     "webpack-stream": "^4.0.3"
   }
 }

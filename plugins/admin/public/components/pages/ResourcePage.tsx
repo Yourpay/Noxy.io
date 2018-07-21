@@ -12,7 +12,7 @@ export default class ResourceListPage extends React.Component<any, any> {
   
   componentWillReceiveProps(props) {
     const resource = props.match.params.resource;
-    if (this.state.resource !== resource) {
+    if (resource && this.state.resource !== resource) {
       this.setState({resource: resource, loading: true});
       axios({
         method:  "GET",

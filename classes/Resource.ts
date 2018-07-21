@@ -79,11 +79,24 @@ export class Constructor {
     ));
   }
   
-  /* TODO: Should have a flag checking if the object should be recursively filled. Should have a flag to check if id should remain or be replaced by object data. */
-  
-  public toObject(): Partial<this> {
+  public toObject(): Promise<Partial<this>> {
     const $this = (<typeof Constructor>this.constructor);
-    return _.merge({id: this.uuid}, _.pickBy(this, (v, k) => $this.__table.__columns[k] && !$this.__table.__columns[k].hidden));
+    return Promise.reduce($this.__table.__columns, (r, v, k) => {
+      if (v.hidden) { return r; }
+      const [datatype, type, value] = v.type.match(/(.*)\((.*)\)/);
+      if (type === "binary") {
+        if (value === "16") {
+          if (v.relation && _.isPlainObject(v.relation) || _.size(v.relation)) {
+            return new Table.tables[this.__database || env.mode][v.relation.table].__resource().validate()
+            .then(res => res.exists ? Promise.reject(res) : res.toObject());
+          }
+          return _.set(r, k, Constructor.uuidFromBuffer(this[k]));
+        }
+        return _.set(r, k, (<Buffer>this[k]).toString("hex"));
+      }
+      if (type === "varbinary") { return _.set(r, k, (<Buffer>this[k]).toString("utf8")); }
+      return _.set(r, k, this[k]);
+    }, {});
   }
   
   public delete(db?: Database.Pool): Promise<this> {
@@ -96,7 +109,8 @@ export class Constructor {
     start = start > 0 ? +start : 0;
     limit = limit > 0 && limit < 100 ? +limit : 100;
     return database.query(this.__table.selectSQL(start, limit, where))
-    .then(res => new Response.JSON(200, "any", _.map(res, row => new this(row).toObject()), time_started))
+    .map(row => row => new this(row).toObject())
+    .then(res => new Response.JSON(200, "any", res, time_started))
     .catch(err => new Response.JSON(500, "any", err, time_started));
   }
   
