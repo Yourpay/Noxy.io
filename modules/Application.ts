@@ -31,11 +31,6 @@ __application.use(bodyParser.json());
 __application.use(bodyParser.urlencoded({extended: false}));
 __application.use(methodOverride("X-HTTP-Method-Override"));
 __application.use(favicon(path.join(__dirname, "../favicon.ico")));
-__application.use((request, response, next) => {
-  response.header("Access-Control-Allow-Origin", `http://admin.${__domain}`);
-  response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  next();
-});
 
 export function addStatic(resource_path: string, subdomain: string, namespace?: string): Static {
   const key = _.join(_.filter([subdomain, namespace]), "::");
@@ -90,6 +85,11 @@ export function publicize(): Promise<any> {
       const static_key = _.join(_.filter([route.subdomain, route.namespace]), "::");
       if (__statics[static_key]) { router.use(express.static(__statics[static_key].resource_path)); }
       if (__statics[route.subdomain] && !__statics[route.subdomain].namespace) { subdomain.use(express.static(__statics[route.subdomain].resource_path)); }
+      subdomain.use((request, response, next) => {
+        response.header("Access-Control-Allow-Origin", `http://admin.${__domain}`);
+        response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+        next();
+      });
       subdomain.use(router);
     }
     router[_.toLower(route.method)].apply(router, _.concat(<any>route.url, route.middleware));
