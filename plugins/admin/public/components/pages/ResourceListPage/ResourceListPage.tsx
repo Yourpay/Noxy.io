@@ -1,9 +1,10 @@
 import axios from "axios";
 import * as _ from "lodash";
 import * as React from "react";
-import {Link, Route, Switch} from "react-router-dom";
-import {store} from "../../main";
-import ResourcePage from "./ResourcePage";
+import {Route, Switch} from "react-router-dom";
+import {store} from "../../../main";
+import Link from "../../ui/misc/Link/Link";
+import ResourcePage from "../ResourcePage/ResourcePage";
 
 export default class ResourceListPage extends React.Component<any, any> {
   constructor(props) {
@@ -28,11 +29,12 @@ export default class ResourceListPage extends React.Component<any, any> {
   
   render() {
     return (
-      <div>
-        <div id="resource-link">
+      
+      <div id="resource-list-page">
+        <div id="resource-link-list" key="link">
           {_.map(store.getState().list.resource, (answer, key) => (<Link key={`resource-${key}`} to={`/resource/${key.replace(/__/g, "/")}`}>{key.replace(/__/g, "/")}</Link>))}
         </div>
-        <div id="resource-info">
+        <div id="resource-info" key="info">
           <h2>Resources</h2>
           <Switch>
             <Route path="/resource/:resource*" component={ResourcePage}/>

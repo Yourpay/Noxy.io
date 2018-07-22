@@ -1,9 +1,10 @@
 import * as React from "react";
 import {Route, Switch} from "react-router";
-import {Link} from "react-router-dom";
+
 import HomePage from "../../pages/HomePage";
 import NotFoundPage from "../../pages/NotFoundPage";
-import ResourceListPage from "../../pages/ResourceListPage";
+import ResourceListPage from "../../pages/ResourceListPage/ResourceListPage";
+import Link from "../../ui/misc/Link/Link";
 
 export default class Frame extends React.Component<any, any> {
   constructor(props) {
@@ -14,9 +15,8 @@ export default class Frame extends React.Component<any, any> {
     return (
       <div id="frame">
         <div id="navbar">
-          <div className="navbar-toggle"/>
-          <Link className="navbar-link" to="/">Home</Link>
-          <Link className="navbar-link" to="/resource">Resources</Link>
+          <Link to="/">Home</Link>
+          <Link to="/resource">Resources</Link>
         </div>
         <div id="content">
           <Switch>

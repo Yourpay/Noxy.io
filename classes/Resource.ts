@@ -111,7 +111,7 @@ export class Constructor {
     start = start > 0 ? +start : 0;
     limit = limit > 0 && limit < 100 ? +limit : 100;
     return database.query(this.__table.selectSQL(start, limit, where))
-    .map(row => row => new this(row).toObject())
+    .map(row => new this(row).toObject())
     .then(res => new Response.JSON(200, "any", res, time_started))
     .catch(err => new Response.JSON(500, "any", err, time_started));
   }
@@ -137,7 +137,7 @@ export class Constructor {
   }
   
   public static bufferFromUuid(uuid: string): Buffer {
-    if (!uuid.match(/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/)) { return Buffer.alloc(0, "", "hex"); }
+    if (!uuid.match(/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/)) { return Buffer.from(uuid, "hex"); }
     return Buffer.alloc(16, uuid.replace(/-/g, ""), "hex");
   }
   
@@ -176,11 +176,4 @@ export interface iResourceInstance {
   save: (db?: Database.Pool) => Promise<this>
   validate: (ignore_protections?: boolean, db?: Database.Pool) => Promise<this>
   delete: (db?: Database.Pool) => Promise<this>
-}
-
-interface iResourceObject {
-  id?: Buffer
-  uuid?: string
-  
-  [key: string]: any
 }
