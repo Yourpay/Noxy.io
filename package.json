@@ -10,7 +10,7 @@
     "build-plugins": "./node_modules/.bin/webpack"
   },
   "dependencies": {
-    "aigle": "^1.13.0-alpha.6",
+    "aigle": "^1.13.0-alpha.8",
     "axios": "^0.18.0",
     "body-parser": "^1.18.3",
     "express": "^4.16.3",
