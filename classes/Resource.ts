@@ -66,7 +66,7 @@ export class Constructor {
     const database = db || Database.namespace(env.mode);
     return this.validate(this.__validated, database)
     .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
-    .then(() => this);
+    .then(() => _.set(this, "__exists", true));
   }
   
   public validate(ignore_protections: boolean = false, db?: Database.Pool): Promise<this> {
@@ -79,13 +79,13 @@ export class Constructor {
     ));
   }
   
-  public toObject(): Promise<Partial<this>> {
+  public toObject(shallow?: boolean): Promise<Partial<this>> {
     const $this = (<typeof Constructor>this.constructor);
     return Promise.reduce(_.omitBy($this.__table.__columns, v => v.hidden), (r, v, k) => {
-      const [datatype, type, value] = v.type.match(/(.*)\((.*)\)/);
+      const [datatype, type, value] = _.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0));
       if (type === "binary") {
         if (value === "16") {
-          if (v.relation && _.isPlainObject(v.relation) || _.size(v.relation) === 1) {
+          if (!shallow && v.relation && (_.isPlainObject(v.relation) || _.size(v.relation) === 1)) {
             return new Table.tables[this.__database || env.mode][v.relation.table].__resource({id: this[k]}).validate()
             .then(res => res.toObject())
             .then(res => _.set(r, k, res));
@@ -95,6 +95,7 @@ export class Constructor {
         return _.set(r, k, (<Buffer>this[k]).toString("hex"));
       }
       if (type === "varbinary") { return _.set(r, k, (<Buffer>this[k]).toString("utf8")); }
+      if (type === "blob") { return _.set(r, k, (<Buffer>this[k]).toString("base64")); }
       return _.set(r, k, this[k]);
     }, {})
     .then(res => res)
