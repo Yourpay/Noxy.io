@@ -82,7 +82,7 @@ export class Constructor {
   public toObject(shallow?: boolean): Promise<Partial<this>> {
     const $this = (<typeof Constructor>this.constructor);
     return Promise.reduce(_.omitBy($this.__table.__columns, v => v.hidden), (r, v, k) => {
-      const [datatype, type, value] = v.type.match(/(.*)\((.*)\)/);
+      const [datatype, type, value] = _.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0));
       if (type === "binary") {
         if (value === "16") {
           if (v.relation && _.isPlainObject(v.relation) || _.size(v.relation) === 1 && !shallow) {
@@ -95,6 +95,7 @@ export class Constructor {
         return _.set(r, k, (<Buffer>this[k]).toString("hex"));
       }
       if (type === "varbinary") { return _.set(r, k, (<Buffer>this[k]).toString("utf8")); }
+      if (type === "blob") { return _.set(r, k, (<Buffer>this[k]).toString("base64")); }
       return _.set(r, k, this[k]);
     }, {})
     .then(res => res)
