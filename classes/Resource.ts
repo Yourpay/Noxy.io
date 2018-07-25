@@ -66,7 +66,7 @@ export class Constructor {
     const database = db || Database.namespace(env.mode);
     return this.validate(this.__validated, database)
     .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
-    .then(() => this);
+    .then(() => _.set(this, "__exists", true));
   }
   
   public validate(ignore_protections: boolean = false, db?: Database.Pool): Promise<this> {
