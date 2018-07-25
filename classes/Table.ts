@@ -45,7 +45,7 @@ export default class Table {
       protected: true,
       default:   null,
       index:     index ? [index] : null,
-      relation:  {table: "user", column: "id", "on_update": "CASCADE", "on_delete": "NO ACTION"},
+      relation:  {table: "user", column: "id", "on_update": "CASCADE", "on_delete": "CASCADE"},
       hidden:    hidden
     };
   }
@@ -137,7 +137,7 @@ export default class Table {
       this.__columns,
       (result, options, col) => result.concat(_.map(Array.isArray(options.relation) ? options.relation : _.filter([options.relation]), rel =>
         _.template("CONSTRAINT `${cs}` FOREIGN KEY (`${fk}`) REFERENCES `${db}`.`${tbl}` (`${cl}`) ON UPDATE ${ou} ON DELETE ${od}")({
-          cs: this.__resource.__type + ":" + col, fk: col, db: rel.database || "master", tbl: rel.table, cl: rel.column || "id", ou: rel.on_update || "NO ACTION", od: rel.on_delete || "NO ACTION"
+          cs: this.__resource.__type + ":" + col, fk: col, db: rel.database || "master", tbl: rel.table, cl: rel.column || "id", ou: rel.on_update || "CASCADE", od: rel.on_delete || "CASCADE"
         })
       )),
       []
