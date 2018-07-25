@@ -79,13 +79,13 @@ export class Constructor {
     ));
   }
   
-  public toObject(): Promise<Partial<this>> {
+  public toObject(shallow?: boolean): Promise<Partial<this>> {
     const $this = (<typeof Constructor>this.constructor);
     return Promise.reduce(_.omitBy($this.__table.__columns, v => v.hidden), (r, v, k) => {
       const [datatype, type, value] = v.type.match(/(.*)\((.*)\)/);
       if (type === "binary") {
         if (value === "16") {
-          if (v.relation && _.isPlainObject(v.relation) || _.size(v.relation) === 1) {
+          if (v.relation && _.isPlainObject(v.relation) || _.size(v.relation) === 1 && !shallow) {
             return new Table.tables[this.__database || env.mode][v.relation.table].__resource({id: this[k]}).validate()
             .then(res => res.toObject())
             .then(res => _.set(r, k, res));
