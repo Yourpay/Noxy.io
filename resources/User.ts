@@ -13,7 +13,7 @@ import Route from "./Route";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
-  username:     {type: "varchar(64)", required: true, protected: true, unique_index: ["username"]},
+  username:     {type: "varchar(64)", required: true, protected: true},
   email:        {type: "varchar(128)", required: true, protected: true, unique_index: ["email"]},
   salt:         {type: "binary(64)", required: true, protected: true, hidden: true},
   hash:         {type: "binary(64)", required: true, protected: true, hidden: true},
@@ -38,7 +38,7 @@ export default class User extends Resource.Constructor {
   private __password: string;
   private static __login_callbacks: ((user: iUserJWTObject) => Promise<Object>)[] = [];
   
-  constructor(object?: iUserObject) {
+  constructor(object?: iInitializerObject) {
     super(object);
     if (this.password) {
       this.salt = User.generateSalt();
@@ -115,12 +115,11 @@ interface iUserJWTObject {
 }
 
 interface iUserCredentials {
-  username?: string
-  email?: string
+  email: string
   password: string
 }
 
-interface iUserObject {
+interface iInitializerObject {
   id?: string
   username?: string
   email?: string
