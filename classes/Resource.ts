@@ -85,7 +85,7 @@ export class Constructor {
       const [datatype, type, value] = _.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0));
       if (type === "binary") {
         if (value === "16") {
-          if (v.relation && _.isPlainObject(v.relation) || _.size(v.relation) === 1 && !shallow) {
+          if (!shallow && v.relation && (_.isPlainObject(v.relation) || _.size(v.relation) === 1)) {
             return new Table.tables[this.__database || env.mode][v.relation.table].__resource({id: this[k]}).validate()
             .then(res => res.toObject())
             .then(res => _.set(r, k, res));
