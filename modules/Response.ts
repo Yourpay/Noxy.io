@@ -29,6 +29,10 @@ export const codes: {[status: number]: {[type: string]: string}} = {
   }
 };
 
+export function parseError(err) {
+  return _.isError(err) ? {message: err.message, stack: _.map(_.tail(err.stack.split("\n")), _.trim)} : err;
+}
+
 export class JSON {
   
   public code: number;
