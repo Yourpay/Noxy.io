@@ -27,20 +27,15 @@ export default class Table extends React.Component<any, any> {
         (r, h) => _.merge(r, {
           [h]: _.reduce(this.props.object, (v, row) => {
             const a = _.get(row, h);
-            const b = Math.ceil(context.measureText(a).width);
-            console.log(b);
+            const b = context.measureText(a).width;
             return b > v ? b : v;
           }, -Infinity)
         }),
         {}
       );
       const rate = rect.width / _.reduce(this.widths, (r, v) => r + v, 0);
-      console.log("Before scale", this.widths, rate);
-      if (rate > 1) {
-    
-        _.merge(this.widths, _.mapValues(this.widths, (w: number) => w * rate));
-      }
-      console.log("After scale", this.widths);
+      console.log(rate, this.ref.current.getBoundingClientRect().width, _.reduce(this.widths, (r, v) => r + v, 0));
+      _.merge(this.widths, _.mapValues(this.widths, (w: number) => 1 + Math.ceil(w * (rate > 1 ? rate : 1))));
     }
     
     return (
