@@ -22,11 +22,25 @@ export default class Table extends React.Component<any, any> {
       const element = document.createElement("canvas");
       const context = element.getContext("2d");
       context.font = window.getComputedStyle(this.ref.current || null).font;
-      this.widths = _.reduce(this.headers, (r, h) => _.merge(r, {[h]: _.reduce(this.props.object, (v, row, a, b) => (a = _.get(row, h)) && (b = context.measureText(a).width) > v ? b : v, -Infinity)}), {});
+      this.widths = _.reduce(
+        this.headers,
+        (r, h) => _.merge(r, {
+          [h]: _.reduce(this.props.object, (v, row) => {
+            const a = _.get(row, h);
+            const b = Math.ceil(context.measureText(a).width);
+            console.log(b);
+            return b > v ? b : v;
+          }, -Infinity)
+        }),
+        {}
+      );
       const rate = rect.width / _.reduce(this.widths, (r, v) => r + v, 0);
-      console.log(this.widths, rate);
-      _.merge(this.widths, _.mapValues(this.widths, (w: number) => w * rate));
-      console.log(this.widths);
+      console.log("Before scale", this.widths, rate);
+      if (rate > 1) {
+    
+        _.merge(this.widths, _.mapValues(this.widths, (w: number) => w * rate));
+      }
+      console.log("After scale", this.widths);
     }
     
     return (

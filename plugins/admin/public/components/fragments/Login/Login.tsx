@@ -6,8 +6,8 @@ import TextInput from "../../ui/input/TextInput/TextInput";
 export default class Login extends React.Component<any, any> {
   constructor(props) {
     super(props);
-    this.state = {username: "", password: "", authenticating: false};
-    this.change = this.change.bind(this);
+    this.state = {email: "", password: "", authenticating: false};
+    this.handleChange = this.handleChange.bind(this);
     this.login = this.login.bind(this);
   }
   
@@ -26,17 +26,7 @@ export default class Login extends React.Component<any, any> {
     }
   }
   
-  render() {
-    return (
-      <form onSubmit={this.login}>
-        <TextInput type="text" id="email" label="Email or username" vertical={true} value={this.state.email} onChange={this.change}/>
-        <TextInput type="password" id="password" label="Password" vertical={true} value={this.state.password} onChange={this.change}/>
-        <input type="submit" value="Submit"/>
-      </form>
-    );
-  }
-  
-  change(event) {
+  handleChange(event) {
     this.setState({[event.target.id]: event.target.value});
   }
   
@@ -49,4 +39,13 @@ export default class Login extends React.Component<any, any> {
     .then(res => store.dispatch({reducer: "user", type: "login", value: res.data.content}));
   }
   
+  render() {
+    return (
+      <form onSubmit={this.login}>
+        <TextInput type="text" id="email" label="Email or username" value={this.state.email} onChange={this.handleChange}/>
+        <TextInput type="password" id="password" label="Password" value={this.state.password} onChange={this.handleChange}/>
+        <input type="submit" value="Submit"/>
+      </form>
+    );
+  }
 }
