@@ -29,7 +29,7 @@ export default class Table extends React.Component<any, any> {
             const a = _.get(row, h);
             const b = context.measureText(a).width;
             return b > v ? b : v;
-          }, -Infinity)
+          }, context.measureText(this.headers[h]).width)
         }),
         {}
       );
