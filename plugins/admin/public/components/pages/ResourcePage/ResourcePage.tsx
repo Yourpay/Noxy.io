@@ -32,7 +32,7 @@ export default class ResourceListPage extends React.Component<any, any> {
   
   render() {
     return (
-      <Table object={_.get(store.getState(), ["resource", this.state.resource], [])}/>
+      <Table data={_.get(store.getState(), ["resource", this.state.resource], [])}/>
     );
   }
 }
