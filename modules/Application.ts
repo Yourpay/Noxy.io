@@ -86,8 +86,12 @@ export function publicize(): Promise<any> {
       if (__statics[static_key]) { router.use(express.static(__statics[static_key].resource_path)); }
       if (__statics[route.subdomain] && !__statics[route.subdomain].namespace) { subdomain.use(express.static(__statics[route.subdomain].resource_path)); }
       subdomain.use((request, response, next) => {
-        response.header("Access-Control-Allow-Origin", `http://admin.${__domain}`);
+        response.header("Allow", "PUT, GET, POST, DELETE, OPTIONS");
+        response.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
         response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+        if (request.get("origin") && _.some(_.keys(__subdomains), subdomain => `${subdomain}.${__domain}` === request.get("origin").replace(/^\w+:\/\//, ""))) {
+          response.header("Access-Control-Allow-Origin", request.get("origin"));
+        }
         next();
       });
       subdomain.use(router);
