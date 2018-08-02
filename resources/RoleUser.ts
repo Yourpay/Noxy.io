@@ -6,8 +6,8 @@ const options: Tables.iTableOptions = {
   junction: true
 };
 const columns: Tables.iTableColumns = {
-  role_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: ["role_id"], relation: {table: "role"}},
-  user_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: ["user_id"], relation: {table: "user"}}
+  role_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: "role_id", relation: "role"},
+  user_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: "user_id", relation: "user"}
 };
 
 @Resource.implement<Resource.iResource>()

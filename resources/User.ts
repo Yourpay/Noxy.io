@@ -14,7 +14,7 @@ import Route from "./Route";
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
   username:     {type: "varchar(64)", required: true, protected: true},
-  email:        {type: "varchar(128)", required: true, protected: true, unique_index: ["email"]},
+  email:        {type: "varchar(128)", required: true, protected: true, unique_index: "email"},
   salt:         {type: "binary(64)", required: true, protected: true, hidden: true},
   hash:         {type: "binary(64)", required: true, protected: true, hidden: true},
   time_login:   Table.generateTimeColumn("time_login"),

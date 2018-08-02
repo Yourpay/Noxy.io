@@ -8,7 +8,7 @@ import User from "./User";
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
   name:         {type: "varchar(32)", required: true},
-  key:          {type: "varchar(32)", required: true, protected: true, unique_index: ["key"]},
+  key:          {type: "varchar(32)", required: true, protected: true, unique_index: "key"},
   user_created: Table.generateUserColumn("user_created"),
   time_created: Table.generateTimeColumn("time_created"),
   time_updated: Table.generateTimeColumn(null, true)

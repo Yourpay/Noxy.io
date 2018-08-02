@@ -135,9 +135,16 @@ export default class Table {
   private getRelationSQL(): string[] {
     return _.reduce(
       this.__columns,
-      (result, options, col) => result.concat(_.map(Array.isArray(options.relation) ? options.relation : _.filter([options.relation]), rel =>
+      (result, options, col) => result.concat(_.map(_.filter(_.concat(options.relation)), rel =>
+        console.log(rel, col) ||
         _.template("CONSTRAINT `${cs}` FOREIGN KEY (`${fk}`) REFERENCES `${db}`.`${tbl}` (`${cl}`) ON UPDATE ${ou} ON DELETE ${od}")({
-          cs: this.__resource.__type + ":" + col, fk: col, db: rel.database || "master", tbl: rel.table, cl: rel.column || "id", ou: rel.on_update || "CASCADE", od: rel.on_delete || "CASCADE"
+          cs:  this.__resource.__type + ":" + col,
+          fk:  col,
+          db:  _.get(rel, "database", "master"),
+          tbl: _.get(rel, "table", rel),
+          cl:  _.get(rel, "column", "id"),
+          ou:  _.get(rel, "on_update", "CASCADE"),
+          od:  _.get(rel, "on_delete", "CASCADE")
         })
       )),
       []
@@ -184,17 +191,17 @@ export interface iTableColumn {
   /* Should this column appear in result sets after being parsed? */
   hidden?: boolean
   /* Which "key" indexes should this column be part of */
-  index?: string[]
+  index?: string | string[]
   /* Which "unique" indexes should this column be part of */
-  unique_index?: string[]
+  unique_index?: string | string[]
   /* Which "fulltext" indexes should this column be part of */
-  fulltext_index?: string[]
+  fulltext_index?: string | string[]
   /* Which "spatial" indexes should this column be part of */
-  spatial_index?: string[]
+  spatial_index?: string | string[]
   /* Is this part of the primary key? */
   primary_key?: boolean
   /* Defines the foreign key relations this column has to another */
-  relation?: iTableRelation
+  relation?: string | iTableRelation
   /* The default collation to use with the column */
   collation?: "utf8mb4_unicode_ci" | string
   /* Add a comment to the column in the database */

@@ -14,7 +14,7 @@ const columns: Tables.iTableColumns = {
   subdomain:    {type: "varchar(64)", protected: true, required: true, unique_index: ["route"]},
   path:         {type: "varchar(64)", protected: true, required: true, unique_index: ["route"]},
   namespace:    {type: "varchar(64)", protected: true, required: true, unique_index: ["route"]},
-  method:       {type: "enum('GET','POST','PUT','DELETE', 'PATCH')", protected: true, required: true, unique_index: ["route"]},
+  method:       {type: "enum('GET','POST','PUT','DELETE', 'PATCH')", protected: true, required: true, unique_index: "route"},
   flag_active:  {type: "tinyint(1)", default: "0"},
   time_created: Table.generateTimeColumn("time_created"),
   time_updated: Table.generateTimeColumn(null, true)
