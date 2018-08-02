@@ -55,7 +55,7 @@ export default class Table {
     // TODO: Fix this segment of code by reducing complexity.
     _.each(this.__columns, (options, column) => {
       if (options.primary_key) { where.primary ? where.primary.push(column) : where.primary = [column]; }
-      _.each(options.unique_index, index => where[index] ? where[index].push(column) : where[index] = [column]);
+      _.each(_.concat(options.unique_index), index => _.setWith(where, index, _.concat(column, _.get(where, index, [])), Object));
     });
     const t = _.join(_.map(where, value => `(${_.join(_.map(_.filter(value), v => mysql.format(`\`${v}\` = ?`, [resource[v]])), " AND ")})`), " OR ");
     return `SELECT * FROM \`${this.__resource.__type}\` WHERE ${t}`;
