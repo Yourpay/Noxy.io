@@ -136,7 +136,6 @@ export default class Table {
     return _.reduce(
       this.__columns,
       (result, options, col) => result.concat(_.map(_.filter(_.concat(options.relation)), rel =>
-        console.log(rel, col) ||
         _.template("CONSTRAINT `${cs}` FOREIGN KEY (`${fk}`) REFERENCES `${db}`.`${tbl}` (`${cl}`) ON UPDATE ${ou} ON DELETE ${od}")({
           cs:  this.__resource.__type + ":" + col,
           fk:  col,
