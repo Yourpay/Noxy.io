@@ -122,12 +122,12 @@ export default class Table {
   }
   
   private getIndexSQL(): string[] {
-    const object = {INDEX: {}, UNIQUE_INDEX: {}, FULLTEXT_INDEX: {}, SPATIAL_INDEX: {}};
+    const object = {};
     _.each(this.__columns, (options, column) => {
-      if (options.index) { _.each(options.index, index => object["INDEX"][index] ? object["INDEX"][index].push(column) : _.set(object["INDEX"], index, [column])); }
-      if (options.unique_index) { _.each(options.unique_index, index => object["UNIQUE_INDEX"][index] ? object["UNIQUE_INDEX"][index].push(column) : _.set(object["UNIQUE_INDEX"], index, [column])); }
-      if (options.fulltext_index) { _.each(options.fulltext_index, index => object["FULLTEXT_INDEX"][index] ? object["FULLTEXT_INDEX"][index].push(column) : _.set(object["FULLTEXT_INDEX"], index, [column])); }
-      if (options.spatial_index) { _.each(options.spatial_index, index => object["SPATIAL_INDEX"][index] ? object["SPATIAL_INDEX"][index].push(column) : _.set(object["SPATIAL_INDEX"], index, [column])); }
+      _.each(_.concat(options.index || []), index => _.set(object, ["INDEX", index], _.concat(column, _.get(object, ["INDEX", index], []))));
+      _.each(_.concat(options.unique_index || []), index => _.set(object, ["UNIQUE_INDEX", index], _.concat(column, _.get(object, ["UNIQUE_INDEX", index], []))));
+      _.each(_.concat(options.fulltext_index || []), index => _.set(object, ["FULLTEXT_INDEX", index], _.concat(column, _.get(object, ["FULLTEXT_INDEX", index], []))));
+      _.each(_.concat(options.spatial_index || []), index => _.set(object, ["SPATIAL_INDEX", index], _.concat(column, _.get(object, ["SPATIAL_INDEX", index], []))));
     });
     return _.reduce(object, (result, indexes, type) => result.concat(_.map(indexes, (columns, index) => `${_.upperCase(type)} \`${index}\` (${_.join(_.map(columns, column => `\`${column}\``))})`)), []);
   }
