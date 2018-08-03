@@ -37,8 +37,8 @@ export default class Role extends Resources.Constructor {
 
 interface iRoleObject {
   id?: string
-  name: string
-  key: string
+  name?: string
+  key?: string
   user_created?: User
   time_created?: number
   time_updated?: number
