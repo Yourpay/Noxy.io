@@ -1,13 +1,12 @@
 {
-  "name": "Noxy.io",
+  "name": "noxy.io",
   "version": "0.0.1",
   "description": "API/CMS management tool",
   "repository": "https://github.com/oscelest/Noxy.io",
   "license": "MIT",
   "scripts": {
     "build-server": "gulp default",
-    "build-server2": "gulp default && node_modules\\.bin\\tsc",
-    "build-plugins": "./node_modules/.bin/webpack"
+    "start-server": "node ./build/app.js"
   },
   "dependencies": {
     "aigle": "^1.13.0-alpha.8",
