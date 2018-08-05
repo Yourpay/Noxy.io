@@ -10,14 +10,7 @@ export default class App extends React.Component<any, any> {
   }
   
   render() {
-    return (
-      <Router>
-        {
-          store.getState().authenticated
-          ? <Frame/>
-          : <Login/>
-        }
-      </Router>
-    );
+    if (!store.getState().user) { return <Router><Login/></Router>; }
+    return <Router><Frame/></Router>;
   }
 }

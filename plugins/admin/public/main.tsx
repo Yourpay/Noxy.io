@@ -1,44 +1,51 @@
+import Promise from "aigle";
 import * as _ from "lodash";
 import * as React from "react";
 import * as ReactDOM from "react-dom";
 import * as redux from "redux";
 import App from "./components/App";
+import {iUserObject} from "./interfaces/iObject";
 import "./main.less";
 
-const initial_state: iReduxState = {
-  api:           window.location.protocol + "//api." + _.tail(window.location.hostname.split(".")).join("."),
-  authenticated: false,
-  list:          {},
-  resource:      {}
+const init: iReduxState = {
+  time:    Date.now(),
+  user:    null,
+  loading: {},
+  object:  {},
+  url:     {
+    api: window.location.protocol + "//api." + _.tail(window.location.hostname.split(".")).join(".")
+  }
 };
 
-const reducers_ctx = require.context("./reducers", true, /\.ts$/);
-
-export const reducers = _.transform(reducers_ctx.keys(), (result, key) => _.merge(result, {[reducers_ctx(key).reducer]: _.omit(reducers_ctx(key), ["reducer"])}), {});
 export const render = () => ReactDOM.render(<App/>, document.getElementById("admin-app"));
-export const store = redux.createStore((state: any = initial_state, action: iReduxAction) => _.assign({}, state, _.invoke(reducers, [action.reducer, action.type], action.value, state) || {}));
+export const store = redux.createStore((current_state: iReduxState, action: iReduxAction) => {
+  if (action.type && _.isString(action.type) && _.get(this, [action.type])) { return _.invoke(this, action.type, init, action); }
+  return _.assign({}, merge(current_state, action.value));
+});
 
 store.subscribe(render);
+store.dispatch({type: null, value: init});
 render();
 
-export interface iReduxAction {
+function merge(state, object) {
+  return _.transform(object, (result, value, key) => {
+    if (_.isPlainObject(value)) { return _.set(result, key, merge(result[key], value)); }
+    return _.set(result, key, value);
+  }, _.assign({}, state));
+}
+
+interface iReduxAction {
   type: string
   value: any
-  reducer: string
+  error?: boolean
 }
 
-export interface iReduxState {
-  api: string
-  list: {[key: string]: {[key: string]: any}}
-  resource: {[key: string]: any[]}
-  authenticated: boolean
-}
-
-export interface iAPIResponse {
-  code?: number;
-  type?: string;
-  message?: string;
-  content?: any;
-  time_finished?: number;
-  time_elapsed?: string;
+interface iReduxState {
+  time: number
+  loading: {[key: string]: Promise<any>}
+  object: {[key: string]: any}
+  url: {
+    api: string
+  }
+  user: iUserObject
 }

@@ -1,17 +1,16 @@
 import * as React from "react";
-import {store} from "../../../../main";
 
 export default class Table extends React.Component<any, any> {
   
   constructor(props) {
     super(props);
     this.state = {widths: {}};
-    console.log(this.props);
-    console.log(store.getState());
+    // console.log(this.props);
   }
   
   componentDidUpdate() {
-    console.log("t", this.props);
+    // console.log("t", this.props);
+    // console.log(store.getState());
   }
   
   render() {

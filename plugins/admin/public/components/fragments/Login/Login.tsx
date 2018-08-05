@@ -1,9 +1,14 @@
+import Promise from "aigle";
 import axios from "axios";
+import * as _ from "lodash";
 import * as React from "react";
 import {store} from "../../../main";
 import TextInput from "../../ui/input/TextInput/TextInput";
 
 export default class Login extends React.Component<any, any> {
+  
+  private static readonly url = "/user/login";
+  
   constructor(props) {
     super(props);
     this.state = {email: "", password: "", authenticating: false};
@@ -13,30 +18,26 @@ export default class Login extends React.Component<any, any> {
   
   componentDidMount() {
     if (window.localStorage.jwt) {
-      this.setState({authenticating: true});
-      axios({
-        method:  "POST",
-        baseURL: store.getState().api,
-        url:     "/user/login",
-        headers: {
-          "Authorization": window.localStorage.jwt
+      store.dispatch({
+        type:  null,
+        value: {
+          loading: {
+            [Login.url]: Promise.resolve(axios({
+              method:  "POST",
+              baseURL: store.getState().url.api,
+              url:     Login.url,
+              headers: {
+                "Authorization": window.localStorage.jwt
+              }
+            })
+            .then(res => store.dispatch({
+              type:  "login-automatic",
+              value: {user: _.invoke(JSON, "parse", atob(res.data.content.split(".")[1]))}
+            })))
+          }
         }
-      })
-      .then(res => store.dispatch({reducer: "user", type: "login", value: res.data.content}));
+      });
     }
-  }
-  
-  handleChange(event) {
-    this.setState({[event.target.id]: event.target.value});
-  }
-  
-  login(event) {
-    event.preventDefault();
-    axios.post(store.getState().api + "/user/login", {
-      email:    this.state.email,
-      password: this.state.password
-    })
-    .then(res => store.dispatch({reducer: "user", type: "login", value: res.data.content}));
   }
   
   render() {
@@ -48,4 +49,33 @@ export default class Login extends React.Component<any, any> {
       </form>
     );
   }
+  
+  handleChange(event) {
+    this.setState({[event.target.id]: event.target.value});
+  }
+  
+  login(event) {
+    event.preventDefault();
+    store.dispatch({
+      type:  null,
+      value: {
+        loading: {
+          [Login.url]: Promise.resolve(axios({
+            method:  "POST",
+            baseURL: store.getState().url.api,
+            url:     Login.url,
+            data:    {
+              email:    this.state.email,
+              password: this.state.password
+            }
+          })
+          .then(res => store.dispatch({
+            type:  "login-manual",
+            value: {user: _.invoke(JSON, "parse", atob(res.data.content.split(".")[1]))}
+          })))
+        }
+      }
+    });
+  }
+  
 }
