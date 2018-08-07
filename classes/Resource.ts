@@ -1,9 +1,8 @@
 import Promise from "aigle";
-
 import * as _ from "lodash";
 import * as uuid from "uuid";
 import {env} from "../app";
-
+import * as Cache from "../modules/Cache";
 import * as Database from "../modules/Database";
 import * as Response from "../modules/Response";
 import Table from "./Table";
@@ -61,22 +60,29 @@ export class Constructor {
     this.__id = Constructor.bufferFromUuid(value);
   }
   
+  public validate(update_protected: boolean = false, db?: Database.Pool): Promise<this> {
+    const $this = (<typeof Constructor>this.constructor);
+    const database = db || Database.namespace(env.mode);
+    
+    return Cache<this>("resource", $this.__type, this.getKeys())
+    .catch(err => {
+      if (err) { return Promise.reject(err); }
+      return Cache("query", $this.__type, this.getKeys(), database.query($this.__table.validationSQL(this)))
+      .then(res => _.merge(res[0] ? new $this(res[0]) : this, {__validated: true, __exists: !!res[0], __database: database.id}));
+    })
+    .then(res => _.reduce($this.__table.__columns, (r, v, k) =>
+      console.log(k, res[k], r[k], v) ||
+      v.primary_key || (!update_protected && (v.protected || !this[k])) ? _.set(r, k, res[k]) : r, this))
+    .then(res => Cache("resource", $this.__type, this.getKeys(), res));
+  }
+  
   public save(db?: Database.Pool): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const database = db || Database.namespace(env.mode);
     return this.validate(this.__validated, database)
-    .then(() => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
-    .then(() => _.set(this, "__exists", true));
-  }
-  
-  public validate(ignore_protections: boolean = false, db?: Database.Pool): Promise<this> {
-    const $this = (<typeof Constructor>this.constructor);
-    const database = db || Database.namespace(env.mode);
-    return database.query($this.__table.validationSQL(this))
-    .then(res => _.merge(
-      _.reduce(res[0], (r, v, k) => $this.__table.__columns[k].primary_key || (!ignore_protections && ($this.__table.__columns[k].protected || !this[k])) ? _.set(r, k, v) : r, this),
-      {__validated: true, __exists: !!res[0], __database: database.id}
-    ));
+    .then(res => console.log(res) || Cache("resource", $this.__type, this.getKeys(), database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
+      .then(() => _.set(this, "__exists", true))
+    );
   }
   
   public toObject(shallow?: boolean): Promise<Partial<this>> {
@@ -100,6 +106,14 @@ export class Constructor {
     }, {})
     .then(res => res)
     .catch(err => err);
+  }
+  
+  public getKeys() {
+    const $this = (<typeof Constructor>this.constructor);
+    const keys = [];
+    if (this.__validated) { keys.push(_.map($this.__table.getPrimaryKeys(), v => Constructor.uuidFromBuffer(this[v]))); }
+    _.each($this.__table.getUniqueKeys(), set => _.every(set, v => this[v]) && keys.push(_.map(set, v => this[v])));
+    return keys;
   }
   
   public delete(db?: Database.Pool): Promise<this> {

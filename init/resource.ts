@@ -13,6 +13,7 @@ resource_queue.promise("user", (resolve, reject) =>
   Promise.map(env.users, (user, key) =>
     new User(user).validate()
     .then(res => {
+      console.log(res);
       if (res.exists) {
         let update = false;
         if (user.password) { (res.password = user.password) && (update = true); }

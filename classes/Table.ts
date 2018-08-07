@@ -50,6 +50,14 @@ export default class Table {
     };
   }
   
+  public getUniqueKeys(): {[key: string]: string[]} {
+    return _.reduce(this.__columns, (result, col, key) => !col.unique_index ? result : _.reduce(_.concat(col.unique_index), (set, i) => _.set(set, i, _.concat(key, _.get(set, i, []))), result), {});
+  }
+  
+  public getPrimaryKeys(): string[] {
+    return _.reduce(this.__columns, (result, col, key) => !col.primary_key ? result : _.concat(key, result), []);
+  }
+  
   public validationSQL(resource: Resource.Constructor) {
     const where: {[key: string]: string[]} = {};
     // TODO: Fix this segment of code by reducing complexity.
