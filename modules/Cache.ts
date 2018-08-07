@@ -7,7 +7,7 @@ const __config = {
   timeout: 30000
 };
 
-function Default<T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: Promise<T> | T): Promise<T> {
+function Default<T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: () => Promise<T> | T): Promise<T> {
   return value ? Cache.set(type, namespace, key, value) : Cache.get(type, namespace, key);
 }
 
@@ -57,7 +57,7 @@ Cache.show = () => {
 export = Cache;
 
 interface iCache {
-  <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: Promise<T> | T): Promise<T>
+  <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: () => Promise<T> | T): Promise<T>
   
   get?: (type: string, namespace: string, key: Key | Key[] | Key[][]) => Promise<any>
   set?: <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: Promise<T> | T) => Promise<T>

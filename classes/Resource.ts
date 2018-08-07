@@ -62,6 +62,7 @@ export class Constructor {
   
   public validate(update_protected: boolean = false, db?: Database.Pool): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
+    const $columns = $this.__table.__columns;
     const database = db || Database.namespace(env.mode);
     
     return Cache<this>("resource", $this.__type, this.getKeys())
@@ -70,9 +71,7 @@ export class Constructor {
       return Cache("query", $this.__type, this.getKeys(), database.query($this.__table.validationSQL(this)))
       .then(res => _.merge(res[0] ? new $this(res[0]) : this, {__validated: true, __exists: !!res[0], __database: database.id}));
     })
-    .then(res => _.reduce($this.__table.__columns, (r, v, k) =>
-      console.log(k, res[k], r[k], v) ||
-      v.primary_key || (!update_protected && (v.protected || !this[k])) ? _.set(r, k, res[k]) : r, this))
+    .then(res => _.reduce(res, (r, v, k) => update_protected || !this[k] || ($columns[k] && ($columns[k].primary_key || $columns[k].protected)) ? _.set(r, k, res[k]) : r, this))
     .then(res => Cache("resource", $this.__type, this.getKeys(), res));
   }
   
@@ -80,8 +79,12 @@ export class Constructor {
     const $this = (<typeof Constructor>this.constructor);
     const database = db || Database.namespace(env.mode);
     return this.validate(this.__validated, database)
-    .then(res => console.log(res) || Cache("resource", $this.__type, this.getKeys(), database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)))
-      .then(() => _.set(this, "__exists", true))
+    .then(res => Cache("resource", $this.__type, this.getKeys(), () =>
+      database.query<this>(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this))
+      .then(() => Cache("resource", $this.__type, this.getKeys(), _.set(this, "__exists", true)))
+    ))
+    .catch(err =>
+      console.log(err) || console.log(this) || Promise.reject(err)
     );
   }
   

@@ -89,7 +89,7 @@ export class Pool implements Pool {
     }));
   }
   
-  public query(expression: string, replacers?: any): Promise<any> {
+  public query<T>(expression: string, replacers?: any): Promise<T> {
     return new Promise((resolve, reject) =>
       __cluster.of(`${this.id}::*`).query(parse(expression, replacers), (err, res) =>
         err ? reject(err) : resolve(res)
