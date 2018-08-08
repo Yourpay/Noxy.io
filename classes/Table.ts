@@ -1,7 +1,6 @@
 import * as _ from "lodash";
-import * as mysql from "mysql";
 import {env} from "../app";
-import * as DatabaseService from "../modules/Database";
+import * as Database from "../modules/Database";
 import * as Resource from "./Resource";
 
 export default class Table {
@@ -13,7 +12,7 @@ export default class Table {
   public readonly __options: iTableOptions;
   
   constructor(constructor: typeof Resource.Constructor, options: iTableOptions, columns: iTableColumns) {
-    this.__database = (options.database instanceof DatabaseService.Pool ? options.database.id : options.database) || env.mode;
+    this.__database = (options.database instanceof Database.Pool ? options.database.id : options.database) || env.mode;
     
     if (_.get(Table.__tables, [this.__database, constructor.__type])) { throw new Error("Trying to overwrite already existing table."); }
     _.set(Table.__tables, [this.__database, constructor.__type], this);
@@ -59,30 +58,24 @@ export default class Table {
   }
   
   public validationSQL(resource: Resource.Constructor) {
-    const where: {[key: string]: string[]} = {};
-    // TODO: Fix this segment of code by reducing complexity.
-    _.each(this.__columns, (options, column) => {
-      if (options.primary_key) { where.primary ? where.primary.push(column) : where.primary = [column]; }
-      _.each(_.concat(options.unique_index), index => _.setWith(where, index, _.concat(column, _.get(where, index, [])), Object));
-    });
-    const t = _.join(_.map(where, value => `(${_.join(_.map(_.filter(value), v => mysql.format(`\`${v}\` = ?`, [resource[v]])), " AND ")})`), " OR ");
-    return `SELECT * FROM \`${this.__resource.__type}\` WHERE ${t}`;
+    const keys  = _.filter(_.concat([_.values(this.getPrimaryKeys())], _.values(this.getUniqueKeys())), v => v.length > 0),
+          where = _.join(_.map(keys, index => _.join(_.map(index, v => Database.parse("?? = ?", [v, resource[v]])), " AND ")), " OR ");
+    return Database.parse(`SELECT * FROM ?? WHERE ${where}`, this.__resource.__type);
   }
   
   public insertSQL(resource: Resource.Constructor) {
-    return DatabaseService.parse(`INSERT INTO \`${this.__resource.__type}\` SET ?`, _.pick(resource, _.keys(this.__columns)));
+    return Database.parse(`INSERT INTO ?? SET ?`, [this.__resource.__type, _.pick(resource, _.keys(this.__columns))]);
   }
   
   public updateSQL(resource: Resource.Constructor) {
-    const update = _.pick(resource, _.keys(this.__columns));
-    const where = _.join(_.reduce(this.__columns, (r, v, k) => v.primary_key ? r.concat(DatabaseService.parse(`\`${k}\` = ?`, resource[k])) : r, []), " AND ");
-    return DatabaseService.parse(`UPDATE \`${this.__resource.__type}\` SET ? WHERE ${where}`, update);
+    const where = _.join(_.reduce(this.__columns, (r, v, k) => v.primary_key ? r.concat(Database.parse(`\`${k}\` = ?`, resource[k])) : r, []), " AND ");
+    return Database.parse(`UPDATE ?? SET ? WHERE ${where}`, [this.__resource.__type, _.pick(resource, _.keys(this.__columns))]);
   }
   
   public countSQL(where?: string | {[key: string]: any}) {
     const replacers = {
       table: this.__resource.__type,
-      where: where ? "WHERE " + (_.isString(where) ? where : _.join(_.map(where, (v, k) => DatabaseService.parse("?? = ?", [k, v])), "AND")) : ""
+      where: where ? "WHERE " + (_.isString(where) ? where : _.join(_.map(where, (v, k) => Database.parse("?? = ?", [k, v])), "AND")) : ""
     };
     return _.template("SELECT COUNT(1) as `count` FROM `${table}` ${where}")(replacers);
   }
@@ -92,7 +85,7 @@ export default class Table {
       table: this.__resource.__type,
       limit: limit || 18446744073709551615,
       start: start || 0,
-      where: where ? "WHERE " + (_.isString(where) ? where : _.join(_.map(where, (v, k) => DatabaseService.parse("?? = ?", [k, v])), "AND")) : ""
+      where: where ? "WHERE " + (_.isString(where) ? where : _.join(_.map(where, (v, k) => Database.parse("?? = ?", [k, v])), "AND")) : ""
     };
     return _.template("SELECT * FROM `${table}` ${where} LIMIT ${limit} OFFSET ${start}")(replacers);
   }
@@ -171,7 +164,7 @@ export interface iTableOptions {
   /* Is this table coextensive? Can it exist in multiple databases? */
   coextensive?: boolean
   /* The database that this table should be assigned to if it is not coextensive */
-  database?: string | DatabaseService.Pool;
+  database?: string | Database.Pool;
   /* Is the table a junction table? If it is, the ID column will not be added automatically. */
   junction?: boolean
   /* The default collation to use with the table */

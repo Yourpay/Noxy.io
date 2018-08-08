@@ -7,7 +7,7 @@ const __config = {
   timeout: 30000
 };
 
-function Default<T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: () => Promise<T> | T): Promise<T> {
+function Default<T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: T | (() => Promise<T>)): Promise<T> {
   return value ? Cache.set(type, namespace, key, value) : Cache.get(type, namespace, key);
 }
 
@@ -24,9 +24,9 @@ Cache.get = (type: string, namespace: string, keys: Key | Key[] | Key[][]) => {
   return Promise.reject(null);
 };
 
-Cache.set = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: Promise<T> | T): Promise<T> => {
+Cache.set = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>)): Promise<T> => {
   const keys: string[] = Cache.resolveKeys(key);
-  const promise = value instanceof Promise ? value : Promise.resolve(value);
+  const promise = value instanceof Function ? value() : Promise.resolve(value);
   
   _.each(keys, key => {
     const current: iCacheObject = _.get(__store, [type, namespace, key], {});
@@ -48,7 +48,7 @@ Cache.show = () => {
   _.each(__store, (types, type_key) => {
     _.each(types, (namespaces, namespace_key) => {
       _.each(namespaces, (value, key) => {
-        console.log(type_key, namespace_key, key, value);
+        console.log(type_key, namespace_key, key);
       });
     });
   });
@@ -57,10 +57,10 @@ Cache.show = () => {
 export = Cache;
 
 interface iCache {
-  <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: () => Promise<T> | T): Promise<T>
+  <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: T | (() => Promise<T>)): Promise<T>
   
   get?: (type: string, namespace: string, key: Key | Key[] | Key[][]) => Promise<any>
-  set?: <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: Promise<T> | T) => Promise<T>
+  set?: <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>)) => Promise<T>
   
   resolveKeys?: (keys: Key | Key[] | Key[][]) => string[]
   

@@ -10,6 +10,7 @@ Include({path: __dirname + "/init"})
 .then(() => Include({path: __dirname + "/plugins", filter: /^[\w\d\s]+\/init\.js/}))
 .then(() => init_queue.execute())
 .then(() => console.log("Server is up and running."))
+// .then(() => Cache.show())
 .catch(err => {
   console.error(err);
   process.exitCode = 1;

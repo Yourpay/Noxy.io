@@ -68,7 +68,7 @@ export class Constructor {
     return Cache<this>("resource", $this.__type, this.getKeys())
     .catch(err => {
       if (err) { return Promise.reject(err); }
-      return Cache("query", $this.__type, this.getKeys(), database.query($this.__table.validationSQL(this)))
+      return Cache("resource", $this.__type, this.getKeys(), () => database.query($this.__table.validationSQL(this)))
       .then(res => _.merge(res[0] ? new $this(res[0]) : this, {__validated: true, __exists: !!res[0], __database: database.id}));
     })
     .then(res => _.reduce(res, (r, v, k) => update_protected || !this[k] || ($columns[k] && ($columns[k].primary_key || $columns[k].protected)) ? _.set(r, k, res[k]) : r, this))
@@ -83,9 +83,6 @@ export class Constructor {
       database.query<this>(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this))
       .then(() => Cache("resource", $this.__type, this.getKeys(), _.set(this, "__exists", true)))
     ))
-    .catch(err =>
-      console.log(err) || console.log(this) || Promise.reject(err)
-    );
   }
   
   public toObject(shallow?: boolean): Promise<Partial<this>> {
@@ -137,7 +134,7 @@ export class Constructor {
   public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.JSON> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
-    return database.query(this.__table.selectSQL(0, 1, where))
+    return database.query<any[]>(this.__table.selectSQL(0, 1, where))
     .then(res => res.length > 0 ? new Response.JSON(200, "any", new this(res[0]).toObject(), time_started) : new Response.JSON(404, "any", null, time_started))
     .catch(() => new Response.JSON(500, "any", {}, time_started));
   }
