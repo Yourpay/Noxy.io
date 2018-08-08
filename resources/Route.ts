@@ -54,14 +54,14 @@ export default class Route extends Resources.Constructor {
 publicize_queue.promise("setup", resolve => {
   Application.addRoute(env.subdomains.api, Route.__type, "/", "GET", (request, response) => {
     const start = request.query.start > 0 ? +request.query.start : 0, limit = request.query.limit > 0 && request.query.limit < 100 ? +request.query.limit : 100;
-    Database.namespace(env.mode).query("SELECT DISTINCT subdomain, namespace FROM `route` LIMIT ? OFFSET ?", [limit, start])
+    Database.namespace(env.mode).query<{subdomain: string, namespace: string}>("SELECT DISTINCT subdomain, namespace FROM `route` LIMIT ? OFFSET ?", [limit, start])
     .reduce((result: any, route) => {
-      return Database.namespace(env.mode).query("SELECT * FROM `route` WHERE `subdomain` = ? AND `namespace` = ?", [route.subdomain, route.namespace])
+      return Database.namespace(env.mode).query<iRouteObject>("SELECT * FROM `route` WHERE `subdomain` = ? AND `namespace` = ?", [route.subdomain, route.namespace])
       .map(route => new Route(route).toObject())
       .then(routes => _.concat(result, {subdomain: route.subdomain, namespace: route.namespace, routes: routes}));
     }, [])
-    .then(routes => new Responses.JSON(200, "any", routes))
-    .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any", err))
+    .then(routes => new Responses.json(200, "any", routes))
+    .catch(err => err instanceof Responses.json ? err : new Responses.json(500, "any", err))
     .then(res => response.status(res.code).json(res));
   });
   resolve();
@@ -69,9 +69,9 @@ publicize_queue.promise("setup", resolve => {
 
 interface iRouteObject {
   id?: string
-  path: string
-  method: string
-  subdomain: string
+  path?: string
+  method?: string
+  subdomain?: string
   namespace?: string
   flag_active?: boolean
   time_created?: number

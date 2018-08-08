@@ -68,8 +68,9 @@ export class Constructor {
     return Cache<this>("resource", $this.__type, this.getKeys())
     .catch(err => {
       if (err) { return Promise.reject(err); }
-      return Cache("resource", $this.__type, this.getKeys(), () => database.query($this.__table.validationSQL(this)))
-      .then(res => _.merge(res[0] ? new $this(res[0]) : this, {__validated: true, __exists: !!res[0], __database: database.id}));
+      return Cache<this>("resource", $this.__type, this.getKeys(), () => database.query($this.__table.validationSQL(this))
+        .then(res => _.merge(res[0] ? <this>(new $this(res[0])) : this, {__validated: true, __exists: !!res[0], __database: database.id}))
+      );
     })
     .then(res => _.reduce(res, (r, v, k) => update_protected || !this[k] || ($columns[k] && ($columns[k].primary_key || $columns[k].protected)) ? _.set(r, k, res[k]) : r, this))
     .then(res => Cache("resource", $this.__type, this.getKeys(), res));
@@ -79,10 +80,10 @@ export class Constructor {
     const $this = (<typeof Constructor>this.constructor);
     const database = db || Database.namespace(env.mode);
     return this.validate(this.__validated, database)
-    .then(res => Cache("resource", $this.__type, this.getKeys(), () =>
-      database.query<this>(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this))
+    .then(() => Cache("resource", $this.__type, this.getKeys(), () =>
+      database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this))
       .then(() => Cache("resource", $this.__type, this.getKeys(), _.set(this, "__exists", true)))
-    ))
+    ));
   }
   
   public toObject(shallow?: boolean): Promise<Partial<this>> {
@@ -120,31 +121,31 @@ export class Constructor {
     return new Promise(resolve => { return resolve(this); });
   }
   
-  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.JSON> {
+  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.json> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
     start = start > 0 ? +start : 0;
     limit = limit > 0 && limit < 100 ? +limit : 100;
     return database.query(this.__table.selectSQL(start, limit, where))
     .map(row => new this(row).toObject())
-    .then(res => new Response.JSON(200, "any", res, time_started))
-    .catch(err => new Response.JSON(500, "any", err, time_started));
+    .then(res => new Response.json(200, "any", res, time_started))
+    .catch(err => new Response.json(500, "any", err, time_started));
   }
   
-  public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.JSON> {
+  public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.json> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
-    return database.query<any[]>(this.__table.selectSQL(0, 1, where))
-    .then(res => res.length > 0 ? new Response.JSON(200, "any", new this(res[0]).toObject(), time_started) : new Response.JSON(404, "any", null, time_started))
-    .catch(() => new Response.JSON(500, "any", {}, time_started));
+    return database.query(this.__table.selectSQL(0, 1, where))
+    .then(res => res.length > 0 ? new Response.json(200, "any", new this(res[0]).toObject(), time_started) : new Response.json(404, "any", null, time_started))
+    .catch(() => new Response.json(500, "any", {}, time_started));
   }
   
-  public static count(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.JSON> {
+  public static count(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.json> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
-    return database.query(this.__table.countSQL(where))
-    .then(res => new Response.JSON(200, "any", res[0].count, time_started))
-    .catch(() => new Response.JSON(500, "any", {}, time_started));
+    return database.query<{count: number}>(this.__table.countSQL(where))
+    .then(res => new Response.json(200, "any", res[0].count, time_started))
+    .catch(() => new Response.json(500, "any", {}, time_started));
   }
   
   public static isUuid(uuid: string): boolean {

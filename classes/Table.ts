@@ -4,7 +4,7 @@ import * as Database from "../modules/Database";
 import * as Resource from "./Resource";
 
 export default class Table {
-  
+  F;
   private static __tables: {[data: string]: {[key: string]: Table}} = {};
   public readonly __resource: typeof Resource.Constructor;
   public readonly __database: string;
@@ -32,7 +32,7 @@ export default class Table {
       required:  true,
       protected: true,
       default:   null,
-      index:     index ? [index] : null,
+      index:     index ? _.concat(index) : null,
       hidden:    hidden
     };
   }
@@ -44,7 +44,7 @@ export default class Table {
       protected: true,
       default:   null,
       index:     index ? [index] : null,
-      relation:  {table: "user", column: "id", "on_update": "CASCADE", "on_delete": "CASCADE"},
+      relation:  {table: "user", column: "id", "on_update": "CASCADE", "on_delete": "SET NULL"},
       hidden:    hidden
     };
   }
@@ -58,8 +58,8 @@ export default class Table {
   }
   
   public validationSQL(resource: Resource.Constructor) {
-    const keys  = _.filter(_.concat([_.values(this.getPrimaryKeys())], _.values(this.getUniqueKeys())), v => v.length > 0),
-          where = _.join(_.map(keys, index => _.join(_.map(index, v => Database.parse("?? = ?", [v, resource[v]])), " AND ")), " OR ");
+    const keys = _.concat([_.values(this.getPrimaryKeys())], _.values(this.getUniqueKeys()));
+    const where = _.join(_.map(keys, index => _.join(_.map(index, v => Database.parse("?? = ?", [v, resource[v]])), " AND ")), " OR ");
     return Database.parse(`SELECT * FROM ?? WHERE ${where}`, this.__resource.__type);
   }
   
@@ -68,7 +68,7 @@ export default class Table {
   }
   
   public updateSQL(resource: Resource.Constructor) {
-    const where = _.join(_.reduce(this.__columns, (r, v, k) => v.primary_key ? r.concat(Database.parse(`\`${k}\` = ?`, resource[k])) : r, []), " AND ");
+    const where = _.join(_.reduce(this.__columns, (r, v, k) => v.primary_key ? r.concat(Database.parse("?? = ?", [k, resource[k]])) : r, []), " AND ");
     return Database.parse(`UPDATE ?? SET ? WHERE ${where}`, [this.__resource.__type, _.pick(resource, _.keys(this.__columns))]);
   }
   

@@ -76,8 +76,8 @@ export default class User extends Resource.Constructor {
   
   private static loginPW(credentials: User | iUserCredentials): Promise<User> {
     return (credentials instanceof User ? credentials : new User(credentials)).validate()
-    .then(user => user.exists ? Promise.resolve(user) : Promise.reject(new Response.JSON(400, "any")))
-    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? _.set(user, "time_login", Date.now()).save() : Promise.reject(new Response.JSON(400, "any")));
+    .then(user => user.exists ? Promise.resolve(user) : Promise.reject(new Response.json(400, "any")))
+    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? _.set(user, "time_login", Date.now()).save() : Promise.reject(new Response.json(400, "any")));
   }
   
   private static loginJWT(token?: string): Promise<User> {
@@ -92,8 +92,8 @@ publicize_queue.promise("setup", resolve => {
     User.login(request.body, request.get("Authorization"))
     .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
     .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
-    .then(user => new Response.JSON(200, "any", jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})))
-    .catch(err => err instanceof Response.JSON ? err : new Response.JSON(500, "any", err))
+    .then(user => new Response.json(200, "any", jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})))
+    .catch(err => err instanceof Response.json ? err : new Response.json(500, "any", err))
     .then(res => response.status(res.code).json(res))
   );
   resolve();

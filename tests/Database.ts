@@ -6,7 +6,7 @@ _.map([
   [false, Database.parse("SELECT * FROM ?? WHERE id = ?", "payment"), "SELECT * FROM `payment`"],
   [true, Database.parse("SELECT * FROM ?? WHERE id = ?", ["payment", 1]), "SELECT * FROM `payment` WHERE id = 1"],
   [true, Database.parse("SELECT * FROM ?? WHERE id IN (?)", ["payment", [1, 2, 3]]), "SELECT * FROM `payment` WHERE id IN (1, 2, 3)"],
-  [true, Database.parse("SELECT * FROM ?? WHERE ?", ["payment", {id: [1, 2, 3]}]), "SELECT * FROM `payment` WHERE `id` IN (1, 2, 3)"],
+  [true, Database.parse("SELECT * FROM ?? WHERE ?", ["payment", {type: "in", key: "id", values: [1, 2, 3]}]), "SELECT * FROM `payment` WHERE `id` IN (1, 2, 3)"],
   [true, Database.parse("INSERT INTO ?? SET ?", ["payment", {id: 1, order_id: 2, manager: "Jake"}]), "INSERT INTO `payment` SET `id` = 1, `order_id` = 2, `manager` = 'Jake'"],
   [true, Database.parse("user_id = ?", Buffer.from("eb8befe2938a4ea7b47bef5bf3f57922", "hex")), "user_id = X'eb8befe2938a4ea7b47bef5bf3f57922'"],
   [
