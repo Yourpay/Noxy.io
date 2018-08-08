@@ -37,16 +37,20 @@ export function configuration(id: string) { return _.clone(__configurations[id])
 export function configurations() { return _.clone(__configurations); }
 
 export function parse(sql: string, replacers: any | any[]) {
-  const matches = sql.match(/\?+/g);
-  _.each(_.isArray(replacers) ? replacers : [replacers], (replacer, key) => {
-    sql = sql.replace(/\?+/, _.isPlainObject(replacer) && _.size(replacer) === 1 && _.isArray(_.values(replacer)[0])
-                             ? `${mysql.escapeId(_.keys(replacer)[0])} IN (${mysql.escape(_.values(replacer)[0])})`
-                             : _.get(matches, key, []).length > 1
-                               ? mysql.escapeId(replacer)
-                               : mysql.escape(replacer)
-    );
-  });
-  return sql;
+  return _.reduce(sql.match(/(\s+|^|\()\?{1,3}(\s+|$|\))/g), (result, match, i) => {
+    const r = _.concat(replacers)[i];
+    const length = (match.match(/\?/g) || []).length;
+    const regex = new RegExp("(\\\s+|^|\\\()\\\?{" + length + "}(\\\s+|$|\\\))");
+    if (length === 3) {
+      if (_.isPlainObject(r) && r.type === "in" && r.key && r.values) { return result.replace(regex, "$1`" + r.key + "` IN (" + mysql.escape(r.values) + ")$2"); }
+      return result.replace(regex, "$1" + mysql.escape(r) + "$2");
+    }
+    if (length === 2) {
+      if (_.isArray(r)) { return result.replace(regex, "$1" + _.join(_.map(r, s => "`" + s + "`"), ".") + "$2"); }
+      return result.replace(regex, "$1`" + r + "`$2");
+    }
+    return result.replace(regex, "$1" + mysql.escape(r) + "$2");
+  }, sql);
 }
 
 export class Pool implements Pool {
@@ -83,14 +87,14 @@ export class Pool implements Pool {
     return this;
   }
   
-  public all(expression: string, replacers?: any[]): Promise<any> {
-    return Promise.map(this.__databases, database => new Promise((resolve, reject) => {
+  public all<T>(expression: string, replacers?: any[]): Promise<T[]> {
+    return Promise.map<{[key: string]: mysql.Pool}, T>(this.__databases, database => new Promise((resolve, reject) => {
       database.query(parse(expression, replacers), (err, result) => err ? reject(err) : resolve(result));
     }));
   }
   
-  public query<T>(expression: string, replacers?: any): Promise<T> {
-    return new Promise((resolve, reject) =>
+  public query<T>(expression: string, replacers?: any): Promise<T[]> {
+    return new Promise<T[]>((resolve, reject) =>
       __cluster.of(`${this.id}::*`).query(parse(expression, replacers), (err, res) =>
         err ? reject(err) : resolve(res)
       )
@@ -122,8 +126,8 @@ class DatabaseConnection implements IDatabaseConnection {
     this.__connection = connection;
   }
   
-  public query(expression: string, replacers?: any): Promise<any> {
-    return new Promise((resolve, reject) =>
+  public query<T>(expression: string, replacers?: any): Promise<T[]> {
+    return new Promise<T[]>((resolve, reject) =>
       this.__connection.query(parse(expression, replacers), (err, res) =>
         err ? reject(err) : resolve(res)
       )

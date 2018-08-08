@@ -33,7 +33,7 @@ export function parseError(err) {
   return _.isError(err) ? {message: err.message, stack: _.map(_.tail(err.stack.split("\n")), _.trim)} : err;
 }
 
-export class JSON {
+export class json {
   
   public code: number;
   public type: string;
@@ -51,12 +51,12 @@ export class JSON {
       this.time_elapsed = ms(this.time_finished - start);
     }
     if (content) {
-      this.content = _.isPlainObject(content) || Array.isArray(content) ? JSON.parseKeys(content) : content;
+      this.content = _.isPlainObject(content) || Array.isArray(content) ? json.parseKeys(content) : content;
     }
   }
   
   private static parseKeys(content) {
-    return _.transform(content, (r, v, k) => _.set(r, `${k}`.replace(/\//g, "__"), _.isPlainObject(v) || Array.isArray(v) ? JSON.parseKeys(v) : v), <any>(Array.isArray(content) ? [] : {}));
+    return _.transform(content, (r, v, k) => _.set(r, `${k}`.replace(/\//g, "__"), _.isPlainObject(v) || Array.isArray(v) ? json.parseKeys(v) : v), <any>(Array.isArray(content) ? [] : {}));
   }
   
 }

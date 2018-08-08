@@ -6,7 +6,10 @@ import {env} from "../app";
 import * as Resource from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
-import * as Responses from "../modules/Response";
+import {publicize_queue} from "../init/publicize";
+import * as Application from "../modules/Application";
+import * as Response from "../modules/Response";
+import Route from "./Route";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -73,8 +76,8 @@ export default class User extends Resource.Constructor {
   
   private static loginPW(credentials: User | iUserCredentials): Promise<User> {
     return (credentials instanceof User ? credentials : new User(credentials)).validate()
-    .then(user => user.exists ? Promise.resolve(user) : Promise.reject(new Responses.JSON(400, "any")))
-    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? _.set(user, "time_login", Date.now()).save() : Promise.reject(new Responses.JSON(400, "any")));
+    .then(user => user.exists ? Promise.resolve(user) : Promise.reject(new Response.json(400, "any")))
+    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? _.set(user, "time_login", Date.now()).save() : Promise.reject(new Response.json(400, "any")));
   }
   
   private static loginJWT(token?: string): Promise<User> {
@@ -84,25 +87,25 @@ export default class User extends Resource.Constructor {
   
 }
 
-// publicize_queue.promise("setup", resolve => {
-//   Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) =>
-//     User.login(request.body, request.get("Authorization"))
-//     .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
-//     .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
-//     .then(user => new Responses.JSON(200, "any", jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})))
-//     .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(500, "any", err))
-//     .then(res => response.status(res.code).json(res))
-//   );
-//   resolve();
-// });
+publicize_queue.promise("setup", resolve => {
+  Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) =>
+    User.login(request.body, request.get("Authorization"))
+    .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
+    .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
+    .then(user => new Response.json(200, "any", jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})))
+    .catch(err => err instanceof Response.json ? err : new Response.json(500, "any", err))
+    .then(res => response.status(res.code).json(res))
+  );
+  resolve();
+});
 
-// publicize_queue.promise("publish", (resolve, reject) => {
-//   Promise.all([
-//     new Route({subdomain: env.subdomains.api, method: "POST", namespace: require("../resources/User").default.__type, path: "/login", flag_active: true}).save()
-//   ])
-//   .then(res => resolve(res))
-//   .catch(err => reject(err));
-// });
+publicize_queue.promise("publish", (resolve, reject) => {
+  Promise.all([
+    new Route({subdomain: env.subdomains.api, method: "POST", namespace: require("../resources/User").default.__type, path: "/login", flag_active: true}).save()
+  ])
+  .then(res => resolve(res))
+  .catch(err => reject(err));
+});
 
 interface iUserJWTObject {
   id: string

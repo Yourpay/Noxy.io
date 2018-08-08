@@ -61,7 +61,7 @@ export function addResource(resource: typeof Resource.Constructor) {
     "/:id":   {
       "GET":    (request, response) => {
         resource.getBy({id: Resource.Constructor.bufferFromUuid(request.query.id)})
-        .catch(err => err instanceof Responses.JSON ? err : new Responses.JSON(404, "any", {id: request.query.id}))
+        .catch(err => err instanceof Responses.json ? err : new Responses.json(404, "any", {id: request.query.id}))
         .then(res => response.status(res.code).json(res));
       },
       "PUT":    [],
@@ -89,6 +89,7 @@ export function publicize(): Promise<any> {
         response.header("Allow", "PUT, GET, POST, DELETE, OPTIONS");
         response.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
         response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+        response.header("X-Frame-Options", "DENY");
         if (request.get("origin") && _.some(_.keys(__subdomains), subdomain => `${subdomain}.${__domain}` === request.get("origin").replace(/^\w+:\/\//, ""))) {
           response.header("Access-Control-Allow-Origin", request.get("origin"));
         }
@@ -112,14 +113,14 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
   const key = `${subdomain}::${request.method}::${path}`;
-  (__routes[key] && __routes[key].exists ? Promise.resolve(<AuthObject>{route: __routes[key]}) : Promise.reject(new Responses.JSON(404, "any")))
+  (__routes[key] && __routes[key].exists ? Promise.resolve(<AuthObject>{route: __routes[key]}) : Promise.reject(new Responses.json(404, "any")))
   .then(auth => Database.namespace(env.mode).query(RoleRoute.__table.selectSQL(0, 1000, {route_id: auth.route.id})).reduce((r, v: RoleRoute) => r.concat(v.role_id), []).then(roles => _.set(auth, "route_roles", roles)))
   .then(auth => {
     if (!auth.route_roles.length && auth.route.flag_active) { return Promise.resolve(auth); }
     return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
     .then(user => user.exists ? Promise.resolve(_.set(auth, "user", response.locals.user = user)) : Promise.reject(request.get("Authorization")));
   })
-  .catch(err => Promise.reject(err instanceof Responses.JSON ? err : new Responses.JSON(401, "jwt", err)))
+  .catch(err => Promise.reject(err instanceof Responses.json ? err : new Responses.json(401, "jwt", err)))
   .then(auth =>
     !auth.user
     ? Promise.resolve(auth)
@@ -127,12 +128,12 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   )
   .then(auth => {
     if (!auth.user) { return Promise.resolve(auth); }
-    if (!auth.route.flag_active) { return _.some(auth.user_roles, role => Resource.Constructor.uuidFromBuffer(role) === env.roles.admin.id) ? Promise.resolve(auth) : Promise.reject(new Responses.JSON(404, "any")); }
+    if (!auth.route.flag_active) { return _.some(auth.user_roles, role => Resource.Constructor.uuidFromBuffer(role) === env.roles.admin.id) ? Promise.resolve(auth) : Promise.reject(new Responses.json(404, "any")); }
     if (_.some(auth.route_roles, route_role => _.some(auth.user_roles, user_role => _.isEqual(user_role, route_role)))) { return Promise.resolve(auth); }
-    return Promise.reject(new Responses.JSON(403, "any"));
+    return Promise.reject(new Responses.json(403, "any"));
   })
   .then(() => next())
-  .catch(err => err instanceof Responses.JSON ? response.status(err.code).json(err) : response.status(500).json(new Responses.JSON(500, "any", err)));
+  .catch(err => err instanceof Responses.json ? response.status(err.code).json(err) : response.status(500).json(new Responses.json(500, "any", err)));
 }
 
 export type Param = {middleware: Middleware, subdomain: string, namespace: string, name: string}
