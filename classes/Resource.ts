@@ -12,13 +12,11 @@ export class Constructor {
   
   public static readonly __type: string;
   public static readonly __table: Table;
-  
-  private __uuid: string;
-  private __id: Buffer;
-  
   protected __exists: boolean = false;
   protected __validated: boolean = false;
   protected __database: string = "master";
+  private __uuid: string;
+  private __id: Buffer;
   
   constructor(object?) {
     const $this = (<typeof Constructor>this.constructor);
@@ -79,6 +77,7 @@ export class Constructor {
   public save(db?: Database.Pool): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const database = db || Database.namespace(env.mode);
+    
     return this.validate(this.__validated, database)
     .then(() => Cache("resource", $this.__type, this.getKeys(), () =>
       database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this))
@@ -124,8 +123,10 @@ export class Constructor {
   public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.json> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
+    
     start = start > 0 ? +start : 0;
     limit = limit > 0 && limit < 100 ? +limit : 100;
+    
     return database.query(this.__table.selectSQL(start, limit, where))
     .map(row => new this(row).toObject())
     .then(res => new Response.json(200, "any", res, time_started))
@@ -135,6 +136,7 @@ export class Constructor {
   public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.json> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
+    
     return database.query(this.__table.selectSQL(0, 1, where))
     .then(res => res.length > 0 ? new Response.json(200, "any", new this(res[0]).toObject(), time_started) : new Response.json(404, "any", null, time_started))
     .catch(() => new Response.json(500, "any", {}, time_started));
@@ -143,6 +145,7 @@ export class Constructor {
   public static count(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.json> {
     const time_started = Date.now();
     const database = db || Database.namespace(env.mode);
+    
     return database.query<{count: number}>(this.__table.countSQL(where))
     .then(res => new Response.json(200, "any", res[0].count, time_started))
     .catch(() => new Response.json(500, "any", {}, time_started));
@@ -169,25 +172,25 @@ export function implement<T>() {
 }
 
 export interface iResource {
+  [key: string]: any
+  
+  new(object?: {[key: string]: any}): iResourceInstance;
+  
   __type: string;
   __table: Table;
   isUuid: (uuid: string) => boolean
   bufferFromUuid: (uuid: string) => Buffer
   uuidFromBuffer: (buffer: Buffer) => string
-  
-  [key: string]: any
-  
-  new(object?: {[key: string]: any}): iResourceInstance;
 }
 
 export interface iResourceInstance {
+  [key: string]: any;
+  
   database: string
   
   id: Buffer
   uuid?: string
   exists: boolean
-  
-  [key: string]: any;
   
   save: (db?: Database.Pool) => Promise<this>
   validate: (ignore_protections?: boolean, db?: Database.Pool) => Promise<this>

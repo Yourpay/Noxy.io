@@ -70,7 +70,6 @@ Cache.unset = (type: string, namespace: string, key: Key | Key[] | Key[][]) => {
   });
 };
 
-
 Cache.resolveKeys = (key: Key | Key[] | Key[][]) => _.isArray(key) ? _.every(key, v => _.isArray(v)) ? _.map(<(string | number | symbol)[][]>key, v => _.join(v, "::")) : [_.join(key, "::")] : [`${key}`];
 
 Cache.show = () => {
@@ -89,18 +88,15 @@ Cache.show = () => {
 export = Cache;
 
 interface iCache {
-  <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<T>
-  
   get?: <T>(type: string, namespace: string, key: Key | Key[] | Key[][]) => Promise<T>
   set?: <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions) => Promise<T>
   try?: <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions) => Promise<T>
   or?: <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions) => Promise<T>
-  
   unset?: (type: string, namespace: string, key: Key | Key[] | Key[][]) => void
-  
   resolveKeys?: (keys: Key | Key[] | Key[][]) => string[]
-  
   show?: () => void
+  
+  <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<T>
 }
 
 interface iCacheStore {

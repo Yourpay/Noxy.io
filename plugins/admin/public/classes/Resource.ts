@@ -11,7 +11,7 @@ export default class Resource {
 }
 
 interface iObjectInitializer {
-  [key: string]: any
-  
   id: string;
+  
+  [key: string]: any
 }

@@ -38,11 +38,12 @@ export function configurations() { return _.clone(__configurations); }
 
 export function parse(sql: string, replacers: any | any[]) {
   return _.reduce(sql.match(/(\s+|^|\()\?{1,3}(\s+|$|\))/g), (result, match, i) => {
+    if (!replacers) { return result; }
     const r = _.concat(replacers)[i];
     const length = (match.match(/\?/g) || []).length;
     const regex = new RegExp("(\\\s+|^|\\\()\\\?{" + length + "}(\\\s+|$|\\\))");
     if (length === 3) {
-      if (_.isPlainObject(r) && r.type === "in" && r.key && r.values) { return result.replace(regex, "$1`" + r.key + "` IN (" + mysql.escape(r.values) + ")$2"); }
+      if (r.type === "in" && r.key && r.values) { return result.replace(regex, "$1`" + r.key + "` IN (" + mysql.escape(r.values) + ")$2"); }
       return result.replace(regex, "$1" + mysql.escape(r) + "$2");
     }
     if (length === 2) {

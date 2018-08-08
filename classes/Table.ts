@@ -4,8 +4,8 @@ import * as Database from "../modules/Database";
 import * as Resource from "./Resource";
 
 export default class Table {
-  F;
   private static __tables: {[data: string]: {[key: string]: Table}} = {};
+  F;
   public readonly __resource: typeof Resource.Constructor;
   public readonly __database: string;
   public readonly __columns: iTableColumns;

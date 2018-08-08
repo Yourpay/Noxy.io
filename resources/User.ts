@@ -27,16 +27,14 @@ export default class User extends Resource.Constructor {
   
   public static readonly __type: string = "user";
   public static readonly __table: Table = new Table(User, options, columns);
-  
+  private static __login_callbacks: ((user: iUserJWTObject) => Promise<Object>)[] = [];
   public username: string;
   public email: string;
   public salt: Buffer;
   public hash: Buffer;
   public time_login: number;
   public time_created?: number;
-  
   private __password: string;
-  private static __login_callbacks: ((user: iUserJWTObject) => Promise<Object>)[] = [];
   
   constructor(object?: iInitializerObject) {
     super(object);
@@ -48,13 +46,13 @@ export default class User extends Resource.Constructor {
     this.time_created = object.time_created ? object.time_created : Date.now();
   }
   
+  public static get login_callbacks() {
+    return _.clone(User.__login_callbacks);
+  }
+  
   public set password(value) {
     this.salt = User.generateSalt();
     this.hash = User.generateHash(value, this.salt);
-  }
-  
-  public static get login_callbacks() {
-    return _.clone(User.__login_callbacks);
   }
   
   public static generateSalt(): Buffer {
