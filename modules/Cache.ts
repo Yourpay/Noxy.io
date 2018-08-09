@@ -39,21 +39,39 @@ Cache.set = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], val
   const promise = value instanceof Function ? value() : Promise.resolve(value);
   
   _.each(keys, key => {
-  
-    const current: iCacheObject = _.get(__store, [type, namespace, key]);
+    
+    const current: iCacheObject = _.get(__store, [type, namespace, key], {});
     if (current.timeout) { clearInterval(current.timeout); }
-  
+    
+    console.log("Promise", key, current.promise);
+    
     if (current.promise) {
+      console.log("starting parallel for", type, namespace, key)
       return Promise.parallel({
         old: current.promise,
         new: promise
       })
-      .then(res => _.isEqual(res.old, res.new) ? Promise.resolve(res.old) : Promise.reject(new Error("Transactional error occured. Attempted to overwrite data during transaction. ")));
+      .then(res => {
+        if (_.isEqual(res.old, res.new)) {
+          return Promise.resolve(res.old);
+        }
+        console.log("Types", res.new.constructor.__type, res.new.uuid);
+        console.log("Key", type, namespace, key);
+        // _.each(res.new, (v, k) => {
+        //   if (_.isEqual(v, res.old[k])) { return true; }
+        //   console.log(k, v, res.old[k]);
+        // });
+        return Promise.reject(new Error("Transactional error occured. Attempted to overwrite data during transaction."));
+      });
     }
-  
+    
     _.set(__store, [type, namespace, key, "promise"], promise);
     return promise
-    .then(res => _.set(__store, [type, namespace, key, "value"], res))
+    .then(res => {
+      console.log("Promise done for:", type, namespace, key)
+      _.unset(__store, [type, namespace, key, "promise"])
+      return _.set(__store, [type, namespace, key, "value"], res)
+    })
     .finally(() => _.set(__store, [type, namespace, key, "timeout"], setTimeout(() => _.unset(__store, [type, namespace, key]), __config.timeout)));
   });
   

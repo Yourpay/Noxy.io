@@ -71,7 +71,7 @@ export class Constructor {
       );
     })
     .then(res => _.reduce(res, (r, v, k) => _.includes(["__id", "__uuid"], k) || update_protected || !this[k] || ($columns[k] && ($columns[k].primary_key && $columns[k].protected)) ? _.set(r, k, res[k]) : r, this))
-    .then(res => Cache("resource", $this.__type, this.getKeys(), res));
+    // .then(res => Cache("resource", $this.__type, this.getKeys(), res));
   }
   
   public save(update_protected: boolean = false, db?: Database.Pool): Promise<this> {

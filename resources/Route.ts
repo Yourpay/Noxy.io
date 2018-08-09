@@ -1,13 +1,9 @@
 import * as express from "express";
 import * as _ from "lodash";
-import {env} from "../app";
 import * as Resources from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
-import {publicize_queue} from "../init/publicize";
 import * as Application from "../modules/Application";
-import * as Database from "../modules/Database";
-import * as Responses from "../modules/Response";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -51,21 +47,21 @@ export default class Route extends Resources.Constructor {
   
 }
 
-publicize_queue.promise("setup", resolve => {
-  Application.addRoute(env.subdomains.api, Route.__type, "/", "GET", (request, response) => {
-    const start = request.query.start > 0 ? +request.query.start : 0, limit = request.query.limit > 0 && request.query.limit < 100 ? +request.query.limit : 100;
-    Database.namespace(env.mode).query<{subdomain: string, namespace: string}>("SELECT DISTINCT subdomain, namespace FROM `route` LIMIT ? OFFSET ?", [limit, start])
-    .reduce((result: any, route) => {
-      return Database.namespace(env.mode).query<iRouteObject>("SELECT * FROM `route` WHERE `subdomain` = ? AND `namespace` = ?", [route.subdomain, route.namespace])
-      .map(route => new Route(route).toObject())
-      .then(routes => _.concat(result, {subdomain: route.subdomain, namespace: route.namespace, routes: routes}));
-    }, [])
-    .then(routes => new Responses.json(200, "any", routes))
-    .catch(err => err instanceof Responses.json ? err : new Responses.json(500, "any", err))
-    .then(res => response.status(res.code).json(res));
-  });
-  resolve();
-});
+// publicize_queue.promise("setup", resolve => {
+//   Application.addRoute(env.subdomains.api, Route.__type, "/", "GET", (request, response) => {
+//     const start = request.query.start > 0 ? +request.query.start : 0, limit = request.query.limit > 0 && request.query.limit < 100 ? +request.query.limit : 100;
+//     Database.namespace(env.mode).query<{subdomain: string, namespace: string}>("SELECT DISTINCT subdomain, namespace FROM `route` LIMIT ? OFFSET ?", [limit, start])
+//     .reduce((result: any, route) => {
+//       return Database.namespace(env.mode).query<iRouteObject>("SELECT * FROM `route` WHERE `subdomain` = ? AND `namespace` = ?", [route.subdomain, route.namespace])
+//       .map(route => new Route(route).toObject())
+//       .then(routes => _.concat(result, {subdomain: route.subdomain, namespace: route.namespace, routes: routes}));
+//     }, [])
+//     .then(routes => new Responses.json(200, "any", routes))
+//     .catch(err => err instanceof Responses.json ? err : new Responses.json(500, "any", err))
+//     .then(res => response.status(res.code).json(res));
+//   });
+//   resolve();
+// });
 
 interface iRouteObject {
   id?: string
