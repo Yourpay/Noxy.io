@@ -70,15 +70,15 @@ export class Constructor {
         .then(res => _.merge(res[0] ? <this>(new $this(res[0])) : this, {__validated: true, __exists: !!res[0], __database: database.id}))
       );
     })
-    .then(res => _.reduce(res, (r, v, k) => update_protected || !this[k] || ($columns[k] && ($columns[k].primary_key || $columns[k].protected)) ? _.set(r, k, res[k]) : r, this))
+    .then(res => _.reduce(res, (r, v, k) => _.includes(["__id", "__uuid"], k) || update_protected || !this[k] || ($columns[k] && ($columns[k].primary_key && $columns[k].protected)) ? _.set(r, k, res[k]) : r, this))
     .then(res => Cache("resource", $this.__type, this.getKeys(), res));
   }
   
-  public save(db?: Database.Pool): Promise<this> {
+  public save(update_protected: boolean = false, db?: Database.Pool): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const database = db || Database.namespace(env.mode);
     
-    return this.validate(this.__validated, database)
+    return this.validate(update_protected || this.__validated, database)
     .then(() => Cache("resource", $this.__type, this.getKeys(), () =>
       database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this))
       .then(() => Cache("resource", $this.__type, this.getKeys(), _.set(this, "__exists", true)))
@@ -192,7 +192,7 @@ export interface iResourceInstance {
   uuid?: string
   exists: boolean
   
-  save: (db?: Database.Pool) => Promise<this>
+  save: (update_protected: boolean, db?: Database.Pool) => Promise<this>
   validate: (ignore_protections?: boolean, db?: Database.Pool) => Promise<this>
   delete: (db?: Database.Pool) => Promise<this>
 }
