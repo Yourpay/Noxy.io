@@ -1,4 +1,4 @@
-import Promise from "aigle";
+import * as Promise from "bluebird";
 import * as flat from "flat";
 import * as fs from "fs";
 import * as _ from "lodash";

@@ -1,4 +1,4 @@
-import Promise from "aigle";
+import * as Promise from "bluebird";
 import * as _ from "lodash";
 
 const Cache: iCache = Default;
@@ -17,17 +17,13 @@ function Default<T>(type: string, namespace: string, key: Key | Key[] | Key[][],
  * If a cache miss occurs, this function returns a rejection with value null.
  */
 
-Cache.get = (type: string, namespace: string, keys: Key | Key[] | Key[][]) => {
-  const key = _.find(Cache.resolveKeys(keys), key => !!_.get(__store, [type, namespace, key]));
+Cache.get = <T>(type: string, namespace: string, keys: Key | Key[] | Key[][]) => {
+  const key = _.find(Cache.getKeyStrings(keys), key => !!_.get(__store, [type, namespace, key]));
   const current: iCacheObject = _.get(__store, [type, namespace, key]);
   
   if (current) {
-    if (current.timeout) { clearInterval(current.timeout); }
-    if (current.promise) {
-      current.promise.finally(() => current.timeout = setTimeout(() => _.unset(__store, [type, namespace, key]), __config.timeout));
-      return current.promise;
-    }
-    current.timeout = setTimeout(() => _.unset(__store, [type, namespace, key]), __config.timeout);
+    if (current.timeout) { current.timeout.refresh(); }
+    if (current.promise) { return current.promise; }
     return Promise.resolve(current.value);
   }
   
@@ -35,44 +31,36 @@ Cache.get = (type: string, namespace: string, keys: Key | Key[] | Key[][]) => {
 };
 
 Cache.set = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> => {
-  const keys: string[] = Cache.resolveKeys(key);
-  const promise = value instanceof Function ? value() : Promise.resolve(value);
+  const keys: string[] = Cache.getKeyStrings(key);
+  const t: Promise<T> | T = value instanceof Function ? value() : value;
+  const promise: Promise<T> = t instanceof Promise ? t : Promise.resolve(t);
   
   _.each(keys, key => {
     
     const current: iCacheObject = _.get(__store, [type, namespace, key], {});
-    if (current.timeout) { clearInterval(current.timeout); }
-    
-    console.log("Promise", key, current.promise);
+    if (current.timeout) { current.timeout.refresh(); }
     
     if (current.promise) {
-      console.log("starting parallel for", type, namespace, key)
-      return Promise.parallel({
+      return Promise.props({
         old: current.promise,
         new: promise
       })
-      .then(res => {
+      .then((res: {old: T, new: T}) => {
         if (_.isEqual(res.old, res.new)) {
           return Promise.resolve(res.old);
         }
-        console.log("Types", res.new.constructor.__type, res.new.uuid);
-        console.log("Key", type, namespace, key);
-        // _.each(res.new, (v, k) => {
-        //   if (_.isEqual(v, res.old[k])) { return true; }
-        //   console.log(k, v, res.old[k]);
-        // });
         return Promise.reject(new Error("Transactional error occured. Attempted to overwrite data during transaction."));
       });
     }
     
     _.set(__store, [type, namespace, key, "promise"], promise);
-    return promise
-    .then(res => {
-      console.log("Promise done for:", type, namespace, key)
-      _.unset(__store, [type, namespace, key, "promise"])
-      return _.set(__store, [type, namespace, key, "value"], res)
+    
+    promise.then(res => {
+      _.unset(__store, [type, namespace, key, "promise"]);
+      _.set(__store, [type, namespace, key, "value"], res);
+      return res;
     })
-    .finally(() => _.set(__store, [type, namespace, key, "timeout"], setTimeout(() => _.unset(__store, [type, namespace, key]), __config.timeout)));
+    .finally(() => _.each(keys, (key) => _.set(__store, [type, namespace, key, "timeout"], Cache.getTimeout(type, namespace, key, _.get(options, "timeout", __config.timeout)))));
   });
   
   return promise;
@@ -84,7 +72,7 @@ Cache.try = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], val
 };
 
 Cache.or = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: () => Promise<T>, or: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> => {
-  const keys: string[] = Cache.resolveKeys(key);
+  const keys: string[] = Cache.getKeyStrings(key);
   
   return Cache.try("or", namespace, key, () =>
     Cache.get<T>(type, namespace, key)
@@ -104,42 +92,14 @@ Cache.or = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], valu
         console.log(res);
         Cache.unset("or", namespace, key);
         return Cache.set(type, namespace, key, res)
-        .finally(() =>
-          _.each(keys, (key) =>
-            (_.get(__store, [type, namespace, key])) && (_.get(__store, [type, namespace, key]).timeout = setTimeout(() => _.unset(__store, [type, namespace, key]), __config.timeout || options.timeout))
-          )
-        );
+        .finally(() => _.each(keys, (key) => _.set(__store, [type, namespace, key, "timeout"], Cache.getTimeout(type, namespace, key, _.get(options, "timeout", __config.timeout)))));
       });
     })
   );
-  
-  // Cache.try(type, namespace, key, () =>
-  //   value()
-  //   .catch(err => err ? Promise.reject(err) : err)
-  //   .then(res => {
-  //     if (res) { return res; }
-  //     if (or instanceof Function) { return or(); }
-  //     return Promise.resolve(or);
-  //   })
-  // );
-  //
-  // const promise = value()
-  // .catch(err => err ? Promise.reject(err) : err)
-  // .then(res => res ? res : or instanceof Function ? or() : Promise.resolve(or));
-  //
-  // _.each(keys, key => {
-  //   const current: iCacheObject = _.get(__store, [type, namespace, key], {});
-  //   if (current.timeout) { clearInterval(current.timeout); }
-  //   current.promise = promise;
-  //   current.promise.finally(() => _.get(__store, [type, namespace, key]) && (current.timeout = setTimeout(() => _.unset(__store, [type, namespace, key]), __config.timeout || options.timeout)));
-  //   _.merge(__store, _.set({}, [type, namespace, key], current));
-  // });
-  //
-  // return promise;
 };
 
 Cache.unset = (type: string, namespace: string, key: Key | Key[] | Key[][]) => {
-  const keys: string[] = Cache.resolveKeys(key);
+  const keys: string[] = Cache.getKeyStrings(key);
   _.each(keys, key => {
     const current: iCacheObject = _.get(__store, [type, namespace, key]);
     if (current.timeout) { clearInterval(current.timeout); }
@@ -147,7 +107,17 @@ Cache.unset = (type: string, namespace: string, key: Key | Key[] | Key[][]) => {
   });
 };
 
-Cache.resolveKeys = (key: Key | Key[] | Key[][]) => _.isArray(key) ? _.every(key, v => _.isArray(v)) ? _.map(<(string | number | symbol)[][]>key, v => _.join(v, "::")) : [_.join(key, "::")] : [`${key}`];
+Cache.getTimeout = (type: string, namespace: string, key: string, milliseconds?: number): iCacheTimer => {
+  if (_.isUndefined(milliseconds)) { return _.get(__store, [type, namespace, key]); }
+  if (milliseconds === null) { return null; }
+  return <iCacheTimer>setTimeout(() => _.unset(__store, [type, namespace, key]), milliseconds);
+};
+
+Cache.getKeyStrings = (keys: Key | Key[] | Key[][]) => _.isArray(keys) ? _.every(keys, v => _.isArray(v)) ? _.map(<(string | number | symbol)[][]>keys, v => _.join(v, "::")) : [_.join(keys, "::")] : [`${keys}`];
+
+Cache.getNamespace = (type: string, namespace: string): {[key: string]: iCacheObject} => {
+  return _.get(__store, [type, namespace]);
+};
 
 Cache.show = () => {
   console.info("LOGGING CACHE CONFIG");
@@ -170,7 +140,11 @@ interface iCache {
   try?: <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions) => Promise<T>
   or?: <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), or: T | (() => Promise<T>), options?: iCacheOptions) => Promise<T>
   unset?: (type: string, namespace: string, key: Key | Key[] | Key[][]) => void
-  resolveKeys?: (keys: Key | Key[] | Key[][]) => string[]
+  
+  getNamespace?: (type: string, namespace: string) => {[key: string]: iCacheObject};
+  getTimeout?: (type: string, namespace: string, key: string, milliseconds?: number) => NodeJS.Timer
+  getKeyStrings?: (keys: Key | Key[] | Key[][]) => string[]
+  
   show?: () => void
   
   <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<T>
@@ -186,22 +160,16 @@ interface iCacheStore {
 
 interface iCacheObject {
   value: any
-  promise: iResolvedPromise<any>
-  timeout: NodeJS.Timer
+  promise: Promise<any>
+  timeout: iCacheTimer
 }
 
 interface iCacheOptions {
   timeout?: number
 }
 
-interface iResolvedPromise<T> extends Promise<T> {
-  _value?: any
-  _resolved?: number,
-  _key?: any,
-  _receiver?: any,
-  _onFulfilled?: any,
-  _onRejected?: any,
-  _receivers?: any
+interface iCacheTimer extends NodeJS.Timer {
+  refresh: () => void
 }
 
 type Key = string | number;

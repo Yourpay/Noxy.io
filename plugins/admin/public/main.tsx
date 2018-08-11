@@ -1,4 +1,4 @@
-import Promise from "aigle";
+import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as React from "react";
 import * as ReactDOM from "react-dom";

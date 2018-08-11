@@ -1,4 +1,4 @@
-import Promise from "aigle";
+import * as Promise from "bluebird";
 import * as _ from "lodash";
 
 export default class PromiseQueue {
