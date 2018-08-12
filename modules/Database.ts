@@ -1,6 +1,8 @@
-import Promise from "aigle";
+import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as mysql from "mysql";
+
+const mysqlAsync = Promise.promisifyAll(mysql);
 
 const __cluster = mysql.createPoolCluster();
 const __pools: {[namespace: string]: Pool} = {};
@@ -89,9 +91,7 @@ export class Pool implements Pool {
   }
   
   public all<T>(expression: string, replacers?: any[]): Promise<T[]> {
-    return Promise.map<{[key: string]: mysql.Pool}, T>(this.__databases, database => new Promise((resolve, reject) => {
-      database.query(parse(expression, replacers), (err, result) => err ? reject(err) : resolve(result));
-    }));
+    return Promise.all<T>(_.map(this.__databases, database => <any>Promise.promisify(database.query)(parse(expression, replacers))));
   }
   
   public query<T>(expression: string, replacers?: any): Promise<T[]> {

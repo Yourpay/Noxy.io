@@ -1,4 +1,4 @@
-import Promise from "aigle";
+import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as path from "path";
 import {env, init_queue} from "../app";
@@ -21,9 +21,9 @@ db_queue.promise("register", (resolve, reject) =>
   .catch(err => reject(err)));
 
 db_queue.promise("create", (resolve, reject) =>
-  Promise.map(_.omitBy(Table.tables, (v, k) => k === "coextensive"), (tables, database: string) =>
+  Promise.all(_.map(Table.tables, (tables, database: string) =>
     Database.namespace(database).query(`SET FOREIGN_KEY_CHECKS=0; ${_.join(_.map(tables, table => table.toSQL()), " ")} SET FOREIGN_KEY_CHECKS=1;`)
-  )
+  ))
   .then(res => resolve(res))
   .catch(err => reject(err))
 );

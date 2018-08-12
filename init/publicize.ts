@@ -13,9 +13,7 @@ publicize_queue.promise("setup", (resolve, reject) => {
 });
 
 publicize_queue.promise("listen", (resolve, reject) =>
-  require("../modules/Application").publicize()
-  .then(res => resolve(res))
-  .catch(err => reject(err))
+  require("../modules/Application").publicize() ? resolve() : reject()
 );
 
 init_queue.promise("publicize", (resolve, reject) => publicize_queue.execute().then(res => resolve(res), err => reject(err)));

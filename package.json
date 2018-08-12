@@ -9,8 +9,8 @@
     "start-server": "node ./build/app.js"
   },
   "dependencies": {
-    "aigle": "^1.13.0-alpha.10",
     "axios": "^0.18.0",
+    "bluebird": "^3.5.1",
     "body-parser": "^1.18.3",
     "express": "^4.16.3",
     "flat": "^4.1.0",
@@ -21,14 +21,14 @@
     "method-override": "^3.0.0",
     "ms": "^2.1.1",
     "mysql": "^2.16.0",
-    "request": "^2.87.0",
-    "request-promise": "^4.2.2",
     "serve-favicon": "^2.5.0",
     "socket.io": "^2.1.1",
     "uuid": "^3.3.2",
     "vhost": "^3.0.2"
   },
   "devDependencies": {
+    "@types/bluebird": "^3.5.23",
+    "@types/node": "^10.5.7",
     "@types/body-parser": "^1.17.0",
     "@types/express": "^4.16.0",
     "@types/flat": "0.0.28",
@@ -38,7 +38,7 @@
     "@types/method-override": "0.0.31",
     "@types/ms": "^0.7.30",
     "@types/mysql": "^2.15.5",
-    "@types/react": "^16.4.8",
+    "@types/react": "^16.4.9",
     "@types/react-dom": "^16.0.7",
     "@types/react-router": "^4.0.30",
     "@types/react-router-dom": "^4.3.0",

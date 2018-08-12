@@ -1,4 +1,4 @@
-import Promise from "aigle";
+import * as Promise from "bluebird";
 import * as crypto from "crypto";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
@@ -93,8 +93,8 @@ publicize_queue.promise("setup", resolve => {
     .then(user => new Response.json(200, "any", jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})))
     .catch(err => err instanceof Response.json ? err : new Response.json(500, "any", err))
     .then(res => response.status(res.code).json(res))
-  );
-  resolve();
+  )
+  .finally(() => resolve());
 });
 
 publicize_queue.promise("publish", (resolve, reject) => {

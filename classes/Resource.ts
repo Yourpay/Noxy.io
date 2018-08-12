@@ -1,4 +1,4 @@
-import Promise from "aigle";
+import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as uuid from "uuid";
 import {env} from "../app";
@@ -58,54 +58,67 @@ export class Constructor {
     this.__id = Constructor.bufferFromUuid(value);
   }
   
-  public validate(update_protected: boolean = false, db?: Database.Pool): Promise<this> {
+  public validate(options: iResourceOptions = {}): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const $columns = $this.__table.__columns;
-    const database = db || Database.namespace(env.mode);
+    const database = options.database || Database.namespace(env.mode);
     
-    return Cache<this>("resource", $this.__type, this.getKeys())
-    .catch(err => {
-      if (err) { return Promise.reject(err); }
-      return Cache<this>("resource", $this.__type, this.getKeys(), () => database.query($this.__table.validationSQL(this))
-        .then(res => _.merge(res[0] ? <this>(new $this(res[0])) : this, {__validated: true, __exists: !!res[0], __database: database.id}))
-      );
-    })
-    .then(res => _.reduce(res, (r, v, k) => _.includes(["__id", "__uuid"], k) || update_protected || !this[k] || ($columns[k] && ($columns[k].primary_key && $columns[k].protected)) ? _.set(r, k, res[k]) : r, this))
-    .then(res => Cache("resource", $this.__type, this.getKeys(), res));
+    return Cache.try<this>("resource", $this.__type, this.getKeys(),
+      () => {
+        return Cache("query", $this.__type, options.keys || this.getKeys(), () => database.query($this.__table.validationSQL(this)))
+        .then(res => _.merge(res[0] ? <this>(new $this(res[0])) : this, {__validated: true, __exists: !!res[0], __database: database.id}));
+      },
+      options.cache
+    )
+    .then(res => {
+      return _.reduce(res, (result, value, key) => {
+        if (_.includes(["__id", "__uuid"], key) || options.update_protected || !this[key] || ($columns[key] && ($columns[key].primary_key && $columns[key].protected))) {
+          return _.set(result, key, res[key]);
+        }
+        return result;
+      }, this);
+    });
   }
   
-  public save(update_protected: boolean = false, db?: Database.Pool): Promise<this> {
+  public save(options: iResourceOptions = {}): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
-    const database = db || Database.namespace(env.mode);
+    const database = options.database || Database.namespace(env.mode);
     
-    return this.validate(update_protected || this.__validated, database)
-    .then(() => Cache("resource", $this.__type, this.getKeys(), () =>
-      database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this))
-      .then(() => Cache("resource", $this.__type, this.getKeys(), _.set(this, "__exists", true)))
+    return this.validate(options)
+    .then(res => Cache("resource", $this.__type, this.getKeys(),
+      () => {
+        return database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this))
+        .then(() => Cache("resource", $this.__type, options.keys || this.getKeys(), _.set(this, "__exists", true), options.cache));
+      },
+      options.cache
     ));
   }
   
   public toObject(shallow?: boolean): Promise<Partial<this>> {
     const $this = (<typeof Constructor>this.constructor);
-    return Promise.reduce(_.omitBy($this.__table.__columns, v => v.hidden), (r, v, k) => {
-      const [datatype, type, value] = _.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0));
-      if (type === "binary") {
-        if (value === "16") {
-          if (!shallow && v.relation && (_.isString(v.relation) || _.isPlainObject(v.relation) || _.size(v.relation) === 1)) {
-            return new Table.tables[this.__database || env.mode][_.get(v, "relation.table", v.relation)].__resource({id: this[k]}).validate()
-            .then(res => res.toObject())
-            .then(res => _.set(r, k, res));
+    
+    return <any>Promise.props(
+      _.transform(_.omitBy($this.__table.__columns, v => v.hidden),
+        (r, v, k) => {
+          const [datatype, type, value] = _.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0));
+          if (type === "binary") {
+            if (value === "16") {
+              if (!shallow && v.relation && (_.isString(v.relation) || _.isPlainObject(v.relation) || _.size(v.relation) === 1)) {
+                return new Table.tables[this.__database || env.mode][_.get(v, "relation.table", v.relation)].__resource({id: this[k]}).validate()
+                .then(res => res.toObject())
+                .then(res => _.set(r, k, res));
+              }
+              return _.set(r, k, Constructor.uuidFromBuffer(this[k]));
+            }
+            return _.set(r, k, (<Buffer>this[k]).toString("hex"));
           }
-          return _.set(r, k, Constructor.uuidFromBuffer(this[k]));
-        }
-        return _.set(r, k, (<Buffer>this[k]).toString("hex"));
-      }
-      if (type === "varbinary") { return _.set(r, k, (<Buffer>this[k]).toString("utf8")); }
-      if (type === "blob") { return _.set(r, k, (<Buffer>this[k]).toString("base64")); }
-      return _.set(r, k, this[k]);
-    }, {})
-    .then(res => res)
-    .catch(err => err);
+          if (type === "varbinary") { return _.set(r, k, (<Buffer>this[k]).toString("utf8")); }
+          if (type === "blob") { return _.set(r, k, (<Buffer>this[k]).toString("base64")); }
+          return _.set(r, k, this[k]);
+        },
+        {}
+      )
+    );
   }
   
   public getKeys() {
@@ -192,7 +205,16 @@ export interface iResourceInstance {
   uuid?: string
   exists: boolean
   
-  save: (update_protected: boolean, db?: Database.Pool) => Promise<this>
-  validate: (ignore_protections?: boolean, db?: Database.Pool) => Promise<this>
+  save: (options: iResourceOptions) => Promise<this>
+  validate: (options: iResourceOptions) => Promise<this>
   delete: (db?: Database.Pool) => Promise<this>
+}
+
+interface iResourceOptions {
+  database?: Database.Pool,
+  update_protected?: boolean
+  keys?: string | number | (string | number)[] | (string | number)[][]
+  cache?: {
+    timeout?: number
+  }
 }
