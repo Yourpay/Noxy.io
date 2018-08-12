@@ -85,7 +85,7 @@ export function publicize(): boolean {
   
   if (__published) { return __published; }
   
-  _.each(_.orderBy(_.uniqBy(_.map(Cache.getNamespace("resource", Route.__type), "value"), v => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
+  _.each(_.orderBy(_.uniqBy(_.map(Cache.getNamespace("resource", Route.__type), "value"), (v) => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
     if (!(subdomain = __subdomains[route.subdomain])) {
       subdomain = __subdomains[route.subdomain] = express.Router();
       if (route.subdomain !== env.subdomains.default) { __application.use(vhost(route.subdomain + "." + __domain, subdomain)); }
@@ -123,60 +123,39 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   
   Cache.get<Route>("resource", Route.__type, [subdomain, path, request.method])
   .then(route => {
-    console.log(route);
-    if (!route.flag_active) {
-      return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
-      .then(user => {
-        if (!user.exists) { Promise.reject(null); }
-        Database.namespace(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
-        .then(user_roles => {
-          if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(role.role_id) === env.roles.admin.id)) { return next(); }
-          return <any>Promise.reject(null);
-        });
-      })
-      .catch(() => Promise.reject(new Response.json(404, "any")));
-    }
-    Database.namespace(env.mode).query<RoleRoute>(RoleRoute.__table.selectSQL(0, 1000, {route_id: route.id}))
-    .then(route_roles => {
-      if (route_roles.length) {
+    if (route && route.exists) {
+      if (!route.flag_active) {
         return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
-        .catch(err => Promise.reject(new Response.json(401, "jwt", err)))
         .then(user => {
-          if (!user.exists) { Promise.reject(new Response.json(401, "jwt", request.get("Authorization"))); }
+          if (!user.exists) { Promise.reject(null); }
           Database.namespace(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
           .then(user_roles => {
-            if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) { return next(); }
-            return <any>Promise.reject(new Response.json(403, "any"));
+            if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(role.role_id) === env.roles.admin.id)) { return next(); }
+            return <any>Promise.reject(null);
           });
-        });
+        })
+        .catch(() => Promise.reject(new Response.json(404, "any")));
       }
-    });
+      return Database.namespace(env.mode).query<RoleRoute>(RoleRoute.__table.selectSQL(0, 1000, {route_id: route.id}))
+      .then(route_roles => {
+        if (route_roles.length) {
+          return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
+          .catch(err => Promise.reject(new Response.json(401, "jwt", err)))
+          .then(user => {
+            if (!user.exists) { Promise.reject(new Response.json(401, "jwt", request.get("Authorization"))); }
+            Database.namespace(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
+            .then(user_roles => {
+              if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) { return next(); }
+              return <any>Promise.reject(new Response.json(403, "any"));
+            });
+          });
+        }
+        return next();
+      });
+    }
     return Promise.reject(new Response.json(404, "any"));
   })
   .catch(err => err instanceof Response.json ? response.status(err.code).json(err) : response.status(500).json(new Response.json(500, "any", err)));
-  
-  // route.exists ? Promise.resolve(<AuthObject>{route: __routes[key]}) : Promise.reject(new Response.json(404, "any")))
-  // .then(auth => )
-  // .then(auth => {
-  //   if (!auth.route_roles.length && auth.route.flag_active) { return Promise.resolve(auth); }
-  //   return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
-  //   .then(user => user.exists ? Promise.resolve(_.set(auth, "user", response.locals.user = user)) : Promise.reject(request.get("Authorization")));
-  // })
-  // .catch(err => Promise.reject(err instanceof Response.json ? err : new Response.json(401, "jwt", err)))
-  // .then(auth =>
-  //   !auth.user
-  //   ? Promise.resolve(auth)
-  //   : Database.namespace(env.mode).query(RoleUser.__table.selectSQL(0, 1000, {user_id: auth.user.id})).reduce((r, v: RoleUser) => r.concat(v.role_id), []).then(roles => _.set(auth, "user_roles", roles))
-  // )
-  // .then(auth => {
-  //   if (!auth.user) { return Promise.resolve(auth); }
-  //   if (!auth.route.flag_active) { return _.some(auth.user_roles, role => Resource.Constructor.uuidFromBuffer(role) === env.roles.admin.id) ? Promise.resolve(auth) : Promise.reject(new Response.json(404, "any")); }
-  //   if (_.some(auth.route_roles, route_role => _.some(auth.user_roles, user_role => _.isEqual(user_role, route_role)))) { return Promise.resolve(auth); }
-  //   return Promise.reject(new Response.json(403, "any"));
-  // })
-  // .then(() => next())
-  // .catch(err => err instanceof Response.json ? response.status(err.code).json(err) : response.status(500).json(new Response.json(500, "any", err))));
-  
 }
 
 export type Param = {middleware: Middleware, subdomain: string, namespace: string, name: string}

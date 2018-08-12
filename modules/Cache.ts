@@ -32,8 +32,7 @@ Cache.get = <T>(type: string, namespace: string, keys: Key | Key[] | Key[][]) =>
 
 Cache.set = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> => {
   const keys: string[] = Cache.getKeyStrings(key);
-  const t: Promise<T> | T = value instanceof Function ? value() : value;
-  const promise: Promise<T> = t instanceof Promise ? t : Promise.resolve(t);
+  const promise: Promise<T> = typeof value === "function" ? value() : Promise.resolve(value);
   
   _.each(keys, key => {
     
