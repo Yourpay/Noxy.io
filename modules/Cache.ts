@@ -131,6 +131,11 @@ Cache.show = () => {
   });
 };
 
+Cache.constants = {
+  "QUERY":    "query",
+  "RESOURCE": "resource"
+};
+
 export = Cache;
 
 interface iCache {
@@ -145,6 +150,8 @@ interface iCache {
   getKeyStrings?: (keys: Key | Key[] | Key[][]) => string[]
   
   show?: () => void
+  
+  constants?: {QUERY: "query", RESOURCE: "resource"}
   
   <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<T>
 }
