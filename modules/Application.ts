@@ -85,7 +85,7 @@ export function publicize(): boolean {
   
   if (__published) { return __published; }
   
-  _.each(_.orderBy(_.uniqBy(_.map(Cache.getNamespace("resource", Route.__type), "value"), v => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
+  _.each(_.orderBy(_.uniqBy(_.map(Cache.getNamespace(Cache.types.RESOURCE, Route.__type), "value"), v => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
     if (!(subdomain = __subdomains[route.subdomain])) {
       subdomain = __subdomains[route.subdomain] = express.Router();
       if (route.subdomain !== env.subdomains.default) { __application.use(vhost(route.subdomain + "." + __domain, subdomain)); }
@@ -121,7 +121,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
   
-  Cache.get<Route>("resource", Route.__type, [subdomain, path, request.method])
+  Cache.get<Route>(Cache.types.RESOURCE, Route.__type, [subdomain, path, request.method])
   .then(route => {
     if (route) {
       if (!route.flag_active) {
