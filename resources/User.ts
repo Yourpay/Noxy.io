@@ -68,19 +68,25 @@ export default class User extends Resource.Constructor {
   }
   
   public static login(credentials: User | iUserCredentials, jwt?: string): Promise<User> {
-    return User.loginPW(credentials)
-    .catch(err => jwt ? User.loginJWT(jwt) : Promise.reject(err));
+    return User.loginPW(credentials).catch(err => jwt ? User.loginJWT(jwt) : Promise.reject(err));
   }
   
   private static loginPW(credentials: User | iUserCredentials): Promise<User> {
     return (credentials instanceof User ? credentials : new User(credentials)).validate()
-    .then(user => user.exists ? Promise.resolve(user) : Promise.reject(new Response.json(400, "any")))
-    .then(user => _.isEqual(user.hash, User.generateHash(credentials.password, user.salt)) ? _.set(user, "time_login", Date.now()).save() : Promise.reject(new Response.json(400, "any")));
+    .then(user => {
+      if (!user.exists) { return Promise.reject(new Response.json(400, "any")); }
+      return Promise.resolve(user);
+    })
+    .then(user => {
+      if (!_.isEqual(user.hash, User.generateHash(credentials.password, user.salt))) { return Promise.reject(new Response.json(400, "any")); }
+      return _.set(user, "time_login", Date.now()).save({update_protected: true});
+    });
   }
   
   private static loginJWT(token?: string): Promise<User> {
     return (<any>Promise.promisify(jwt.verify))(token, env.tokens.jwt)
-    .then(decoded => new User(decoded).validate().then(user => _.set(user, "time_login", Date.now()).save()));
+    .then(decoded => new User(decoded).validate())
+    .then(user => _.set(user, "time_login", Date.now()).save());
   }
   
 }
@@ -99,7 +105,8 @@ publicize_queue.promise("setup", resolve => {
 
 publicize_queue.promise("publish", (resolve, reject) => {
   Promise.all([
-    new Route({subdomain: env.subdomains.api, method: "POST", namespace: require("../resources/User").default.__type, path: "/login", flag_active: true}).save()
+    new Route({subdomain: env.subdomains.api, method: "POST", namespace: require("../resources/User").default.__type, path: "/login", flag_active: true})
+    .save({update_protected: true, cache: {timeout: null}})
   ])
   .then(res => resolve(res))
   .catch(err => reject(err));

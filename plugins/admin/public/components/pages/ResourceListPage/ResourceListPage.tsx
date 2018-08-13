@@ -26,7 +26,7 @@ export default class ResourceListPage extends React.Component<any, any> {
             baseURL: store.getState().url.api,
             url:     ResourceListPage.url,
             headers: {
-              "Authorization": window.localStorage.jwt
+              "Authorization": window.localStorage.getItem("jwt")
             }
           })
           .then(res => {
@@ -79,7 +79,7 @@ class ResourcePage extends React.Component<any, any> {
                 baseURL: store.getState().url.api,
                 url:     url,
                 headers: {
-                  "Authorization": window.localStorage.jwt
+                  "Authorization": window.localStorage.getItem("jwt")
                 }
               })
               .then(res => {

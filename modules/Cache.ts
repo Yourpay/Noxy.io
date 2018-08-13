@@ -18,7 +18,7 @@ function Default<T>(type: string, namespace: string, key: Key | Key[] | Key[][],
  */
 
 Cache.get = <T>(type: string, namespace: string, keys: Key | Key[] | Key[][]) => {
-  const key = _.find(Cache.getKeyStrings(keys), key => !!_.get(__store, [type, namespace, key]));
+  const key = _.find(Cache.getKeyStrings(keys), key => !!_.get(__store, [type, namespace, key, "value"]) || !!_.get(__store, [type, namespace, key, "promise"]));
   const current: iCacheObject = _.get(__store, [type, namespace, key]);
   
   if (current) {
@@ -32,8 +32,7 @@ Cache.get = <T>(type: string, namespace: string, keys: Key | Key[] | Key[][]) =>
 
 Cache.set = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> => {
   const keys: string[] = Cache.getKeyStrings(key);
-  const t: Promise<T> | T = value instanceof Function ? value() : value;
-  const promise: Promise<T> = t instanceof Promise ? t : Promise.resolve(t);
+  const promise: Promise<T> = value instanceof Function ? value() : Promise.resolve(value);
   
   _.each(keys, key => {
     
@@ -68,7 +67,10 @@ Cache.set = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], val
 
 Cache.try = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> => {
   return Cache.get<T>(type, namespace, key)
-  .catch(err => err ? Promise.reject(err) : Cache.set<T>(type, namespace, key, value, options));
+  .catch(err => {
+    if (err) { return Promise.reject(err); }
+    return Cache.set<T>(type, namespace, key, value, options);
+  });
 };
 
 Cache.or = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: () => Promise<T>, or: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> => {
@@ -110,6 +112,7 @@ Cache.unset = (type: string, namespace: string, key: Key | Key[] | Key[][]) => {
 Cache.getTimeout = (type: string, namespace: string, key: string, milliseconds?: number): iCacheTimer => {
   if (_.isUndefined(milliseconds)) { return _.get(__store, [type, namespace, key]); }
   if (milliseconds === null) { return null; }
+  if (milliseconds === 0) { return _.unset(__store, [type, namespace, key]) && undefined; }
   return <iCacheTimer>setTimeout(() => _.unset(__store, [type, namespace, key]), milliseconds);
 };
 
@@ -119,17 +122,11 @@ Cache.getNamespace = (type: string, namespace: string): {[key: string]: iCacheOb
   return _.get(__store, [type, namespace]);
 };
 
-Cache.show = () => {
-  console.info("LOGGING CACHE CONFIG");
-  console.log(__config);
-  console.info("LOGGING CACHE STORE");
-  _.each(__store, (types, type_key) => {
-    _.each(types, (namespaces, namespace_key) => {
-      _.each(namespaces, (value, key) => {
-        console.log(type_key, namespace_key, key, value);
-      });
-    });
-  });
+Cache.types = {
+  QUERY:    "query",
+  RESOURCE: "resource",
+  EXTERNAL: "external",
+  REQUEST:  "request"
 };
 
 export = Cache;
@@ -145,7 +142,7 @@ interface iCache {
   getTimeout?: (type: string, namespace: string, key: string, milliseconds?: number) => NodeJS.Timer
   getKeyStrings?: (keys: Key | Key[] | Key[][]) => string[]
   
-  show?: () => void
+  types?: {QUERY: "query", RESOURCE: "resource", EXTERNAL: "external", REQUEST: "request"}
   
   <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<T>
 }

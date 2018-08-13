@@ -63,21 +63,22 @@ export class Constructor {
     const $columns = $this.__table.__columns;
     const database = options.database || Database.namespace(env.mode);
     
-    return Cache.try<this>("resource", $this.__type, this.getKeys(),
-      () => {
-        return Cache("query", $this.__type, options.keys || this.getKeys(), () => database.query($this.__table.validationSQL(this)))
-        .then(res => _.merge(res[0] ? <this>(new $this(res[0])) : this, {__validated: true, __exists: !!res[0], __database: database.id}));
-      },
+    return Cache.try<this>(Cache.types.RESOURCE, $this.__type, !_.isUndefined(options.keys) ? options.keys : this.getKeys(),
+      () => Cache(Cache.types.QUERY, $this.__type, !_.isUndefined(options.keys) ? options.keys : this.getKeys(),
+        () => database.query($this.__table.validationSQL(this)),
+        _.assign({}, options.cache, {timeout: 0})
+      )
+      .then(res => _.assign({}, this, res[0] ? new $this(res[0]) : {}, {__validated: true, __exists: !!res[0], __database: database.id})),
       options.cache
     )
-    .then(res => {
-      return _.reduce(res, (result, value, key) => {
-        if (_.includes(["__id", "__uuid"], key) || options.update_protected || !this[key] || ($columns[key] && ($columns[key].primary_key && $columns[key].protected))) {
-          return _.set(result, key, res[key]);
+    .then(res =>
+      _.reduce(res, (result, value, key) => {
+        if (_.includes(["__id", "__uuid"], key) || !this[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
+          return _.set(result, key, value);
         }
         return result;
-      }, this);
-    });
+      }, this)
+    );
   }
   
   public save(options: iResourceOptions = {}): Promise<this> {
@@ -85,13 +86,18 @@ export class Constructor {
     const database = options.database || Database.namespace(env.mode);
     
     return this.validate(options)
-    .then(res => Cache("resource", $this.__type, this.getKeys(),
-      () => {
-        return database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this))
-        .then(() => Cache("resource", $this.__type, options.keys || this.getKeys(), _.set(this, "__exists", true), options.cache));
-      },
-      options.cache
-    ));
+    .then(res =>
+      Cache.try(
+        Cache.types.QUERY,
+        $this.__type,
+        !_.isUndefined(options.keys) ? options.keys : this.getKeys(),
+        () => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)),
+        _.assign({}, options.cache, {timeout: 0})
+      )
+      .then(res =>
+        Cache.set(Cache.types.RESOURCE, $this.__type, !_.isUndefined(options.keys) ? options.keys : this.getKeys(), _.set(this, "__exists", true), options.cache)
+      ),
+    );
   }
   
   public toObject(shallow?: boolean): Promise<Partial<this>> {
