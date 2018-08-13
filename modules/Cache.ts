@@ -51,15 +51,15 @@ Cache.set = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], val
         return Promise.reject(new Error("Transactional error occured. Attempted to overwrite data during transaction."));
       });
     }
-    
-    _.set(__store, [type, namespace, key, "promise"], promise);
+  
+    _.setWith(__store, [type, namespace, key, "promise"], promise, Object);
     
     promise.then(res => {
       _.unset(__store, [type, namespace, key, "promise"]);
-      _.set(__store, [type, namespace, key, "value"], res);
+      _.setWith(__store, [type, namespace, key, "value"], res, Object);
       return res;
     })
-    .finally(() => _.each(keys, (key) => _.set(__store, [type, namespace, key, "timeout"], Cache.getTimeout(type, namespace, key, _.get(options, "timeout", __config.timeout)))));
+    .finally(() => _.each(keys, (key) => _.setWith(__store, [type, namespace, key, "timeout"], Cache.getTimeout(type, namespace, key, _.get(options, "timeout", __config.timeout)), Object)));
   });
   
   return promise;
@@ -91,7 +91,7 @@ Cache.or = <T>(type: string, namespace: string, key: Key | Key[] | Key[][], valu
         console.log(res);
         Cache.unset("or", namespace, key);
         return Cache.set(type, namespace, key, res)
-        .finally(() => _.each(keys, (key) => _.set(__store, [type, namespace, key, "timeout"], Cache.getTimeout(type, namespace, key, _.get(options, "timeout", __config.timeout)))));
+        .finally(() => _.each(keys, (key) => _.setWith(__store, [type, namespace, key, "timeout"], Cache.getTimeout(type, namespace, key, _.get(options, "timeout", __config.timeout)), Object)));
       });
     })
   );
