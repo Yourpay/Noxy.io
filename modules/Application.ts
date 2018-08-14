@@ -44,8 +44,8 @@ export function addParam(subdomain: string, ns_pm: string, pm_fn: string | Middl
 }
 
 export function addRoute(subdomain: string, namespace: string, path: string, method: Method, fn: Middleware | Middleware[]): Promise<Route> {
-  return new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: [auth].concat(Array.isArray(fn) ? fn : [fn])})
-  .save({keys: [subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method], cache: {timeout: null}});
+  return new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: _.concat(auth, fn)})
+  .save({update_protected: true, keys: [subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method], cache: {timeout: null}});
 }
 
 export function addRoutes(subdomain: string, namespace: string, route_set: {[path: string]: {[method: string]: Middleware | Middleware[]}}): {[key: string]: Promise<Route>} {
@@ -85,7 +85,7 @@ export function publicize(): boolean {
   
   if (__published) { return __published; }
   
-  _.each(_.orderBy(_.uniqBy(_.map(Cache.getNamespace("resource", Route.__type), "value"), (v) => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
+  _.each(_.orderBy(_.uniqBy(_.map(Cache.getNamespace(Cache.types.RESOURCE, Route.__type), "value"), v => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
     if (!(subdomain = __subdomains[route.subdomain])) {
       subdomain = __subdomains[route.subdomain] = express.Router();
       if (route.subdomain !== env.subdomains.default) { __application.use(vhost(route.subdomain + "." + __domain, subdomain)); }
@@ -162,10 +162,3 @@ export type Param = {middleware: Middleware, subdomain: string, namespace: strin
 export type Static = {subdomain: string, namespace: string, resource_path: string}
 export type Middleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void
 export type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
-
-interface AuthObject {
-  route: Route
-  user_roles: Buffer[]
-  route_roles: Buffer[]
-  user: User
-}

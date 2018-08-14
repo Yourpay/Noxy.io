@@ -12,7 +12,8 @@ export const resource_queue = new PromiseQueue(["user", "role", "role/user"]);
 
 resource_queue.promise("user", (resolve, reject) =>
   Promise.all(_.map(env.users, (user, key) =>
-    new User(user).validate()
+    new User(user)
+    .validate()
     .then(res => {
       if (res.exists) {
         let update = false;
@@ -21,7 +22,8 @@ resource_queue.promise("user", (resolve, reject) =>
         if (user.username !== res.username) { (res.username = user.username) && (update = true); }
         if (!update) { return res; }
       }
-      return res.save()
+      return res
+      .save({update_protected: true})
       .then(res => {
         delete env.users[key].password;
         env.users[key].id = res.uuid;
@@ -36,14 +38,16 @@ resource_queue.promise("user", (resolve, reject) =>
 
 resource_queue.promise("role", (resolve, reject) =>
   Promise.all(_.map(env.roles, (role, key) =>
-    new Role(role).validate()
+    new Role(role)
+    .validate()
     .then(res => {
       if (res.exists) {
         let update = false;
         if (role.name !== res.name) { (res.name = role.name) && (update = true); }
         if (!update) { return res; }
       }
-      return res.save()
+      return res
+      .save({update_protected: true})
       .then(res => {
         env.roles[key].id = res.uuid;
         return res;
@@ -56,11 +60,12 @@ resource_queue.promise("role", (resolve, reject) =>
 );
 
 resource_queue.promise("role/user", (resolve, reject) =>
-  Promise.all(_.map(env.roles, (role, key) =>
-    Promise.all(_.map(env.users, (user, key) =>
-      new RoleUser({role_id: role.id, user_id: user.id}).save()
-    ))
-  ))
+  Promise.map(_.values(env.roles), role =>
+    Promise.map(_.values(env.users), user =>
+      new RoleUser({role_id: role.id, user_id: user.id})
+      .save({update_protected: true})
+    )
+  )
   .then(res => resolve(res))
   .catch(err => reject(err))
 );

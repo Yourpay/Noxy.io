@@ -8,7 +8,7 @@ import * as Application from "../../modules/Application";
 import * as Response from "../../modules/Response";
 import Route from "../../resources/Route";
 
-publicize_queue.promise("setup", resolve => {
+publicize_queue.promise("setup", (resolve, reject) => {
   
   Promise.all([
     Application.addStatic(path.resolve(__dirname, "./public"), "admin"),
@@ -19,14 +19,16 @@ publicize_queue.promise("setup", resolve => {
       response.sendFile(path.resolve(__dirname, "./public/index.html"));
     })
   ])
-  .finally(() => resolve());
+  .then(res => resolve(res))
+  .error(err => resolve(err));
   
 });
 
 publicize_queue.promise("publish", resolve => {
   
   Promise.all([
-    new Route({subdomain: "admin", namespace: "/", path: "*", method: "GET", flag_active: true}).save()
+    new Route({subdomain: "admin", namespace: "/", path: "*", method: "GET", flag_active: true})
+    .save({update_protected: true, cache: {timeout: null}})
   ])
   .then(res => resolve(res));
   

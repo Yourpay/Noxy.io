@@ -17,7 +17,7 @@ export default class Login extends React.Component<any, any> {
   }
   
   componentDidMount() {
-    if (window.localStorage.jwt) {
+    if (window.localStorage.getItem("jwt")) {
       store.dispatch({
         type:  null,
         value: {
@@ -27,7 +27,7 @@ export default class Login extends React.Component<any, any> {
               baseURL: store.getState().url.api,
               url:     Login.url,
               headers: {
-                "Authorization": window.localStorage.jwt
+                "Authorization": window.localStorage.getItem("jwt")
               }
             })
             .then(res => store.dispatch({

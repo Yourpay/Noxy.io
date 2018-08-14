@@ -30,7 +30,7 @@ export default class Role extends Resources.Constructor {
     super(object);
     if (!object.key) { this.key = _.snakeCase(_.deburr(object.name)); }
     this.time_created = object.time_created ? object.time_created : Date.now();
-    this.user_created = Resources.Constructor.bufferFromUuid(_.get(object, "user_created.id", env.users["server"].id));
+    this.user_created = Resources.Constructor.bufferFromUuid(_.get(object, "user_created.id", env.users.server.id));
   }
   
 }
