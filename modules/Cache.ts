@@ -109,6 +109,7 @@ Cache.unset = (type: string, namespace: string, key: Key | Key[] | Key[][]) => {
 Cache.getTimeout = (type: string, namespace: string, key: string, milliseconds?: number): iCacheTimer => {
   if (_.isUndefined(milliseconds)) { return _.get(__store, [type, namespace, key]); }
   if (milliseconds === null) { return null; }
+  if (milliseconds === 0) { return undefined; }
   return <iCacheTimer>setTimeout(() => _.unset(__store, [type, namespace, key]), milliseconds);
 };
 
@@ -118,22 +119,11 @@ Cache.getNamespace = (type: string, namespace: string): {[key: string]: iCacheOb
   return _.get(__store, [type, namespace]);
 };
 
-Cache.show = () => {
-  console.info("LOGGING CACHE CONFIG");
-  console.log(__config);
-  console.info("LOGGING CACHE STORE");
-  _.each(__store, (types, type_key) => {
-    _.each(types, (namespaces, namespace_key) => {
-      _.each(namespaces, (value, key) => {
-        console.log(type_key, namespace_key, key, value);
-      });
-    });
-  });
-};
-
-Cache.constants = {
+Cache.types = {
   "QUERY":    "query",
-  "RESOURCE": "resource"
+  "RESOURCE": "resource",
+  "EXTERNAL": "external",
+  "REQUEST":  "request"
 };
 
 export = Cache;
@@ -151,7 +141,7 @@ interface iCache {
   
   show?: () => void
   
-  constants?: {QUERY: "query", RESOURCE: "resource"}
+  types?: {QUERY: "query", RESOURCE: "resource", "EXTERNAL": "external", REQUEST: "request"}
   
   <T>(type: string, namespace: string, key: Key | Key[] | Key[][], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<T>
 }

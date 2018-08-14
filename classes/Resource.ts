@@ -62,8 +62,8 @@ export class Constructor {
     const $this = (<typeof Constructor>this.constructor);
     const $columns = $this.__table.__columns;
     const database = options.database || Database.namespace(env.mode);
-    
-    return Cache.try<this>("resource", $this.__type, this.getKeys(),
+  
+    return Cache.try<this>(Cache.types.QUERY, $this.__type, this.getKeys(),
       () => {
         return Cache("query", $this.__type, options.keys || this.getKeys(), () => database.query($this.__table.validationSQL(this)))
         .then(res => _.merge(res[0] ? <this>(new $this(res[0])) : this, {__validated: true, __exists: !!res[0], __database: database.id}));
@@ -73,7 +73,7 @@ export class Constructor {
     .then(res => {
       return _.reduce(res, (result, value, key) => {
         if (_.includes(["__id", "__uuid"], key) || options.update_protected || !this[key] || ($columns[key] && ($columns[key].primary_key && $columns[key].protected))) {
-          return _.set(result, key, res[key]);
+          return _.setWith(result, key, res[key], Object);
         }
         return result;
       }, this);
