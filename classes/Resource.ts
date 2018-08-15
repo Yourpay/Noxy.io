@@ -18,12 +18,12 @@ export class Constructor {
   private __uuid: string;
   private __id: Buffer;
   
-  constructor(object?) {
+  constructor(object: iResourceInitializer = {}) {
     const $this = (<typeof Constructor>this.constructor);
     if (!$this.__table) { throw Error("Cannot initialize an instance of 'Resource' lacking a table definition."); }
     _.assign(this, object);
     if (!$this.__table.__options.junction) {
-      this.id = object.id ? (Constructor.isUuid(object.id) ? Constructor.bufferFromUuid(this.uuid = object.id) : object.id) : Constructor.bufferFromUuid(this.uuid = uuid.v4());
+      this.id = object.id ? (Constructor.isUuid(<string>object.id) ? Constructor.bufferFromUuid(this.uuid = <string>object.id) : <Buffer>object.id) : Constructor.bufferFromUuid(this.uuid = uuid.v4());
       this.uuid = this.uuid || Constructor.uuidFromBuffer(this.id);
     }
     this.__database = <string>$this.__table.__options.database;
@@ -86,18 +86,18 @@ export class Constructor {
     const database = options.database || Database.namespace(env.mode);
     
     return this.validate(options)
-    .then(res =>
-      Cache.try(
+    .then(() => {
+      return Cache.try(
         Cache.types.QUERY,
         $this.__type,
         !_.isUndefined(options.keys) ? options.keys : this.getKeys(),
         () => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)),
         _.assign({}, options.cache, {timeout: 0})
       )
-      .then(res =>
+      .then(() =>
         Cache.set(Cache.types.RESOURCE, $this.__type, !_.isUndefined(options.keys) ? options.keys : this.getKeys(), _.set(this, "__exists", true), options.cache)
-      ),
-    );
+      );
+    });
   }
   
   public toObject(shallow?: boolean): Promise<Partial<this>> {
@@ -131,7 +131,7 @@ export class Constructor {
     const $this = (<typeof Constructor>this.constructor);
     const keys = [];
     if (this.__validated) { keys.push(_.map($this.__table.getPrimaryKeys(), v => Constructor.uuidFromBuffer(this[v]))); }
-    _.each($this.__table.getUniqueKeys(), set => _.every(set, v => this[v]) && keys.push(_.map(set, v => this[v])));
+    _.each($this.__table.getUniqueKeys(), set => _.every(set, v => !_.isUndefined(this[v])) && keys.push(_.map(set, v => this[v])));
     return keys;
   }
   
@@ -214,6 +214,13 @@ export interface iResourceInstance {
   save: (options: iResourceOptions) => Promise<this>
   validate: (options: iResourceOptions) => Promise<this>
   delete: (db?: Database.Pool) => Promise<this>
+}
+
+export interface iResourceInitializer {
+  [key: string]: any
+  
+  id?: Buffer | string
+  uuid?: string
 }
 
 interface iResourceOptions {

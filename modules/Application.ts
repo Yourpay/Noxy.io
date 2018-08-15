@@ -44,7 +44,7 @@ export function addParam(subdomain: string, ns_pm: string, pm_fn: string | Middl
 }
 
 export function addRoute(subdomain: string, namespace: string, path: string, method: Method, fn: Middleware | Middleware[]): Promise<Route> {
-  return new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: [auth].concat(Array.isArray(fn) ? fn : [fn])})
+  return new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: _.concat(auth, fn)})
   .save({update_protected: true, keys: [subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method], cache: {timeout: null}});
 }
 
@@ -121,9 +121,9 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
   
-  Cache.get<Route>(Cache.types.RESOURCE, Route.__type, [subdomain, path, request.method])
+  Cache.get<Route>("resource", Route.__type, [subdomain, path, request.method])
   .then(route => {
-    if (route) {
+    if (route && route.exists) {
       if (!route.flag_active) {
         return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
         .then(user => {
@@ -162,10 +162,3 @@ export type Param = {middleware: Middleware, subdomain: string, namespace: strin
 export type Static = {subdomain: string, namespace: string, resource_path: string}
 export type Middleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void
 export type Method = "GET" | "POST" | "PUT" | "DELETE" | "PATCH"
-
-interface AuthObject {
-  route: Route
-  user_roles: Buffer[]
-  route_roles: Buffer[]
-  user: User
-}

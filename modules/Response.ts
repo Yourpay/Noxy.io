@@ -25,12 +25,28 @@ export const codes: {[status: number]: {[type: string]: string}} = {
     "get": "Could not get non-existant resource."
   },
   500: {
-    "any": "Unexpected server error occurred"
+    "any":         "Unexpected server error occurred",
+    "transaction": "Transactional error occured while writing to cache."
   }
 };
 
 export function parseError(err) {
   return _.isError(err) ? {message: err.message, stack: _.map(_.tail(err.stack.split("\n")), _.trim)} : err;
+}
+
+export class error extends Error {
+  public code: number;
+  public type: string;
+  public message: string;
+  public content: any;
+  
+  constructor(code: number, type: string, content?: any) {
+    super(_.get(codes, [code, type], "Unknown error message"));
+    this.code = codes[code] ? code : 500;
+    this.type = codes[code][type] ? type : "any";
+    this.content = content || {};
+  }
+  
 }
 
 export class json {
