@@ -87,7 +87,7 @@ for (let i = 1; i < 4; i++) {
   setTimeout(() => console.log(i * 100 + "milliseconds passed."), i * 100);
 }
 
-// console.log("Namespace", Cache.getNamespace(Cache.types.QUERY, "test"));
+setTimeout(() => console.log("Namespace", Cache.getNamespace(Cache.types.QUERY, "test", {value: true})), 1000);
 
 function print(success, number, content) {
   console.log("-------------------");
