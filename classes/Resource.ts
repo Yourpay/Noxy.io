@@ -89,7 +89,8 @@ export class Constructor {
       return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[][]>keys, () => {
         return database.query($this.__table.validationSQL(this));
       }, _.assign({}, options.cache, {timeout: 0}))
-      .map(query => _.assign(query, {__validated: true, __exists: !!query[0], __database: database.id}))
+      /* This is two levels deep now, not one level. Please fix. */
+      .map(query => _.assign(query, {__validated: true, __exists: !!query, __database: database.id}))
       .reduce((target, rs) => _.assign(target, rs ? new $this(rs) : {}), {});
     })
     .then(object => _.reduce(object, (target, key, value) => {
