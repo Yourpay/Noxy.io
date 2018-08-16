@@ -93,9 +93,6 @@ function cacheTry<T>(type: string, namespace: string, key: Key | Key[] | Key[][]
   return Cache.get(type, namespace, key)
   .then(values => {
     const promises: Promise<any>[] = _.map(values, (value, i) => {
-      // if (promise.isFulfilled()) { return promise.value(); }
-      // if (promise.isRejected() && promise.reason() !== null) { return promise.reason(); }
-      // console.log("SOME VALUE", value instanceof Response.error, value.code === 404, value.type === "any", value)
       if (value instanceof Response.error && value.code === 404 && value.type === "any") { return Promise.resolve(set.push({key: keys[i], index: i})); }
       if (_.get(__store, [type, namespace, keys[i], "promise"])) { return Cache.get(type, namespace, keys[i]); }
       return Promise.resolve(value);

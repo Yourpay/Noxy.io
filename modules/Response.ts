@@ -26,7 +26,7 @@ export const codes: {[status: number]: {[type: string]: string}} = {
   },
   500: {
     "any":         "Unexpected server error occurred",
-    "transaction": "Transactional error occured while writing to cache."
+    "transaction": "Transactional error occurred while writing to cache."
   }
 };
 

@@ -66,39 +66,38 @@ export class Constructor {
     
     if (_.size(keys) === 0) { return Promise.reject(new Response.error(500, "cache", this)); }
     if (_.size(keys) === 1 || _.every(keys, key => !_.isArray(key))) {
-      return Cache.try(Cache.types.RESOURCE, $this.__type, <string[]>keys, () => {
-        return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <string[]>keys, () => {
+      return Cache.try(Cache.types.RESOURCE, $this.__type, <Key[]>keys, () => {
+        return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[]>keys, () => {
           return database.query($this.__table.validationSQL(this));
         }, _.assign({}, options.cache, {timeout: 0}))
-        .map(query => _.assign(query, {__validated: true, __exists: !!query[0], __database: database.id}))
+        .map(query => _.assign(query, {__validated: true, __exists: !!query, __database: database.id}))
         .reduce((target, rs) => _.assign(target, rs ? new $this(rs) : {}), {});
       }, options.cache)
-      .then(object => _.reduce(object, (target, key, value) => {
+      .then(object => _.reduce(object, (target, value, key) => {
         if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
           return _.set(target, key, value);
         }
         return target;
-      }, this));
+      }, this))
     }
-    
-    
-    
-    return Cache.try<this>(Cache.types.RESOURCE, $this.__type, !_.isUndefined(options.keys) ? options.keys : this.getKeys(),
-      () => Cache(Cache.types.QUERY, $this.__type, !_.isUndefined(options.keys) ? options.keys : this.getKeys(),
-        () => database.query($this.__table.validationSQL(this)),
-        _.assign({}, options.cache, {timeout: 0})
-      )
-      .then(res => _.assign({}, this, res[0] ? new $this(res[0]) : {}, {__validated: true, __exists: !!res[0], __database: database.id})),
-      options.cache
-    )
-    .then(res =>
-      _.reduce(res, (result, value, key) => {
-        if (_.includes(["__id", "__uuid"], key) || !this[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
-          return _.set(result, key, value);
-        }
-        return result;
-      }, this)
-    );
+    return Cache.get(Cache.types.RESOURCE, $this.__type, <Key[][]>keys)
+    .then(promises => {
+      const error = _.find(promises, promise => promise instanceof Error || (promise instanceof Response.error && promise.code !== 404 && promise.type !== "any"));
+      if (error) { return Promise.reject(error); }
+      const object: Constructor = _.reduce(promises, (target, promise) => promise instanceof Constructor ? _.assign({}, target, promise) : target, null);
+      if (object && object.__validated) { return Promise.resolve(object); }
+      return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[][]>keys, () => {
+        return database.query($this.__table.validationSQL(this));
+      }, _.assign({}, options.cache, {timeout: 0}))
+      .map(query => _.assign(query, {__validated: true, __exists: !!query[0], __database: database.id}))
+      .reduce((target, rs) => _.assign(target, rs ? new $this(rs) : {}), {});
+    })
+    .then(object => _.reduce(object, (target, key, value) => {
+      if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
+        return _.set(target, key, value);
+      }
+      return target;
+    }, this))
   }
   
   public save(options: iResourceOptions = {}): Promise<this> {
