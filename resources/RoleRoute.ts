@@ -19,7 +19,7 @@ export default class RoleRoute extends Resource.Constructor {
   public role_id: Buffer;
   public route_id: Buffer;
   
-  constructor(object?: iRoleRouteObject) {
+  constructor(object: iResourceObject) {
     super(object);
     this.role_id = typeof object.role_id === "string" ? Resource.Constructor.bufferFromUuid(object.role_id) : object.role_id;
     this.route_id = typeof object.route_id === "string" ? Resource.Constructor.bufferFromUuid(object.route_id) : object.route_id;
@@ -27,7 +27,11 @@ export default class RoleRoute extends Resource.Constructor {
   
 }
 
-interface iRoleRouteObject {
+interface iQueryObject {
   role_id: string | Buffer
   route_id: string | Buffer
+}
+
+interface iResourceObject extends iQueryObject {
+
 }

@@ -35,7 +35,7 @@ export default class Route extends Resources.Constructor {
   public weight: number;
   public middleware: Middleware[];
   
-  constructor(object?: iRouteObject) {
+  constructor(object: iResourceObject = {}) {
     super(object);
     this.path = object.path || "/";
     this.namespace = object.namespace || "/";
@@ -63,7 +63,7 @@ export default class Route extends Resources.Constructor {
 //   resolve();
 // });
 
-interface iRouteObject {
+interface iQueryObject {
   id?: string
   path?: string
   method?: string
@@ -71,7 +71,9 @@ interface iRouteObject {
   namespace?: string
   flag_active?: boolean
   time_created?: number
-  
+}
+
+interface iResourceObject extends iQueryObject {
   middleware?: Middleware[]
 }
 

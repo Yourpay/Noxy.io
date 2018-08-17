@@ -36,7 +36,7 @@ export default class User extends Resource.Constructor {
   public time_created?: number;
   private __password: string;
   
-  constructor(object?: iInitializerObject) {
+  constructor(object: iResourceObject = {}) {
     super(object);
     if (this.password) {
       this.salt = User.generateSalt();
@@ -124,13 +124,16 @@ interface iUserCredentials {
   password: string
 }
 
-interface iInitializerObject {
+interface iQueryObject {
   id?: string
   username?: string
   email?: string
-  password?: string
   salt?: Buffer
   hash?: Buffer
   time_login?: number
   time_created?: number
+}
+
+interface iResourceObject extends iQueryObject {
+  password?: string
 }

@@ -24,16 +24,17 @@ function cacheGet<T>(type: string, namespace: string, key: Key | Key[] | Key[][]
   const keys = Cache.getKeyStrings(key);
   
   if (keys.length === 1) {
-    return handleGetPromise<T>(_.get(__store, [type, namespace, keys[0]], {}));
+    return handleGetPromise<T>(type, namespace, keys[0]);
   }
-  return Promise.all(_.map(keys, key => handleGetPromise<T>(_.get(__store, [type, namespace, key], {})).reflect()))
-  .map(promise => promise.isFulfilled() ? promise.value() : promise.reason ? promise.reason() : new Response.error(404, "any"));
+  return Promise.all(_.map(keys, key => handleGetPromise<T>(type, namespace, key).reflect()))
+  .map(promise => promise.isFulfilled() ? promise.value() : promise.reason ? promise.reason() : new Response.error(404, "any", {type: type, namespace: namespace, keys: key}));
 }
 
-function handleGetPromise<T>(object: iCacheObject): Promise<T> {
+function handleGetPromise<T>(type: string, namespace: string, key: Key): Promise<T> {
+  const object: iCacheObject = _.get(__store, [], {});
   if (object.timeout) { object.timeout.refresh(); }
   if (object.promise) { return object.promise; }
-  return object.value ? Promise.resolve(object.value) : Promise.reject(new Response.error(404, "any"));
+  return object.value ? Promise.resolve(object.value) : Promise.reject(new Response.error(404, "any", {type: type, namespace: namespace, keys: key}));
 }
 
 Cache.get = cacheGet;
@@ -42,7 +43,10 @@ function cacheSet<T>(type: string, namespace: string, key: Key | Key[], value: T
 function cacheSet<T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T>
 function cacheSet<T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> {
   const keys: string[] = Cache.getKeyStrings(key);
-  if (keys.length === 1) { return handleSetPromise(type, namespace, keys[0], typeof value === "function" ? value() : Promise.resolve(value), options); }
+  if (keys.length === 1) {
+    const promise = typeof value === "function" ? value() : Promise.resolve(value);
+    return handleSetPromise(type, namespace, keys[0], promise, options);
+  }
   
   if (_.some(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
     return Promise.all(_.map(keys, key => Promise.reject(_.get(__store, [type, namespace, key, "promise"]) ? key : null).reflect()))

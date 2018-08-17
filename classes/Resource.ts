@@ -70,53 +70,62 @@ export class Constructor {
         return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[]>keys, () => {
           return database.query($this.__table.validationSQL(this));
         }, _.assign({}, options.cache, {timeout: 0}))
-        .map(query => _.assign(query, {__validated: true, __exists: !!query, __database: database.id}))
-        .reduce((target, rs) => _.assign(target, rs ? new $this(rs) : {}), {});
+        /** ERROR RIGHT HERE */
+        .reduce((target, rs) => _.assign(target, rs ? new $this(rs) : {}), {__exists: true});
       }, options.cache)
-      .then(object => _.reduce(object, (target, value, key) => {
+      .then(object => console.log("OBJECT", object) || _.assign(_.reduce(object, (target, value, key) => {
         if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
           return _.set(target, key, value);
         }
         return target;
-      }, this))
+      }, this), {__validated: true, __database: database.id}))
+      .catch(err => console.log("SINGULAR ERROR", err) || console.log("ERROR THIS", this) || Promise.reject(err));
     }
     return Cache.get(Cache.types.RESOURCE, $this.__type, <Key[][]>keys)
     .then(promises => {
-      const error = _.find(promises, promise => promise instanceof Error || (promise instanceof Response.error && promise.code !== 404 && promise.type !== "any"));
+      const error = _.find(promises, promise => (<Response.error>promise).code !== 404 && (<Response.error>promise).type !== "any");
       if (error) { return Promise.reject(error); }
       const object: Constructor = _.reduce(promises, (target, promise) => promise instanceof Constructor ? _.assign({}, target, promise) : target, null);
       if (object && object.__validated) { return Promise.resolve(object); }
       return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[][]>keys, () => {
         return database.query($this.__table.validationSQL(this));
       }, _.assign({}, options.cache, {timeout: 0}))
-      /* This is two levels deep now, not one level. Please fix. */
-      .map(query => _.assign(query, {__validated: true, __exists: !!query, __database: database.id}))
-      .reduce((target, rs) => _.assign(target, rs ? new $this(rs) : {}), {});
+      .then(queries => {
+        const error = _.find(queries, query => <Error | iResourceQueryResult[]>query instanceof Error);
+        if (error) { return Promise.reject(error); }
+        return Promise.resolve(_.assign(new $this(), _.reduce(queries, (target, query: iResourceQueryResult[]) => _.assign(target, _.reduce(query, (t, row) => _.assign(t, new $this(row)), {})), {}), {__exists: true}));
+      });
     })
-    .then(object => _.reduce(object, (target, key, value) => {
-      if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
-        return _.set(target, key, value);
-      }
-      return target;
-    }, this))
+    .then(object =>
+      _.assign(_.reduce(object, (target, value, key) => {
+        if (target === undefined || $columns === undefined) {
+          console.log("MISSING");
+          console.log(target);
+          console.log($columns);
+        }
+        if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
+          return _.set(target, key, value);
+        }
+        return target;
+      }, this), {__validated: true, __database: database.id})
+    )
+    .catch(err => console.log("PLURAL ERROR", err) || console.log("ERROR THIS", this) || Promise.reject(err));
   }
   
   public save(options: iResourceOptions = {}): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const database = options.database || Database.namespace(env.mode);
+    const keys = _.filter(!_.isUndefined(options.keys) ? _.concat(<string>options.keys) : this.getKeys());
     
+    if (_.size(keys) === 0) { return Promise.reject(new Response.error(500, "cache", this)); }
     return this.validate(options)
     .then(() => {
-      return Cache.try(
-        Cache.types.QUERY,
-        $this.__type,
-        !_.isUndefined(options.keys) ? options.keys : this.getKeys(),
-        () => database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this)),
-        _.assign({}, options.cache, {timeout: 0})
-      )
-      .then(() =>
-        Cache.set(Cache.types.RESOURCE, $this.__type, !_.isUndefined(options.keys) ? options.keys : this.getKeys(), _.set(this, "__exists", true), options.cache)
-      );
+      return Cache.set(Cache.types.RESOURCE, $this.__type, <Key[] | Key[][]>keys, () => {
+        return Cache.set(Cache.types.QUERY, $this.__type, <Key[]>keys, () => {
+          return database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this));
+        }, _.assign({}, options.cache, {timeout: 0}))
+        .then(() => _.assign(this, {__exists: true}));
+      });
     });
   }
   
@@ -150,7 +159,7 @@ export class Constructor {
   public getKeys(): string[] | string[][] {
     const $this = (<typeof Constructor>this.constructor);
     const keys = [];
-    if (this.__validated) { keys.push(_.map($this.__table.getPrimaryKeys(), v => Constructor.uuidFromBuffer(this[v]))); }
+    if (this.__validated || $this.__table.__options.junction) { keys.push(_.map($this.__table.getPrimaryKeys(), v => Constructor.uuidFromBuffer(this[v]))); }
     _.each($this.__table.getUniqueKeys(), set => _.every(set, v => !_.isUndefined(this[v])) && keys.push(_.map(set, v => this[v])));
     return keys;
   }

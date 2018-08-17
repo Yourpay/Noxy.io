@@ -5,6 +5,7 @@ import * as path from "path";
 import {env, init_queue} from "../app";
 import PromiseQueue from "../classes/PromiseQueue";
 import Role from "../resources/Role";
+import RoleUser from "../resources/RoleUser";
 import User from "../resources/User";
 
 export const resource_queue = new PromiseQueue(["user", "role", "role/user"]);
@@ -58,15 +59,16 @@ resource_queue.promise("role", (resolve, reject) =>
   .catch(err => reject(err))
 );
 
-// resource_queue.promise("role/user", (resolve, reject) =>
-//   Promise.map(_.values(env.roles), role =>
-//     Promise.map(_.values(env.users), user =>
-//       new RoleUser({role_id: role.id, user_id: user.id})
-//       .save({update_protected: true})
-//     )
-//   )
-//   .then(res => resolve(res))
-//   .catch(err => reject(err))
-// );
+resource_queue.promise("role/user", (resolve, reject) =>
+  Promise.map(_.values(env.roles), role =>
+    Promise.map(_.values(env.users), user =>
+      new RoleUser({role_id: role.id, user_id: user.id})
+      .validate().then(res => console.log(res) || res.save())
+      // .save({update_protected: true})
+    )
+  )
+  .then(res => resolve(res))
+  .catch(err => reject(err))
+);
 
 init_queue.promise("resource", (resolve, reject) => resource_queue.execute().then(res => resolve(res), err => reject(err)));

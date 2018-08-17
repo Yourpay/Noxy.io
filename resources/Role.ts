@@ -26,7 +26,7 @@ export default class Role extends Resources.Constructor {
   public time_created: number;
   public time_updated: number;
   
-  constructor(object?: iRoleObject) {
+  constructor(object: iResourceObject = {}) {
     super(object);
     if (!object.key) { this.key = _.snakeCase(_.deburr(object.name)); }
     this.time_created = object.time_created ? object.time_created : Date.now();
@@ -35,11 +35,15 @@ export default class Role extends Resources.Constructor {
   
 }
 
-interface iRoleObject {
+interface iQueryObject {
   id?: string
   name?: string
   key?: string
   user_created?: User
   time_created?: number
   time_updated?: number
+}
+
+interface iResourceObject extends iQueryObject {
+
 }
