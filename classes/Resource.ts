@@ -70,16 +70,15 @@ export class Constructor {
         return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[]>keys, () => {
           return database.query($this.__table.validationSQL(this));
         }, _.assign({}, options.cache, {timeout: 0}))
-        /** ERROR RIGHT HERE */
-        .reduce((target, rs) => _.assign(target, rs ? new $this(rs) : {}), {__exists: true});
+        .then(query => _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true}));
       }, options.cache)
-      .then(object => console.log("OBJECT", object) || _.assign(_.reduce(object, (target, value, key) => {
+      .then(object => _.assign(_.reduce(object, (target, value, key) => {
         if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
           return _.set(target, key, value);
         }
         return target;
       }, this), {__validated: true, __database: database.id}))
-      .catch(err => console.log("SINGULAR ERROR", err) || console.log("ERROR THIS", this) || Promise.reject(err));
+      .catch(err => Promise.reject(err));
     }
     return Cache.get(Cache.types.RESOURCE, $this.__type, <Key[][]>keys)
     .then(promises => {
@@ -98,18 +97,13 @@ export class Constructor {
     })
     .then(object =>
       _.assign(_.reduce(object, (target, value, key) => {
-        if (target === undefined || $columns === undefined) {
-          console.log("MISSING");
-          console.log(target);
-          console.log($columns);
-        }
         if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
           return _.set(target, key, value);
         }
         return target;
       }, this), {__validated: true, __database: database.id})
     )
-    .catch(err => console.log("PLURAL ERROR", err) || console.log("ERROR THIS", this) || Promise.reject(err));
+    .catch(err => Promise.reject(err));
   }
   
   public save(options: iResourceOptions = {}): Promise<this> {
