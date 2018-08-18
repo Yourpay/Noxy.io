@@ -63,8 +63,7 @@ resource_queue.promise("role/user", (resolve, reject) =>
   Promise.map(_.values(env.roles), role =>
     Promise.map(_.values(env.users), user =>
       new RoleUser({role_id: role.id, user_id: user.id})
-      .validate().then(res => console.log(res) || res.save())
-      // .save({update_protected: true})
+      .save({update_protected: true})
     )
   )
   .then(res => resolve(res))

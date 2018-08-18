@@ -42,7 +42,7 @@
     "@types/react-router": "^4.0.30",
     "@types/react-router-dom": "^4.3.0",
     "@types/serve-favicon": "^2.2.30",
-    "@types/socket.io": "^1.4.36",
+    "@types/socket.io": "^1.4.37",
     "@types/uuid": "^3.4.3",
     "@types/webpack-env": "^1.13.6",
     "awesome-typescript-loader": "^5.2.0",

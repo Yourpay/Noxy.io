@@ -70,7 +70,7 @@ export class Constructor {
         return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[]>keys, () => {
           return database.query($this.__table.validationSQL(this));
         }, _.assign({}, options.cache, {timeout: 0}))
-        .then(query => _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true}));
+        .then(query => _.size(query) > 0 ? _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true}) : {});
       }, options.cache)
       .then(object => _.assign(_.reduce(object, (target, value, key) => {
         if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
@@ -92,6 +92,7 @@ export class Constructor {
       .then(queries => {
         const error = _.find(queries, query => <Error | iResourceQueryResult[]>query instanceof Error);
         if (error) { return Promise.reject(error); }
+        if (_.every(queries, query => _.size(query) === 0)) { return Promise.resolve({}); }
         return Promise.resolve(_.assign(new $this(), _.reduce(queries, (target, query: iResourceQueryResult[]) => _.assign(target, _.reduce(query, (t, row) => _.assign(t, new $this(row)), {})), {}), {__exists: true}));
       });
     })
