@@ -4,18 +4,21 @@ import * as Database from "../modules/Database";
 import * as Resource from "./Resource";
 
 export default class Table {
-  private static __tables: {[data: string]: {[key: string]: Table}} = {};
-  F;
+  private static __tables: {[data: string]: Table} = {};
+  
+  public readonly __key: string;
   public readonly __resource: typeof Resource.Constructor;
   public readonly __database: string;
   public readonly __columns: iTableColumns;
   public readonly __options: iTableOptions;
   
   constructor(constructor: typeof Resource.Constructor, options: iTableOptions, columns: iTableColumns) {
-    this.__database = (options.database instanceof Database.Pool ? options.database.id : options.database) || env.mode;
+    this.__database = options.database || env.mode;
+    this.__key = _.join([this.__database, constructor.__type], "::");
     
-    if (_.get(Table.__tables, [this.__database, constructor.__type])) { throw new Error("Trying to overwrite already existing table."); }
-    _.set(Table.__tables, [this.__database, constructor.__type], this);
+    if (Table.__tables[this.__key]) { throw new Error("Trying to overwrite already existing table."); }
+    
+    Table.__tables[this.__key] = this;
     
     this.__resource = constructor;
     this.__options = options;
@@ -164,7 +167,7 @@ export interface iTableOptions {
   /* Is this table coextensive? Can it exist in multiple databases? */
   coextensive?: boolean
   /* The database that this table should be assigned to if it is not coextensive */
-  database?: string | Database.Pool;
+  database?: string;
   /* Is the table a junction table? If it is, the ID column will not be added automatically. */
   junction?: boolean
   /* The default collation to use with the table */

@@ -128,7 +128,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
         .then(user => {
           if (!user.exists) { Promise.reject(null); }
-          Database.namespace(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
+          Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
           .then(user_roles => {
             if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(role.role_id) === env.roles.admin.id)) { return next(); }
             return <any>Promise.reject(null);
@@ -136,14 +136,14 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         })
         .catch(() => Promise.reject(new Response.json(404, "any")));
       }
-      return Database.namespace(env.mode).query<RoleRoute>(RoleRoute.__table.selectSQL(0, 1000, {route_id: route.id}))
+      return Database(env.mode).query<RoleRoute>(RoleRoute.__table.selectSQL(0, 1000, {route_id: route.id}))
       .then(route_roles => {
         if (route_roles.length) {
           return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
           .catch(err => Promise.reject(new Response.json(401, "jwt", err)))
           .then(user => {
             if (!user.exists) { Promise.reject(new Response.json(401, "jwt", request.get("Authorization"))); }
-            Database.namespace(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
+            Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
             .then(user_roles => {
               if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) { return next(); }
               return <any>Promise.reject(new Response.json(403, "any"));

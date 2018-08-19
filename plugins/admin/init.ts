@@ -13,7 +13,7 @@ publicize_queue.promise("setup", (resolve, reject) => {
   Promise.all([
     Application.addStatic(path.resolve(__dirname, "./public"), "admin"),
     Application.addRoute(env.subdomains.api, "db", "/", "GET", (request, response, next) => {
-      response.json(new Response.json(200, "any", _.transform(Table.tables[env.mode], (result, value, key) => _.merge(result, {[key]: _.keys(value.__columns)}), {})));
+      response.json(new Response.json(200, "any", _.transform(Table.tables, (result, value, key) => _.merge(result, {[key.split("::")[1]]: _.keys(value.__columns)}), {})));
     }),
     Application.addRoute("admin", "/", "*", "GET", (request, response, next) => {
       response.sendFile(path.resolve(__dirname, "./public/index.html"));

@@ -61,17 +61,17 @@ export class Constructor {
   public validate(options: iResourceOptions = {}): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const $columns = $this.__table.__columns;
-    const database = options.database || Database.namespace(env.mode);
+    const database = Database(options.database || env.mode);
     const keys = _.filter(!_.isUndefined(options.keys) ? _.concat(<string>options.keys) : this.getKeys());
     
     if (_.size(keys) === 0) { return Promise.reject(new Response.error(500, "cache", this)); }
     if (_.size(keys) === 1 || _.every(keys, key => !_.isArray(key))) {
-      return Cache.try(Cache.types.RESOURCE, $this.__type, <Key[]>keys, () => {
-        return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[]>keys, () => {
-          return database.query($this.__table.validationSQL(this));
-        }, _.assign({}, options.cache, {timeout: 0}))
-        .then(query => _.size(query) > 0 ? _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true}) : {});
-      }, options.cache)
+      return Cache.try(Cache.types.RESOURCE, $this.__type, <Key[]>keys, () =>
+        Cache.try(Cache.types.QUERY, $this.__type, <Key[]>keys, () =>
+          database.query($this.__table.validationSQL(this)), _.assign({}, options.cache, {timeout: 0})
+        )
+        .then(query => _.size(query) > 0 ? _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true}) : {}), options.cache
+      )
       .then(object => _.assign(_.reduce(object, (target, value, key) => {
         if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
           return _.set(target, key, value);
@@ -86,14 +86,14 @@ export class Constructor {
       if (error) { return Promise.reject(error); }
       const object: Constructor = _.reduce(promises, (target, promise) => promise instanceof Constructor ? _.assign({}, target, promise) : target, null);
       if (object && object.__validated) { return Promise.resolve(object); }
-      return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[][]>keys, () => {
-        return database.query($this.__table.validationSQL(this));
-      }, _.assign({}, options.cache, {timeout: 0}))
+      return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[][]>keys, () =>
+        database.query($this.__table.validationSQL(this)), _.assign({}, options.cache, {timeout: 0})
+      )
       .then(queries => {
         const error = _.find(queries, query => <Error | iResourceQueryResult[]>query instanceof Error);
         if (error) { return Promise.reject(error); }
         if (_.every(queries, query => _.size(query) === 0)) { return Promise.resolve({}); }
-        return Promise.resolve(_.assign(new $this(), _.reduce(queries, (target, query: iResourceQueryResult[]) => _.assign(target, _.reduce(query, (t, row) => _.assign(t, new $this(row)), {})), {}), {__exists: true}));
+        return Promise.resolve(_.assign(new $this(), _.reduce(queries, (target, query) => _.assign(target, _.reduce(query, (t, row) => _.assign(t, new $this(row)), {})), {}), {__exists: true}));
       });
     })
     .then(object =>
@@ -109,7 +109,7 @@ export class Constructor {
   
   public save(options: iResourceOptions = {}): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
-    const database = options.database || Database.namespace(env.mode);
+    const database = Database(options.database || env.mode);
     const keys = _.filter(!_.isUndefined(options.keys) ? _.concat(<string>options.keys) : this.getKeys());
     
     if (_.size(keys) === 0) { return Promise.reject(new Response.error(500, "cache", this)); }
@@ -134,7 +134,7 @@ export class Constructor {
           if (type === "binary") {
             if (value === "16") {
               if (!shallow && v.relation && (_.isString(v.relation) || _.isPlainObject(v.relation) || _.size(v.relation) === 1)) {
-                return new Table.tables[this.__database || env.mode][_.get(v, "relation.table", v.relation)].__resource({id: this[k]}).validate()
+                return new Table.tables[_.join([this.__database, _.get(v, "relation.table", v.relation)], "::")].__resource({id: this[k]}).validate()
                 .then(res => res.toObject())
                 .then(res => _.set(r, k, res));
               }
@@ -159,13 +159,13 @@ export class Constructor {
     return keys;
   }
   
-  public delete(db?: Database.Pool): Promise<this> {
+  public delete(db?: string): Promise<this> {
     return new Promise(resolve => { return resolve(this); });
   }
   
-  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.json> {
+  public static get(start?: number, limit?: number, where?: {[key: string]: any}, db?: string): Promise<Response.json> {
     const time_started = Date.now();
-    const database = db || Database.namespace(env.mode);
+    const database = Database(db || env.mode);
     
     start = start > 0 ? +start : 0;
     limit = limit > 0 && limit < 100 ? +limit : 100;
@@ -176,22 +176,22 @@ export class Constructor {
     .catch(err => new Response.json(500, "any", err, time_started));
   }
   
-  public static getBy(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.json> {
+  public static getBy(where?: {[key: string]: any}, db?: string): Promise<Response.json> {
     const time_started = Date.now();
-    const database = db || Database.namespace(env.mode);
+    const database = Database(db || env.mode);
     
     return database.query(this.__table.selectSQL(0, 1, where))
     .then(res => res.length > 0 ? new Response.json(200, "any", new this(res[0]).toObject(), time_started) : new Response.json(404, "any", null, time_started))
     .catch(() => new Response.json(500, "any", {}, time_started));
   }
   
-  public static count(where?: {[key: string]: any}, db?: Database.Pool): Promise<Response.json> {
+  public static count(where?: {[key: string]: any}, db?: string): Promise<Response.json> {
     const time_started = Date.now();
-    const database = db || Database.namespace(env.mode);
+    const database = Database(db || env.mode);
     
     return database.query<{count: number}>(this.__table.countSQL(where))
     .then(res => new Response.json(200, "any", res[0].count, time_started))
-    .catch(() => new Response.json(500, "any", {}, time_started));
+    .catch(err => new Response.json(500, "any", err, time_started));
   }
   
   public static isUuid(uuid: string): boolean {
@@ -237,7 +237,7 @@ export interface iResourceInstance {
   
   save: (options: iResourceOptions) => Promise<this>
   validate: (options: iResourceOptions) => Promise<this>
-  delete: (db?: Database.Pool) => Promise<this>
+  delete: (db?: string) => Promise<this>
 }
 
 export interface iResourceInitializer {
@@ -248,7 +248,7 @@ export interface iResourceInitializer {
 }
 
 interface iResourceOptions {
-  database?: Database.Pool,
+  database?: string,
   update_protected?: boolean
   keys?: Key | Key[] | Key[][]
   cache?: {

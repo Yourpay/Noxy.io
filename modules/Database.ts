@@ -1,44 +1,50 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as mysql from "mysql";
+import * as Response from "./Response";
 
-const mysqlAsync = Promise.promisifyAll(mysql);
+const Database: iDatabase = Default;
 
-const __cluster = mysql.createPoolCluster();
-const __pools: {[namespace: string]: Pool} = {};
-const __configurations: {[id: string]: any} = {};
-
-export function register(key: string, options: DatabaseOptions | DatabaseOptions[]): Promise<Pool> {
-  const namespace = new Pool(key);
-  return new Promise((resolve, reject) =>
-    Promise.map(Array.isArray(options) ? options : [options], o =>
-      Promise.map(Array.isArray(o.database) ? o.database : [o.database], database =>
-        namespace.add(_.assign({
-          database:           database,
-          host:               "localhost",
-          port:               3306,
-          charset:            "utf8mb4_unicode_ci",
-          timezone:           "local",
-          connectTimeout:     10000,
-          stringifyObjects:   false,
-          multipleStatements: true
-        }, _.mapKeys(options, (v, k) => _.camelCase(k))))
-      )
-    )
-    .then(() => resolve(namespace))
-    .catch(err => reject(err))
-  );
+function Default(id: string): DatabasePool
+function Default(id: string, config: DatabaseMasterEnvironmental): DatabasePool
+function Default(id: string, config?: DatabaseMasterEnvironmental): DatabasePool {
+  const pool = Database.pools[id];
+  if (config) { return pool ? Database.update(id, config) : Database.add(id, config); }
+  if (pool) { return pool; }
+  throw new Response.error(404, "pool", id);
 }
 
-export function namespace(id: string): Pool { return _.clone(__pools[id]); }
+Object.defineProperty(Database, "cluster", {value: mysql.createPoolCluster(), writable: false, configurable: false, enumerable: false});
+Object.defineProperty(Database, "pools", {value: {}, writable: false, configurable: false, enumerable: true});
 
-export function namespaces() { return _.clone(__pools); }
+function databaseAdd(id: string, config: DatabaseEnvironmental) {
+  const pool = Database.pools[id];
+  if (pool) { throw new Response.error(409, "db_add", id); }
+  return _.get(Object.defineProperty(Database, id, {value: new DatabasePool(id, config), writable: false, configurable: false, enumerable: false}), id);
+}
 
-export function configuration(id: string) { return _.clone(__configurations[id]); }
+Database.add = databaseAdd;
 
-export function configurations() { return _.clone(__configurations); }
+function databaseUpdate(id: string, config: DatabaseEnvironmental) {
+  const pool = Database.pools[id];
+  if (!pool) { throw new Response.error(409, "db_update", id); }
+  Database.remove(id);
+  return Database.add(id, config);
+}
 
-export function parse(sql: string, replacers: any | any[]) {
+Database.update = databaseUpdate;
+
+function databaseRemove(id: string) {
+  const pool = Database.pools[id];
+  if (!pool) { throw new Response.error(409, "db_delete", id); }
+  Database.cluster.remove(id);
+  Database.cluster.remove(id + "::*");
+  return delete Database.pools[id];
+}
+
+Database.remove = databaseRemove;
+
+function databaseParse(sql: string, replacers: any | any[]) {
   return _.reduce(sql.match(/(\s+|^|\()\?{1,3}(\s+|$|\))/g), (result, match, i) => {
     if (!replacers) { return result; }
     const r = _.concat(replacers)[i];
@@ -56,130 +62,100 @@ export function parse(sql: string, replacers: any | any[]) {
   }, sql);
 }
 
-export class Pool implements Pool {
+Database.parse = databaseParse;
+
+export = Database;
+
+class DatabasePool {
   
-  public readonly id: string;
-  private readonly __databases: {[key: string]: mysql.Pool} = {};
+  public id: string;
+  private __pool: mysql.Pool;
+  private __configuration: DatabaseMasterEnvironmental;
+  private __slaves: {[key: string]: {__pool: mysql.Pool, __configuration: DatabaseEnvironmental}};
   
-  constructor(id: string) {
+  constructor(id: string, config: DatabaseMasterEnvironmental) {
     this.id = id;
-    return __pools[id] || (__pools[id] = this);
+    this.__pool = mysql.createPool(config);
+    this.__configuration = DatabasePool.generateConfig(config);
+    this.__slaves = {};
+    _.each(config.slaves, slave => this.add(slave));
+    Database.pools[id] = this;
+    Database.cluster.add(id, this.__configuration);
   }
   
-  public get databases(): {[key: string]: mysql.Pool} {
-    return _.clone(this.__databases);
-  }
-  
-  public add(config: mysql.PoolConfig): Promise<this> {
-    const id = `${this.id}::${config.socketPath || config.host}::${config.database}`;
-    const path = config.socketPath || `mysql://${config.user}:${encodeURIComponent(config.password)}@${config.host}/`;
-    if (this.__databases[id]) { return Promise.resolve(this); }
-    return new Promise((resolve, reject) => mysql.createConnection(path).query("CREATE DATABASE IF NOT EXISTS `" + config.database + "`", err => err ? reject(err) : resolve()))
-    .then(() => {
-      __cluster.add(id, __configurations[id] = config);
-      this.__databases[id] = __cluster.of(id);
-      return this;
-    });
-  }
-  
-  public remove(id: string): this {
-    __cluster.remove(id);
-    delete __pools[id];
-    delete __configurations[id];
-    delete this.__databases[id];
-    return this;
-  }
-  
-  public all<T>(expression: string, replacers?: any[]): Promise<T[]> {
-    return Promise.all<T>(_.map(this.__databases, database => <any>Promise.promisify(database.query)(parse(expression, replacers))));
-  }
-  
-  public query<T>(expression: string, replacers?: any): Promise<T[]> {
-    return new Promise<T[]>((resolve, reject) =>
-      __cluster.of(`${this.id}::*`).query(parse(expression, replacers), (err, res) =>
-        err ? reject(err) : resolve(res)
-      )
-    );
-  }
-  
-  public connect(): Promise<DatabaseConnection> {
+  public query<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T[]> {
     return new Promise((resolve, reject) => {
-      __cluster.of(`${this.id}::`).getConnection((err, connection) => {
-        err ? reject(err) : resolve(new DatabaseConnection(connection));
-      });
+      const cb = (err, res) => err ? reject(err) : resolve(res);
+      const query = Database.parse(sql, replacers);
+      if (options.slave && options.master) { return Database.cluster.of(this.id).query(query, cb); }
+      if (options.slave) { return Database.cluster.of(_.isString(options.slave) ? options.slave : (this.id + "::*")).query(query, cb); }
+      return Database.cluster.of(this.id).query(query, cb);
     });
   }
   
+  private add(config: DatabaseEnvironmental) {
+    const key = config.socket_path || _.join([config.host, config.user, config.database], "::");
+    const slave = this.__slaves[key];
+    if (slave) { throw new Response.error(500, "db_add", config); }
+    this.__slaves[key] = {__configuration: DatabasePool.generateConfig(config), __pool: mysql.createPool(config)};
+    Database.cluster.add(_.join([this.id, key], "::"), this.__slaves[key].__configuration);
+  }
+  
+  private static generateConfig(config: DatabaseEnvironmental): DatabaseConfig {
+    return _.assign(
+      {
+        database:           "master",
+        host:               "localhost",
+        port:               3306,
+        charset:            "utf8mb4_unicode_ci",
+        timezone:           "local",
+        connectTimeout:     10000,
+        stringifyObjects:   false,
+        multipleStatements: true
+      },
+      <DatabaseConfig>_.mapKeys(config, (v, k) => _.camelCase(k))
+    );
+  }
+  
 }
 
-export interface IDatabaseConnection {
-  query: (expression: string, replacers?: any) => Promise<any>
-  close: () => Promise<void>
-  transaction: (options: mysql.QueryOptions) => Promise<void>
-  commit: (options: mysql.QueryOptions) => Promise<void>
+interface iDatabase extends Object {
+  cluster?: mysql.PoolCluster
+  pools?: {[key: string]: DatabasePool}
+  
+  add?: (id: string, config: DatabaseEnvironmental) => DatabasePool
+  update?: (id: string, config: DatabaseEnvironmental) => DatabasePool
+  remove?: (id: string) => boolean
+  parse?: (sql: string, replacers: any | any[]) => string
+  
+  (pool: string): DatabasePool
+  
+  (pool: string, options): DatabasePool
 }
 
-class DatabaseConnection implements IDatabaseConnection {
-  
-  private __connection: mysql.Connection;
-  
-  constructor(connection: mysql.Connection) {
-    this.__connection = connection;
-  }
-  
-  public query<T>(expression: string, replacers?: any): Promise<T[]> {
-    return new Promise<T[]>((resolve, reject) =>
-      this.__connection.query(parse(expression, replacers), (err, res) =>
-        err ? reject(err) : resolve(res)
-      )
-    );
-  }
-  
-  public transaction(options?: mysql.QueryOptions): Promise<void> {
-    return new Promise((resolve, reject) =>
-      this.__connection.beginTransaction(options, err => err ? reject(err) : resolve())
-    );
-  }
-  
-  public commit(options?: mysql.QueryOptions): Promise<void> {
-    return new Promise((resolve, reject) =>
-      this.__connection.commit(options, err => err ? reject(err) : resolve())
-    );
-  }
-  
-  public close(): Promise<void> {
-    return new Promise((resolve, reject) =>
-      this.__connection.end(err => err ? reject(err) : resolve())
-    );
-  }
-}
-
-interface DatabaseOptions {
+interface DatabaseConfig {
   user: string
   password: string
-  database: string | string[]
+  database: string
   host?: "localhost" | string
   port?: 3306 | number
   socketPath?: string
-  socket_path?: string
   localAddress?: string
-  local_address?: string
   charset?: "utf8mb4_unicode_ci" | string
   timezone?: "local" | string
   connectTimeout?: 10000 | number
-  connect_timeout?: 10000 | number
   stringifyObjects?: false | boolean
-  stringify_objects?: false | boolean
   insecureAuth?: false | boolean
-  insecure_auth?: false | boolean
   typeCast?: true
-  type_cast?: true
   supportBigNumbers?: false | boolean
-  support_big_numbers?: false | boolean
   bigNumberStrings?: false | boolean
-  big_number_strings?: false | boolean
   debug?: false | boolean | string[]
   trace?: true | boolean
-  flags?: string | string[]
+  flags?: string[]
   ssl?: any
+}
+
+interface iDatabaseQueryConfig {
+  slave?: boolean | string
+  master?: boolean
 }

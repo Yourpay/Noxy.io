@@ -22,12 +22,18 @@ export const codes: {[status: number]: {[type: string]: string}} = {
   },
   404: {
     "any": "Resource not found.",
-    "get": "Could not get non-existant resource."
+    "get": "Could not get non-existant resource.",
+    "pool": "Could not get database pool."
+  },
+  409: {
+    "cache": "Transactional error occurred while writing to cache.",
+    "pool_add": "Trying to add pool to cluster or master which already exists on pool or master.",
+    "pool_update": "Trying to update pool to cluster or master which already exists on pool or master.",
+    "pool_delete": "Trying to delete pool to cluster or master which already exists on pool or master."
   },
   500: {
-    "any":         "Unexpected server error occurred",
-    "transaction": "Transactional error occurred while writing to cache.",
-    "cache":       "Unexpected server error occurred while attempting to read from/write to the cache."
+    "any":   "Unexpected server error occurred",
+    "cache": "Unexpected server error occurred while attempting to read from/write to the cache."
   }
 };
 

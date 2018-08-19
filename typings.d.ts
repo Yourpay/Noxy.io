@@ -16,7 +16,7 @@ interface RoleEnvironmental {
 interface DatabaseEnvironmental {
   user: string
   password: string
-  database: string | string[]
+  database: "master" | string
   host?: "localhost" | string
   port?: 3306 | number
   socket_path?: string
@@ -31,8 +31,12 @@ interface DatabaseEnvironmental {
   big_number_strings?: false | boolean
   debug?: false | boolean | string[]
   trace?: true | boolean
-  flags?: string | string[]
+  flags?: string[]
   ssl?: any
+}
+
+interface DatabaseMasterEnvironmental extends DatabaseEnvironmental {
+  slaves?: {[key: string]: DatabaseEnvironmental} | DatabaseEnvironmental[]
 }
 
 declare module "*env.json" {
@@ -46,10 +50,11 @@ declare module "*env.json" {
     }
     
     databases: {
-      [key: string]: DatabaseEnvironmental | DatabaseEnvironmental[]
+      [key: string]: DatabaseMasterEnvironmental
   
-      development: DatabaseEnvironmental
-      production: DatabaseEnvironmental
+      information_schema: DatabaseMasterEnvironmental
+      development: DatabaseMasterEnvironmental
+      production: DatabaseMasterEnvironmental
     },
     
     ports: {

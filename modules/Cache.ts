@@ -51,7 +51,7 @@ function cacheSet<T>(type: string, namespace: string, key: Key | Key[] | Key[][]
   if (_.some(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
     return Promise.all(_.map(keys, key => Promise.reject(_.get(__store, [type, namespace, key, "promise"]) ? key : null).reflect()))
     .reduce((result, key) => _.concat(result, key.isFulfilled() ? key.value() : key.reason()), [])
-    .then(res => Promise.reject(new Response.error(500, "transaction", _.filter(res))));
+    .then(res => Promise.reject(new Response.error(409, "cache", _.filter(res))));
   }
   
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
@@ -69,7 +69,7 @@ function handleSetPromise<T>(type: string, namespace: string, key: string, promi
   const object: iCacheObject = _.get(__store, [type, namespace, key], {});
   
   if (object.timeout) { object.timeout.refresh(); }
-  if (object.promise) { return Promise.reject(new Response.error(500, "transaction", [key])); }
+  if (object.promise) { return Promise.reject(new Response.error(409, "cache", [key])); }
   
   _.setWith(__store, [type, namespace, key, "promise"], promise, Object);
   
