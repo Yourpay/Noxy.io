@@ -94,7 +94,7 @@ export default class Table {
   }
   
   public toSQL(): string {
-    return `${this.getTableSQL()} (${this.getTableDefinitionSQL()}) ${this.getTableOptionsSQL()};`;
+    return `${this.getTableSQL()} (${this.getTableDefinitionSQL()}) ${this.getTableOptionsSQL()}`;
   }
   
   private getTableSQL(): string {

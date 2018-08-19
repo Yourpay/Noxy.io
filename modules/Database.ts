@@ -17,15 +17,16 @@ function Default(id: string, config?: DatabaseMasterEnvironmental): DatabasePool
 Object.defineProperty(Database, "cluster", {value: mysql.createPoolCluster(), writable: false, configurable: false, enumerable: false});
 Object.defineProperty(Database, "pools", {value: {}, writable: false, configurable: false, enumerable: true});
 
-function databaseAdd(id: string, config: DatabaseEnvironmental) {
+function databaseAdd(id: string, config: DatabaseEnvironmental): DatabasePool {
   const pool = Database.pools[id];
   if (pool) { throw new Response.error(409, "db_add", id); }
+  
   return _.get(Object.defineProperty(Database, id, {value: new DatabasePool(id, config), writable: false, configurable: false, enumerable: false}), id);
 }
 
 Database.add = databaseAdd;
 
-function databaseUpdate(id: string, config: DatabaseEnvironmental) {
+function databaseUpdate(id: string, config: DatabaseEnvironmental): DatabasePool {
   const pool = Database.pools[id];
   if (!pool) { throw new Response.error(409, "db_update", id); }
   Database.remove(id);
@@ -70,17 +71,18 @@ class DatabasePool {
   
   public id: string;
   private __pool: mysql.Pool;
-  private __configuration: DatabaseMasterEnvironmental;
-  private __slaves: {[key: string]: {__pool: mysql.Pool, __configuration: DatabaseEnvironmental}};
+  private __configuration: iDatabaseConfig;
+  private __slaves: {[key: string]: {__pool: mysql.Pool, __configuration: iDatabaseConfig}};
   
   constructor(id: string, config: DatabaseMasterEnvironmental) {
     this.id = id;
-    this.__pool = mysql.createPool(config);
     this.__configuration = DatabasePool.generateConfig(config);
     this.__slaves = {};
+    this.__pool = mysql.createPool(this.__configuration);
     _.each(config.slaves, slave => this.add(slave));
     Database.pools[id] = this;
     Database.cluster.add(id, this.__configuration);
+    
   }
   
   public query<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T[]> {
@@ -101,7 +103,7 @@ class DatabasePool {
     Database.cluster.add(_.join([this.id, key], "::"), this.__slaves[key].__configuration);
   }
   
-  private static generateConfig(config: DatabaseEnvironmental): DatabaseConfig {
+  private static generateConfig(config: DatabaseEnvironmental): iDatabaseConfig {
     return _.assign(
       {
         database:           "master",
@@ -113,7 +115,7 @@ class DatabasePool {
         stringifyObjects:   false,
         multipleStatements: true
       },
-      <DatabaseConfig>_.mapKeys(config, (v, k) => _.camelCase(k))
+      <iDatabaseConfig>_.mapKeys(config, (v, k) => _.camelCase(k))
     );
   }
   
@@ -130,10 +132,10 @@ interface iDatabase extends Object {
   
   (pool: string): DatabasePool
   
-  (pool: string, options): DatabasePool
+  (pool: string, options: DatabaseMasterEnvironmental): DatabasePool
 }
 
-interface DatabaseConfig {
+interface iDatabaseConfig {
   user: string
   password: string
   database: string

@@ -20,11 +20,18 @@ db_queue.promise("register", (resolve, reject) =>
   .catch(err => reject(err))
 );
 
-db_queue.promise("create", (resolve, reject) =>
-  Promise.map(_.values(Table.tables), table => Database(table.__database).query(`SET FOREIGN_KEY_CHECKS=0; ${table.toSQL()} SET FOREIGN_KEY_CHECKS=1;`))
+db_queue.promise("create", (resolve, reject) => {
+  /* SHOULD HANDLE DATABASE CREATING AND FOREIGN KEY CHECKS SOMEHOW */
+  Promise.map(_.values(Table.tables), table =>
+    Database(table.__database).query(_.join([
+      "SET FOREIGN_KEY_CHECKS = 0",
+      table.toSQL(),
+      "SET FOREIGN_KEY_CHECKS = 1"
+    ], ";"))
+  )
   .then(res => resolve(res))
-  .catch(err => reject(err))
-);
+  .catch(err => reject(err));
+});
 
 db_queue.promise("alter", (resolve, reject) => {
   const databases = {};
