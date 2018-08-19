@@ -82,7 +82,7 @@ class DatabasePool {
     _.each(config.slaves, slave => this.add(slave));
     Database.pools[id] = this;
     Database.cluster.add(id, this.__configuration);
-    
+    /* SHOULD ADD PROMISE TO REGISTER PROMISE CHAIN AND ESTABLISH CONNECTION */
   }
   
   public query<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T[]> {
