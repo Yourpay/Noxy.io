@@ -52,6 +52,11 @@ export class error extends Error {
     this.code = codes[code] ? code : 500;
     this.type = codes[code][type] ? type : "any";
     this.message = codes[code][type];
+    if (content instanceof Error) {
+      this.message = content.message;
+      this.stack = content.stack;
+      this.content = {};
+    }
     this.content = content || {};
   }
   

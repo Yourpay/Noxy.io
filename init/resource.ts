@@ -12,25 +12,28 @@ export const resource_queue = new PromiseQueue(["user", "role", "role/user"]);
 
 resource_queue.promise("user", (resolve, reject) =>
   Promise.all(_.map(env.users, (user, key) =>
-    new User(user)
-    .validate()
-    .then(res => {
-      if (res.exists) {
-        let update = false;
-        if (user.password) { (res.password = user.password) && (update = true); }
-        if (user.email !== res.email) { (res.email = user.email) && (update = true); }
-        if (user.username !== res.username) { (res.username = user.username) && (update = true); }
-        if (!update) { return res; }
-      }
-      return res
-      .save({update_protected: true})
+    Promise.map([1, 2], i =>
+      new User(user)
+      .validate()
+      .catch(err => Promise.reject(err))
       .then(res => {
-        delete env.users[key].password;
-        env.users[key].id = res.uuid;
-        return res;
-      });
-    })
-  ))
+        if (res.exists) {
+          let update = false;
+          if (user.password) { (res.password = user.password) && (update = true); }
+          if (user.email !== res.email) { (res.email = user.email) && (update = true); }
+          if (user.username !== res.username) { (res.username = user.username) && (update = true); }
+          if (!update) { return res; }
+        }
+        return res
+        .save({update_protected: true})
+        .then(res => {
+          delete env.users[key].password;
+          env.users[key].id = res.uuid;
+          return res;
+        });
+      })
+    ))
+  )
   .tap(() => fs.writeFileSync(path.resolve(process.cwd(), "./env.json"), JSON.stringify(env, null, 2)))
   .then(res => resolve(res))
   .catch(err => reject(err))

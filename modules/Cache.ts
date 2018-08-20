@@ -43,10 +43,31 @@ function cacheSet<T>(type: string, namespace: string, key: Key | Key[], value: T
 function cacheSet<T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T>
 function cacheSet<T>(type: string, namespace: string, key: Key | Key[] | Key[][], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> {
   const keys: string[] = Cache.getKeyStrings(key);
-  if (keys.length === 1) {
-    const promise = typeof value === "function" ? value() : Promise.resolve(value);
-    return handleSetPromise(type, namespace, keys[0], promise, options);
-  }
+  return new Promise<T>((resolve, reject) => {
+    if (_.some(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
+      return reject(new Response.error(409, "cache", _.reduce(keys, (r, k) => _.get(__store, [type, namespace, k, "promise"]) ? _.concat(r, k) : r, [])));
+    }
+    
+    if (keys.length === 1) {
+      const path = [type, namespace, keys[0], "promise"];
+      return resolve(_.get(_.set(__store, path, typeof value === "function" ? value() : Promise.resolve(value)), path));
+    }
+    
+    /* FIX PATHS */
+    
+    
+    
+  })
+  .then(res => {
+    _.each(keys, key => {
+      _.unset(__store, [type, namespace, key, "promise"]);
+      _.setWith(__store, [type, namespace, key], {
+        value:   res,
+        timeout: Cache.getTimeout(type, namespace, key, _.get(options, "timeout"))
+      }, Object);
+    });
+    return res;
+  });
   
   if (_.some(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
     return Promise.all(_.map(keys, key => Promise.reject(_.get(__store, [type, namespace, key, "promise"]) ? key : null).reflect()))
@@ -69,7 +90,10 @@ function handleSetPromise<T>(type: string, namespace: string, key: string, promi
   const object: iCacheObject = _.get(__store, [type, namespace, key], {});
   
   if (object.timeout) { object.timeout.refresh(); }
-  if (object.promise) { return Promise.reject(new Response.error(409, "cache", [key])); }
+  if (object.promise) {
+    return Promise.reject(new Response.error(409, "cache", [key]))
+    .catch(err => Promise.reject(err));
+  }
   
   _.setWith(__store, [type, namespace, key, "promise"], promise, Object);
   
