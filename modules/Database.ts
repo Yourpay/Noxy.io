@@ -1,6 +1,7 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as mysql from "mysql";
+import {database_queue} from "../init/database";
 import * as Response from "./Response";
 
 const Database: iDatabase = Default;
@@ -82,7 +83,16 @@ class DatabasePool {
     _.each(config.slaves, slave => this.add(slave));
     Database.pools[id] = this;
     Database.cluster.add(id, this.__configuration);
-    /* SHOULD ADD PROMISE TO REGISTER PROMISE CHAIN AND ESTABLISH CONNECTION */
+    database_queue.promise("register", (resolve, reject) => {
+      const connector = mysql.createConnection(_.omit(this.__configuration, "database"));
+      connector.query("CREATE DATABASE IF NOT EXISTS `" + this.__configuration.database + "`", err => {
+        if (err) { return reject(err); }
+        connector.end(err => {
+          if (err) { return reject(err); }
+          return resolve();
+        });
+      });
+    });
   }
   
   public query<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T[]> {
