@@ -8,6 +8,7 @@ import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 import {publicize_queue} from "../init/publicize";
 import * as Application from "../modules/Application";
+import * as Cache from "../modules/Cache";
 import * as Response from "../modules/Response";
 import Route from "./Route";
 
@@ -105,8 +106,7 @@ publicize_queue.promise("setup", resolve => {
 
 publicize_queue.promise("publish", (resolve, reject) => {
   Promise.all([
-    new Route({subdomain: env.subdomains.api, method: "POST", namespace: require("../resources/User").default.__type, path: "/login", flag_active: true})
-    .save({update_protected: true, cache: {timeout: null}})
+    Cache.get<Route>(Cache.types.RESOURCE, Route.__type, [env.subdomains.api, "/user/login", "POST"]).then(route => Application.updateRoute(route))
   ])
   .then(res => resolve(res))
   .catch(err => reject(err));

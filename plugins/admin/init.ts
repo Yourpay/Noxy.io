@@ -5,6 +5,7 @@ import {env} from "../../app";
 import Table from "../../classes/Table";
 import {publicize_queue} from "../../init/publicize";
 import * as Application from "../../modules/Application";
+import * as Cache from "../../modules/Cache";
 import * as Response from "../../modules/Response";
 import Route from "../../resources/Route";
 
@@ -24,12 +25,12 @@ publicize_queue.promise("setup", (resolve, reject) => {
 
 });
 
-publicize_queue.promise("publish", resolve => {
-
+publicize_queue.promise("publish", (resolve, reject) => {
+  
   Promise.all([
-    new Route({subdomain: "admin", namespace: "/", path: "*", method: "GET", flag_active: true})
-    .save({update_protected: true, cache: {timeout: null}})
+    Cache.get<Route>(Cache.types.RESOURCE, Route.__type, ["admin", "/*", "GET"]).then(route => Application.updateRoute(route))
   ])
-  .then(res => resolve(res));
+  .then(res => resolve(res))
+  .catch(err => reject(err));
 
 });

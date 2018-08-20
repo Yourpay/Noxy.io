@@ -48,6 +48,11 @@ export function addRoute(subdomain: string, namespace: string, path: string, met
   .save({update_protected: true, keys: [subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method], cache: {timeout: null}});
 }
 
+export function updateRoute(route: Route, fn?: Middleware | Middleware[]): Promise<Route> {
+  // TODO: Implement middleware changer function
+  return route.save({update_protected: true, keys: [route.subdomain, ("/" + route.namespace + route.path).replace(/\/{2,}/, "/").replace(/\/$/, ""), route.method], cache: {timeout: null}})
+}
+
 export function addRoutes(subdomain: string, namespace: string, route_set: {[path: string]: {[method: string]: Middleware | Middleware[]}}): {[key: string]: Promise<Route>} {
   return _.transform(route_set, (routes, methods, url) => {
     return _.set(routes, url, _.transform(methods, (result, middleware: Middleware | Middleware[], method: Method) => {
@@ -112,7 +117,7 @@ export function publicize(): boolean {
   if (!__routers[env.subdomains.default]) { __subdomains[env.subdomains.default] = express.Router(); }
   _.each(__params, param => _.each(param.namespace ? [__routers[param.subdomain][param.namespace]] : __routers[param.subdomain], n => n.param(param.name, param.middleware)));
   __application.use("/", __subdomains[env.subdomains.default]);
-  __application.all("*", (request, response) => response.sendStatus(404));
+  __application.all("*", (request, response) => response.status(404).json(new Response.json(404, "any")));
   http.createServer(__application).listen(80);
   return __published = true;
 }
@@ -122,7 +127,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
   
   response.locals.time = Date.now();
-  Cache.get<Route>("resource", Route.__type, [subdomain, path, request.method])
+  Cache.get<Route>(Cache.types.RESOURCE, Route.__type, [subdomain, path, request.method])
   .then(route => {
     if (route && route.exists) {
       if (!route.flag_active) {
@@ -164,7 +169,10 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
     }
     return Promise.reject(new Response.json(404, "any"));
   })
-  .catch(err => err instanceof Response.json ? response.status(err.code).json(err) : response.status(500).json(new Response.json(500, "any", err)));
+  .catch(err => err instanceof Response.json
+                ? response.status(err.code).json(err)
+                : response.status(err.code || 500).json(new Response.json(err.code || 500, err.type || "any", Response.parseError(err)))
+  );
 }
 
 export type Param = {middleware: Middleware, subdomain: string, namespace: string, name: string}

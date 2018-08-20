@@ -31,7 +31,7 @@ function cacheGet<T>(type: string, namespace: string, key: Key | Key[] | Key[][]
 }
 
 function handleGetPromise<T>(type: string, namespace: string, key: Key): Promise<T> {
-  const object: iCacheObject = _.get(__store, [], {});
+  const object: iCacheObject = _.get(__store, [type, namespace, key], {});
   if (object.timeout) { object.timeout.refresh(); }
   if (object.promise) { return object.promise; }
   return object.value ? Promise.resolve(object.value) : Promise.reject(new Response.error(404, "any", {type: type, namespace: namespace, keys: key}));

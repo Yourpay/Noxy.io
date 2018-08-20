@@ -70,7 +70,8 @@ export class Constructor {
         Cache.try(Cache.types.QUERY, $this.__type, <Key[]>keys, () =>
           database.query($this.__table.validationSQL(this)), _.assign({}, options.cache, {timeout: 0})
         )
-        .then(query => _.size(query) > 0 ? _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true}) : {}), options.cache
+        .then(query => _.size(query) > 0 ? _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true}) : {}),
+        options.cache
       )
       .then(object => _.assign(_.reduce(object, (target, value, key) => {
         if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
@@ -78,11 +79,12 @@ export class Constructor {
         }
         return target;
       }, this), {__validated: true, __database: database.id}))
+      .then(resource => Cache.set(Cache.types.RESOURCE, $this.__type, resource.getKeys(), resource))
       .catch(err => Promise.reject(err));
     }
     return Cache.get(Cache.types.RESOURCE, $this.__type, <Key[][]>keys)
     .then(promises => {
-      const error = _.find(promises, promise => (<Response.error>promise).code !== 404 && (<Response.error>promise).type !== "any");
+      const error = _.find(promises, promise => promise instanceof Error && (<Response.error>promise).code !== 404 && (<Response.error>promise).type !== "any");
       if (error) { return Promise.reject(error); }
       const object: Constructor = _.reduce(promises, (target, promise) => promise instanceof Constructor ? _.assign({}, target, promise) : target, null);
       if (object && object.__validated) { return Promise.resolve(object); }
@@ -104,6 +106,7 @@ export class Constructor {
         return target;
       }, this), {__validated: true, __database: database.id})
     )
+    .then(resource => Cache.set(Cache.types.RESOURCE, $this.__type, resource.getKeys(), resource))
     .catch(err => Promise.reject(err));
   }
   
