@@ -21,13 +21,13 @@ export const codes: {[status: number]: {[type: string]: string}} = {
     "get": "Could not get non-existant resource."
   },
   404: {
-    "any": "Resource not found.",
-    "get": "Could not get non-existant resource.",
+    "any":  "Resource not found.",
+    "get":  "Could not get non-existant resource.",
     "pool": "Could not get database pool."
   },
   409: {
-    "cache": "Transactional error occurred while writing to cache.",
-    "pool_add": "Trying to add pool to cluster or master which already exists on pool or master.",
+    "cache":       "Transactional error occurred while writing to cache.",
+    "pool_add":    "Trying to add pool to cluster or master which already exists on pool or master.",
     "pool_update": "Trying to update pool to cluster or master which already exists on pool or master.",
     "pool_delete": "Trying to delete pool to cluster or master which already exists on pool or master."
   },
@@ -51,6 +51,7 @@ export class error extends Error {
     super(_.get(codes, [code, type], "Unknown error message"));
     this.code = codes[code] ? code : 500;
     this.type = codes[code][type] ? type : "any";
+    this.message = codes[code][type];
     this.content = content || {};
   }
   
