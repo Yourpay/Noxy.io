@@ -121,6 +121,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
   
+  response.locals.time = Date.now();
   Cache.get<Route>("resource", Route.__type, [subdomain, path, request.method])
   .then(route => {
     if (route && route.exists) {
@@ -130,7 +131,11 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
           if (!user.exists) { Promise.reject(null); }
           Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
           .then(user_roles => {
-            if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(role.role_id) === env.roles.admin.id)) { return next(); }
+            if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(role.role_id) === env.roles.admin.id)) {
+              response.locals.user = user;
+              response.locals.roles = user_roles;
+              return next();
+            }
             return <any>Promise.reject(null);
           });
         })
@@ -145,7 +150,11 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
             if (!user.exists) { Promise.reject(new Response.json(401, "jwt", request.get("Authorization"))); }
             Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
             .then(user_roles => {
-              if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) { return next(); }
+              if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) {
+                response.locals.user = user;
+                response.locals.roles = user_roles;
+                return next();
+              }
               return <any>Promise.reject(new Response.json(403, "any"));
             });
           });
