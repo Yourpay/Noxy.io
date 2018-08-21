@@ -41,9 +41,9 @@ interface DatabaseMasterEnvironmental extends DatabaseEnvironmental {
 
 declare module "*env.json" {
   const value: {
-  
+    
     mode: ModeEnvironmental
-  
+    
     domains: {
       development: string
       production: string
@@ -51,7 +51,7 @@ declare module "*env.json" {
     
     databases: {
       [key: string]: DatabaseMasterEnvironmental
-  
+      
       information_schema: DatabaseMasterEnvironmental
       development: DatabaseMasterEnvironmental
       production: DatabaseMasterEnvironmental
@@ -63,10 +63,10 @@ declare module "*env.json" {
       http: number
       https: number
     }
-  
+    
     subdomains: {
       [key: string]: string
-    
+      
       default: string
       api: string
     }
@@ -78,19 +78,19 @@ declare module "*env.json" {
       cert?: string
       ca?: string
     }
-  
+    
     tokens: {[key: string]: string}
-  
+    
     users: {
       [key: string]: UserEnvironmental
-    
+      
       admin: UserEnvironmental
       server: UserEnvironmental
     }
-  
+    
     roles: {
       [key: string]: RoleEnvironmental
-    
+      
       user: RoleEnvironmental
       admin: RoleEnvironmental
     }
@@ -99,5 +99,10 @@ declare module "*env.json" {
   export = value;
 }
 
-declare module "*.json"
-
+declare module _ {
+  interface LoDashStatic {
+    pack<T>(value: T | T[]): T[];
+    
+    unpack<T>(value: T[]): T | T[];
+  }
+}

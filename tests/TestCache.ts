@@ -88,6 +88,20 @@ const tests = _.shuffle([
   },
   
   {
+    key: 12,
+    fn:  () => Cache.try(Cache.types.QUERY, "test", [[8], [9]], () => new Promise(resolve => setTimeout(() => resolve({test: 12}), 300)))
+    .then(res => print(true, 12, res))
+    .catch(err => print(false, 12, err))
+  },
+  
+  {
+    key: 13,
+    fn:  () => Cache.try(Cache.types.QUERY, "test", [[8], [9]], () => new Promise(resolve => setTimeout(() => resolve({test: 13}), 300)))
+    .then(res => print(true, 13, res))
+    .catch(err => print(false, 13, err))
+  },
+  
+  {
     key: -1,
     fn:  () => Cache.get(Cache.types.QUERY, "test", [0])
     .then(res => print(true, -1, res))

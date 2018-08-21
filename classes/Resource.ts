@@ -62,66 +62,55 @@ export class Constructor {
     const $this = (<typeof Constructor>this.constructor);
     const $columns = $this.__table.__columns;
     const database = Database(options.database || env.mode);
-    const keys = _.filter(!_.isUndefined(options.keys) ? _.concat(<string>options.keys) : this.getKeys());
+    const query_options = _.assign({}, options.cache, {timeout: 0});
+    const keys = options.keys || Cache.createKeys(this.getKeys());
     
-    if (_.size(keys) === 0) { return Promise.reject(new Response.error(500, "cache", this)); }
-    if (_.size(keys) === 1 || _.every(keys, key => !_.isArray(key))) {
-      return Cache.try(Cache.types.RESOURCE, $this.__type, <Key[]>keys, () =>
-        Cache.try(Cache.types.QUERY, $this.__type, <Key[]>keys, () =>
-          database.query($this.__table.validationSQL(this)), _.assign({}, options.cache, {timeout: 0})
-        )
-        .then(query => _.size(query) > 0 ? _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true}) : {}),
-        options.cache
-      )
-      .then(object => _.assign(_.reduce(object, (target, value, key) => {
-        if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
-          return _.set(target, key, value);
-        }
-        return target;
-      }, this), {__validated: true, __database: database.id}))
-      .then(resource => Cache.set(Cache.types.RESOURCE, $this.__type, resource.getKeys(), resource))
-      .catch(err => Promise.reject(err));
-    }
-    return Cache.get(Cache.types.RESOURCE, $this.__type, <Key[][]>keys)
-    .then(promises => {
-      const error = _.find(promises, promise => promise instanceof Error && (<Response.error>promise).code !== 404 && (<Response.error>promise).type !== "any");
-      if (error) { return Promise.reject(error); }
-      const object: Constructor = _.reduce(promises, (target, promise) => promise instanceof Constructor ? _.assign({}, target, promise) : target, null);
-      if (object && object.__validated) { return Promise.resolve(object); }
-      return Cache.try<iResourceQueryResult[]>(Cache.types.QUERY, $this.__type, <Key[][]>keys, () =>
-        database.query($this.__table.validationSQL(this)), _.assign({}, options.cache, {timeout: 0})
-      )
-      .then(queries => {
-        const error = _.find(queries, query => <Error | iResourceQueryResult[]>query instanceof Error);
-        if (error) { return Promise.reject(error); }
-        if (_.every(queries, query => _.size(query) === 0)) { return Promise.resolve({}); }
-        return Promise.resolve(_.assign(new $this(), _.reduce(queries, (target, query) => _.assign(target, _.reduce(query, (t, row) => _.assign(t, new $this(row)), {})), {}), {__exists: true}));
+    if (keys.length === 0) { return Promise.reject(new Response.error(400, "cache", this)); }
+    
+    return Cache.get(Cache.types.RESOURCE, $this.__type, keys)
+    .catch(err => err.code === 404 && err.type === "cache" ? [err] : Promise.reject(new Response.error(err.code || 500, err.type || "any", err)))
+    .then(resources => {
+      const resource = _.find(resources, resource => !(resource instanceof Response.error));
+      if (resource) { return resource; }
+      return Cache.get(Cache.types.QUERY, $this.__type, keys)
+      .catch(err => {
+        if (err.code !== 404 && err.type !== "cache") { return Promise.reject(new Response.error(err.code || 500, err.type || "any", err)); }
+        return Cache.set(Cache.types.QUERY, $this.__type, keys, () => database.query($this.__table.validationSQL(this)), query_options)
+        .then(query => {
+          if (_.size(query) === 0) { return {}; }
+          return _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true});
+        })
+        .catch(err => console.log(err) || Promise.reject(new Response.error(err.code || 500, err.type || "any", err)));
       });
     })
-    .then(object =>
-      _.assign(_.reduce(object, (target, value, key) => {
-        if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
-          return _.set(target, key, value);
-        }
-        return target;
-      }, this), {__validated: true, __database: database.id})
-    )
-    .then(resource => Cache.set(Cache.types.RESOURCE, $this.__type, resource.getKeys(), resource))
+    .then(resource => {
+      return _.assign(
+        _.reduce(resource, (target, value, key) => {
+          if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
+            return _.set(target, key, value);
+          }
+          return target;
+        }, this),
+        {__validated: true, __database: database.id}
+      );
+    })
     .catch(err => Promise.reject(err));
   }
   
   public save(options: iResourceOptions = {}): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const database = Database(options.database || env.mode);
-    const keys = _.filter(!_.isUndefined(options.keys) ? _.concat(<string>options.keys) : this.getKeys());
+    const keys = options.keys || Cache.createKeys(this.getKeys());
+    const query_options = _.assign({}, options.cache, {timeout: 0});
     
-    if (_.size(keys) === 0) { return Promise.reject(new Response.error(500, "cache", this)); }
+    if (keys.length === 0) { return Promise.reject(new Response.error(400, "cache", this)); }
+    
     return this.validate(options)
     .then(() => {
-      return Cache.set(Cache.types.RESOURCE, $this.__type, <Key[] | Key[][]>keys, () => {
-        return Cache.set(Cache.types.QUERY, $this.__type, <Key[]>keys, () => {
+      return Cache.set(Cache.types.RESOURCE, $this.__type, keys, () => {
+        return Cache.set(Cache.types.QUERY, $this.__type, keys, () => {
           return database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this));
-        }, _.assign({}, options.cache, {timeout: 0}))
+        }, query_options)
         .then(() => _.assign(this, {__exists: true}));
       });
     });
@@ -253,7 +242,7 @@ export interface iResourceInitializer {
 interface iResourceOptions {
   database?: string,
   update_protected?: boolean
-  keys?: Key | Key[] | Key[][]
+  keys?: string | string[]
   cache?: {
     timeout?: number
   }
@@ -263,4 +252,3 @@ interface iResourceQueryResult {
   [key: string]: string | number | boolean | Buffer | Date
 }
 
-type Key = string | number;

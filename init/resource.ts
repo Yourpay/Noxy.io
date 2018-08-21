@@ -12,11 +12,11 @@ export const resource_queue = new PromiseQueue(["user", "role", "role/user"]);
 
 resource_queue.promise("user", (resolve, reject) =>
   Promise.all(_.map(env.users, (user, key) =>
-    Promise.map([1, 2], i =>
+    Promise.map([1, 2, 3], i =>
       new User(user)
       .validate()
-      .catch(err => Promise.reject(err))
       .then(res => {
+        console.log(i, "Validated");
         if (res.exists) {
           let update = false;
           if (user.password) { (res.password = user.password) && (update = true); }
@@ -24,9 +24,11 @@ resource_queue.promise("user", (resolve, reject) =>
           if (user.username !== res.username) { (res.username = user.username) && (update = true); }
           if (!update) { return res; }
         }
+        console.log("Saving");
         return res
         .save({update_protected: true})
         .then(res => {
+          console.log("Saved");
           delete env.users[key].password;
           env.users[key].id = res.uuid;
           return res;

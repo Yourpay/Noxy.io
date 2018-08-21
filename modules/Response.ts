@@ -10,7 +10,8 @@ export const codes: {[status: number]: {[type: string]: string}} = {
     "get":       "Could not retrieve data due to missing or errorful data.",
     "post":      "Could not create or change resource due to missing or errorful data.",
     "update":    "Could not update resource due to missing or errorful data.",
-    "duplicate": "Resource already exists and no duplicates are allowed."
+    "duplicate": "Resource already exists and no duplicates are allowed.",
+    "cache":     "No keys or value given to Cache function."
   },
   401: {
     "any": "Unauthorized",
@@ -22,8 +23,9 @@ export const codes: {[status: number]: {[type: string]: string}} = {
   },
   404: {
     "any":  "Resource not found.",
-    "get":  "Could not get non-existant resource.",
-    "pool": "Could not get database pool."
+    "get":  "Could not find non-existant resource.",
+    "pool": "Could not find database pool.",
+    "cache": "Could not find the value at the given key in the cache."
   },
   409: {
     "cache":       "Transactional error occurred while writing to cache.",
@@ -52,12 +54,14 @@ export class error extends Error {
     this.code = codes[code] ? code : 500;
     this.type = codes[code][type] ? type : "any";
     this.message = codes[code][type];
-    if (content instanceof Error) {
+    if (content.constructor === Error || content.constructor === error) {
       this.message = content.message;
       this.stack = content.stack;
-      this.content = {};
+      this.content = content.content || {};
     }
-    this.content = content || {};
+    else {
+      this.content = content || {};
+    }
   }
   
 }
