@@ -106,7 +106,7 @@ publicize_queue.promise("setup", resolve => {
 
 publicize_queue.promise("publish", (resolve, reject) => {
   Promise.all([
-    Cache.get<Route>(Cache.types.RESOURCE, Route.__type, [env.subdomains.api, "/user/login", "POST"]).then(route => Application.updateRoute(route))
+    Cache.getOne<Route>(Cache.types.RESOURCE, Route.__type, Cache.toKey([env.subdomains.api, "/user/login", "POST"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
   ])
   .then(res => resolve(res))
   .catch(err => reject(err));

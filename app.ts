@@ -9,11 +9,14 @@ export const init_queue = new PromiseQueue(["db", "resource", "publicize"]);
 Include({path: __dirname + "/init"})
 .then(() => Include({path: __dirname + "/plugins", filter: /^[\w\d\s]+\/init\.js/}))
 .then(() => init_queue.execute())
-.catch(err => {
-  console.error(err);
-  process.exitCode = 1;
-})
 .tap(() => {
   // console.log(Cache.getNamespace(Cache.types.RESOURCE, "user", {value: true}));
   console.log("Server is up and running.");
+})
+.catch(err => {
+  console.log("Server could not start due to the following error:");
+  console.log("--------------------------------------------------");
+  console.log(err);
+  process.exitCode = 1;
 });
+

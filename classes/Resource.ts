@@ -58,33 +58,31 @@ export class Constructor {
     this.__id = Constructor.bufferFromUuid(value);
   }
   
-  public validate(options: iResourceOptions = {}): Promise<this> {
+  public validate<T extends this>(options: iResourceOptions = {}): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const $columns = $this.__table.__columns;
     const database = Database(options.database || env.mode);
     const query_options = _.assign({}, options.cache, {timeout: 0});
-    const keys = options.keys || Cache.createKeys(this.getKeys());
+    const keys = _.concat(_.get(options, "cache.keys", Cache.toKeys(this.getKeys())));
     
     if (keys.length === 0) { return Promise.reject(new Response.error(400, "cache", this)); }
     
-    return Cache.get(Cache.types.RESOURCE, $this.__type, keys)
-    .catch(err => err.code === 404 && err.type === "cache" ? [err] : Promise.reject(new Response.error(err.code || 500, err.type || "any", err)))
-    .then(resources => {
-      const resource = _.find(resources, resource => !(resource instanceof Response.error));
-      if (resource) { return resource; }
-      return Cache.get(Cache.types.QUERY, $this.__type, keys)
+    return Cache.getAny<T>(Cache.types.RESOURCE, $this.__type, keys)
+    .catch(err => {
+      if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code || 500, err.type || "any", err)); }
+      return Cache.getAny(Cache.types.QUERY, $this.__type, keys)
       .catch(err => {
-        if (err.code !== 404 && err.type !== "cache") { return Promise.reject(new Response.error(err.code || 500, err.type || "any", err)); }
+        if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code || 500, err.type || "any", err)); }
         return Cache.set(Cache.types.QUERY, $this.__type, keys, () => database.query($this.__table.validationSQL(this)), query_options)
         .then(query => {
           if (_.size(query) === 0) { return {}; }
           return _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true});
-        })
-        .catch(err => console.log(err) || Promise.reject(new Response.error(err.code || 500, err.type || "any", err)));
-      });
+        });
+      })
+      .catch(err => Promise.reject(new Response.error(err.code || 500, err.type || "any", err)));
     })
     .then(resource => {
-      return _.assign(
+      return Cache.set<this>(Cache.types.RESOURCE, $this.__type, keys, _.assign(
         _.reduce(resource, (target, value, key) => {
           if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
             return _.set(target, key, value);
@@ -92,21 +90,20 @@ export class Constructor {
           return target;
         }, this),
         {__validated: true, __database: database.id}
-      );
-    })
-    .catch(err => Promise.reject(err));
+      ));
+    });
   }
   
   public save(options: iResourceOptions = {}): Promise<this> {
     const $this = (<typeof Constructor>this.constructor);
     const database = Database(options.database || env.mode);
-    const keys = options.keys || Cache.createKeys(this.getKeys());
+    const keys = _.concat(_.get(options, "cache.keys", Cache.toKeys(this.getKeys())));
     const query_options = _.assign({}, options.cache, {timeout: 0});
     
     if (keys.length === 0) { return Promise.reject(new Response.error(400, "cache", this)); }
     
     return this.validate(options)
-    .then(() => {
+    .tap(() => {
       return Cache.set(Cache.types.RESOURCE, $this.__type, keys, () => {
         return Cache.set(Cache.types.QUERY, $this.__type, keys, () => {
           return database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this));
@@ -143,7 +140,7 @@ export class Constructor {
     );
   }
   
-  public getKeys(): string[] | string[][] {
+  public getKeys(): string[][] {
     const $this = (<typeof Constructor>this.constructor);
     const keys = [];
     if (this.__validated || $this.__table.__options.junction) { keys.push(_.map($this.__table.getPrimaryKeys(), v => Constructor.uuidFromBuffer(this[v]))); }
@@ -242,8 +239,8 @@ export interface iResourceInitializer {
 interface iResourceOptions {
   database?: string,
   update_protected?: boolean
-  keys?: string | string[]
   cache?: {
+    keys?: string | string[]
     timeout?: number
   }
 }

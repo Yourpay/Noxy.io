@@ -10,7 +10,7 @@ import * as Response from "../../modules/Response";
 import Route from "../../resources/Route";
 
 publicize_queue.promise("setup", (resolve, reject) => {
-
+  
   Promise.all([
     Application.addStatic(path.resolve(__dirname, "./public"), "admin"),
     Application.addRoute(env.subdomains.api, "db", "/", "GET", (request, response, next) => {
@@ -22,15 +22,15 @@ publicize_queue.promise("setup", (resolve, reject) => {
   ])
   .then(res => resolve(res))
   .error(err => resolve(err));
-
+  
 });
 
 publicize_queue.promise("publish", (resolve, reject) => {
   
   Promise.all([
-    Cache.get<Route>(Cache.types.RESOURCE, Route.__type, ["admin", "/*", "GET"]).then(route => Application.updateRoute(route))
+    Cache.getOne<Route>(Cache.types.RESOURCE, Route.__type, Cache.toKey(["admin", "/*", "GET"])).then(route => Application.updateRoute(route))
   ])
   .then(res => resolve(res))
   .catch(err => reject(err));
-
+  
 });

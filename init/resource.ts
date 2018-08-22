@@ -4,42 +4,29 @@ import * as _ from "lodash";
 import * as path from "path";
 import {env, init_queue} from "../app";
 import PromiseQueue from "../classes/PromiseQueue";
+import * as Response from "../modules/Response";
 import Role from "../resources/Role";
 import RoleUser from "../resources/RoleUser";
 import User from "../resources/User";
 
 export const resource_queue = new PromiseQueue(["user", "role", "role/user"]);
 
-resource_queue.promise("user", (resolve, reject) =>
-  Promise.all(_.map(env.users, (user, key) =>
-    Promise.map([1, 2, 3], i =>
-      new User(user)
-      .validate()
-      .then(res => {
-        console.log(i, "Validated");
-        if (res.exists) {
-          let update = false;
-          if (user.password) { (res.password = user.password) && (update = true); }
-          if (user.email !== res.email) { (res.email = user.email) && (update = true); }
-          if (user.username !== res.username) { (res.username = user.username) && (update = true); }
-          if (!update) { return res; }
-        }
-        console.log("Saving");
-        return res
-        .save({update_protected: true})
-        .then(res => {
-          console.log("Saved");
-          delete env.users[key].password;
-          env.users[key].id = res.uuid;
-          return res;
-        });
-      })
-    ))
-  )
+resource_queue.promise("user", (resolve, reject) => {
+  Promise.props(_.mapValues(env.users, (user, key) => {
+    return new User(user).validate()
+    .then(resource => {
+      if (!user.password && _.isEqual(_.assign({}, resource, user), resource)) { return resource; }
+      return resource.save({update_protected: true})
+      .tap(resource => {
+        delete env.users[key].password;
+        env.users[key].id = resource.uuid;
+      });
+    });
+  }))
   .tap(() => fs.writeFileSync(path.resolve(process.cwd(), "./env.json"), JSON.stringify(env, null, 2)))
   .then(res => resolve(res))
-  .catch(err => reject(err))
-);
+  .catch(err => console.log(err) || reject(new Response.error(err.code || 500, err.type || "any", err)));
+});
 
 resource_queue.promise("role", (resolve, reject) =>
   Promise.all(_.map(env.roles, (role, key) =>

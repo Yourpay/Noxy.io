@@ -34,23 +34,29 @@ __application.use(favicon(path.join(__dirname, "../favicon.ico")));
 
 export function addStatic(resource_path: string, subdomain: string, namespace?: string): Static {
   const key = _.join(_.filter([subdomain, namespace]), "::");
+  
   return __statics[key] = {subdomain: subdomain, namespace: namespace, resource_path: resource_path};
 }
 
 export function addParam(subdomain: string, param: string, fn: Middleware): Param
 export function addParam(subdomain: string, ns_pm: string, pm_fn: string | Middleware, fn?: Middleware): Param {
-  const key = _.join(_.filter([subdomain, ns_pm, pm_fn], v => typeof v !== "string"), "::");
+  const key = Cache.toKey(<string[]>_.filter([subdomain, ns_pm, pm_fn], v => typeof v === "string"));
+  
   return __params[key] = {middleware: fn ? fn : <Middleware>pm_fn, subdomain: subdomain, namespace: fn ? ns_pm : null, name: fn ? <string>pm_fn : ns_pm};
 }
 
 export function addRoute(subdomain: string, namespace: string, path: string, method: Method, fn: Middleware | Middleware[]): Promise<Route> {
+  const key = Cache.toKey([subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method]);
+  
   return new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: _.concat(auth, fn)})
-  .save({update_protected: true, keys: [subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method], cache: {timeout: null}});
+  .save({update_protected: true, cache: {keys: key, timeout: null}});
 }
 
 export function updateRoute(route: Route, fn?: Middleware | Middleware[]): Promise<Route> {
   // TODO: Implement middleware changer function
-  return route.save({update_protected: true, keys: [route.subdomain, ("/" + route.namespace + route.path).replace(/\/{2,}/, "/").replace(/\/$/, ""), route.method], cache: {timeout: null}})
+  const key = Cache.toKey([route.subdomain, ("/" + route.namespace + route.path).replace(/\/{2,}/, "/").replace(/\/$/, ""), route.method]);
+  
+  return route.save({update_protected: true, cache: {keys: key, timeout: null}});
 }
 
 export function addRoutes(subdomain: string, namespace: string, route_set: {[path: string]: {[method: string]: Middleware | Middleware[]}}): {[key: string]: Promise<Route>} {
@@ -125,23 +131,27 @@ export function publicize(): boolean {
 function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction): void {
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
+  const key = Cache.toKey([subdomain, path, request.method]);
   
   response.locals.time = Date.now();
-  Cache.get<Route>(Cache.types.RESOURCE, Route.__type, [subdomain, path, request.method])
+  Cache.getOne<Route>(Cache.types.RESOURCE, Route.__type, key)
   .then(route => {
     if (route && route.exists) {
       if (!route.flag_active) {
-        return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
+        return new Promise(resolve => resolve(jwt.verify(request.get("Authorization"), env.tokens.jwt)))
         .then(user => {
-          if (!user.exists) { Promise.reject(null); }
-          Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
-          .then(user_roles => {
-            if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(role.role_id) === env.roles.admin.id)) {
-              response.locals.user = user;
-              response.locals.roles = user_roles;
-              return next();
-            }
-            return <any>Promise.reject(null);
+          return Promise.resolve(new User(user).validate())
+          .then(user => {
+            if (!user.exists) { Promise.reject(null); }
+            Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
+            .then(user_roles => {
+              if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(role.role_id) === env.roles.admin.id)) {
+                response.locals.user = user;
+                response.locals.roles = user_roles;
+                return next();
+              }
+              return <any>Promise.reject(null);
+            });
           });
         })
         .catch(() => Promise.reject(new Response.json(404, "any")));
@@ -149,30 +159,34 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
       return Database(env.mode).query<RoleRoute>(RoleRoute.__table.selectSQL(0, 1000, {route_id: route.id}))
       .then(route_roles => {
         if (route_roles.length) {
-          return new User(<any>jwt.verify(request.get("Authorization"), env.tokens.jwt)).validate()
-          .catch(err => Promise.reject(new Response.json(401, "jwt", err)))
+          return new Promise(resolve => resolve(jwt.verify(request.get("Authorization"), env.tokens.jwt)))
           .then(user => {
-            if (!user.exists) { Promise.reject(new Response.json(401, "jwt", request.get("Authorization"))); }
-            Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
-            .then(user_roles => {
-              if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) {
-                response.locals.user = user;
-                response.locals.roles = user_roles;
-                return next();
-              }
-              return <any>Promise.reject(new Response.json(403, "any"));
+            return new User(user).validate()
+            .then(user => {
+              if (!user.exists) { Promise.reject(new Response.json(401, "jwt", request.get("Authorization"))); }
+              Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
+              .then(user_roles => {
+                if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) {
+                  response.locals.user = user;
+                  response.locals.roles = user_roles;
+                  return next();
+                }
+                return <any>Promise.reject(new Response.json(403, "any"));
+              });
             });
-          });
+          })
+          .catch(err => Promise.reject(new Response.json(401, "jwt", err)));
         }
         return next();
       });
     }
     return Promise.reject(new Response.json(404, "any"));
   })
-  .catch(err => err instanceof Response.json
-                ? response.status(err.code).json(err)
-                : response.status(err.code || 500).json(new Response.json(err.code || 500, err.type || "any", Response.parseError(err)))
-  );
+  .catch(err => {
+    if (err instanceof Response.json) { return response.status(err.code).json(err); }
+    if (err.name === "JsonWebTokenError") { return response.status(401).json(new Response.json(401, "jwt")); }
+    return response.status(err.code || 500).json(new Response.json(err.code || 500, err.type || "any", Response.parseError(err)));
+  });
 }
 
 export type Param = {middleware: Middleware, subdomain: string, namespace: string, name: string}
