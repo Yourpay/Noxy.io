@@ -22,10 +22,11 @@ export const codes: {[status: number]: {[type: string]: string}} = {
     "get": "Could not get non-existant resource."
   },
   404: {
-    "any":  "Resource not found.",
-    "get":  "Could not find non-existant resource.",
-    "pool": "Could not find database pool.",
-    "cache": "Could not find the value at the given key in the cache."
+    "any":      "Resource not found.",
+    "get":      "Could not find non-existant resource.",
+    "pool":     "Could not find database pool.",
+    "cache":    "Could not find the value at the given key in the cache.",
+    "external": "Could not find the value at the given key in the cache."
   },
   409: {
     "cache":       "Transactional error occurred while writing to cache.",
@@ -52,12 +53,12 @@ export class error extends Error {
   constructor(code: number, type: string, content?: any) {
     super(_.get(codes, [code, type], "Unknown error message"));
     this.code = codes[code] ? code : 500;
-    this.type = codes[code][type] ? type : "any";
-    this.message = codes[code][type];
-    if (content.constructor === Error || content.constructor === error) {
+    this.type = codes[this.code][type] ? type : "any";
+    this.message = codes[this.code][this.type];
+    if (content instanceof Error) {
       this.message = content.message;
       this.stack = content.stack;
-      this.content = content.content || {};
+      this.content = (<any>content).content || {};
     }
     else {
       this.content = content || {};

@@ -28,7 +28,7 @@ function cacheGet<T>(type: string, namespace: string, keys: Key[]): Promise<(T |
     return Promise.reject(new Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
   })
   .then(values => {
-    if (_.every(values, value => value instanceof Error)) { return Promise.reject(new Response.error(404, "cache", _.map(values, "content"))); }
+    if (_.every(values, value => value instanceof Error)) { throw new Response.error(404, "cache", _.map(values, "content")); }
     return Promise.resolve(values);
   });
 }
@@ -55,10 +55,10 @@ function cacheGetAny<T>(type: string, namespace, keys: Key[]): Promise<T> {
     return Promise.reject(new Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
   }))
   .catch(err => {
-    if (_.every(err, e => e.code === 404 && e.type === "cache")) { return Promise.reject(new Response.error(404, "cache", _.map(err, "content"))); }
+    if (_.every(err, e => e.code === 404 && e.type === "cache")) { throw new Response.error(404, "cache", _.map(err, "content")); }
     const t_error = _.find(err, e => !e.code && !e.type);
-    if (t_error) { return Promise.reject(new Response.error(500, "cache", t_error)); }
-    return Promise.reject(new Response.error(500, "cache", err));
+    if (t_error) { throw new Response.error(500, "cache", t_error); }
+    throw new Response.error(500, "cache", err);
   });
 }
 
@@ -66,7 +66,6 @@ Cache.getAny = cacheGetAny;
 
 function cacheSet<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> {
   if (_.some(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
-    console.log("Test", keys)
     return Promise.reject(new Response.error(409, "cache", _.filter(_.map(keys, k => _.get(__store, [type, namespace, k, "promise"]) ? k : null))));
   }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);

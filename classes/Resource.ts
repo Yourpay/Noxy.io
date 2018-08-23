@@ -100,7 +100,7 @@ export class Constructor {
     if (keys.length === 0) { return Promise.reject(new Response.error(400, "cache", this)); }
     
     return this.validate(options)
-    .tap(() => {
+    .tap(res => {
       return Cache.set(Cache.types.RESOURCE, $this.__type, keys, () => {
         return Cache.set(Cache.types.QUERY, $this.__type, keys, () => {
           return database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this));
