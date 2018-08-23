@@ -74,10 +74,7 @@ export class Constructor {
       .catch(err => {
         if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code || 500, err.type || "any", err)); }
         return Cache.set(Cache.types.QUERY, $this.__type, keys, () => database.query($this.__table.validationSQL(this)), query_options)
-        .then(query => {
-          if (_.size(query) === 0) { return {}; }
-          return _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true});
-        });
+        .then(query => _.size(query) > 0 ? _.assign(new $this(_.reduce(query, (target, rs) => _.assign(target, rs))), {__exists: true}) : {});
       })
       .catch(err => Promise.reject(new Response.error(err.code || 500, err.type || "any", err)));
     })
