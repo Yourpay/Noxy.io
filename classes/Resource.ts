@@ -120,7 +120,11 @@ export class Constructor {
           if (type === "binary") {
             if (value === "16") {
               if (!shallow && v.relation && (_.isString(v.relation) || _.isPlainObject(v.relation) || _.size(v.relation) === 1)) {
-                return new Table.tables[_.join([this.__database, _.get(v, "relation.table", v.relation)], "::")].__resource({id: this[k]}).validate()
+                Cache.getOne<Constructor>(Cache.types.RESOURCE, $this.__type, this[k])
+                .catch(err => {
+                  if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code || 500, err.type || "any", err)); }
+                  return new Table.tables[_.join([this.__database, _.get(v, "relation.table", v.relation)], "::")].__resource({id: this[k]}).validate();
+                })
                 .then(res => res.toObject())
                 .then(res => _.set(r, k, res));
               }

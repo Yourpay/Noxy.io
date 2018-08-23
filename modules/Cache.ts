@@ -104,7 +104,7 @@ function cacheSetAny<T>(type: string, namespace: string, keys: Key[], value: T |
   const sets = _.filter(_.map(keys, key => !_.get(__store, [type, namespace, key, "promise"]) ? key : null));
   _.each(keys, key => _.set(__store, [type, namespace, key, "promise"], promise));
   return promise.tap(res => {
-    _.each(keys, key => {
+    _.each(sets, key => {
       _.unset(__store, [type, namespace, key, "promise"]);
       _.setWith(__store, [type, namespace, key], {
         value:   res,
