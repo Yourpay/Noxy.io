@@ -49,7 +49,7 @@ export function addRoute(subdomain: string, namespace: string, path: string, met
   const key = Cache.toKey([subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method]);
   
   return new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: _.concat(auth, fn)})
-  .save({update_protected: true, cache: {keys: key, timeout: null}});
+  .save({update_protected: true, cache: {keys: key, timeout: null}})
 }
 
 export function updateRoute(route: Route, fn?: Middleware | Middleware[]): Promise<Route> {
@@ -133,9 +133,12 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
   const key = Cache.toKey([subdomain, path, request.method]);
   
+  console.log(path, subdomain, key)
+  
   response.locals.time = Date.now();
   Cache.getOne<Route>(Cache.types.RESOURCE, Route.__type, key)
   .then(route => {
+    console.log(route)
     if (route && route.exists) {
       if (!route.flag_active) {
         return new Promise(resolve => resolve(jwt.verify(request.get("Authorization"), env.tokens.jwt)))
@@ -183,6 +186,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
     return Promise.reject(new Response.json(404, "any"));
   })
   .catch(err => {
+    console.log(err);
     if (err instanceof Response.json) { return response.status(err.code).json(err); }
     if (err.name === "JsonWebTokenError") { return response.status(401).json(new Response.json(401, "jwt")); }
     return response.status(err.code || 500).json(new Response.json(err.code || 500, err.type || "any", Response.parseError(err)));

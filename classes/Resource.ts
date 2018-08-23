@@ -87,7 +87,7 @@ export class Constructor {
           return target;
         }, this),
         {__validated: true, __database: database.id}
-      ));
+      ), options.cache);
     });
   }
   
@@ -106,7 +106,7 @@ export class Constructor {
           return database.query(_.invoke($this.__table, this.__exists ? "updateSQL" : "insertSQL", this));
         }, query_options)
         .then(() => _.assign(this, {__exists: true}));
-      });
+      }, options.cache);
     });
   }
   
