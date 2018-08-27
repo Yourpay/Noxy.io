@@ -23,10 +23,10 @@ export const codes: {[status: number]: {[type: string]: string}} = {
   },
   404: {
     "any":      "Resource not found.",
-    "get":      "Could not find non-existant resource.",
     "pool":     "Could not find database pool.",
+    "query":    "Query yielded no results.",
     "cache":    "Could not find the value at the given key in the cache.",
-    "external": "Could not find the value at the given key in the cache."
+    "external": "External resource could not be found."
   },
   409: {
     "cache":       "Transactional error occurred while writing to cache.",
@@ -41,7 +41,7 @@ export const codes: {[status: number]: {[type: string]: string}} = {
 };
 
 export function parseError(err) {
-  return _.isError(err) ? {message: err.message, stack: _.map(_.tail(err.stack.split("\n")), _.trim)} : err;
+  return _.isError(err) && !(err instanceof error) ? {message: err.message, stack: _.map(_.tail((err.stack || "").split("\n")), _.trim)} : err;
 }
 
 export class error extends Error {
@@ -56,9 +56,16 @@ export class error extends Error {
     this.type = codes[this.code][type] ? type : "any";
     this.message = codes[this.code][this.type];
     if (content instanceof Error) {
-      this.message = content.message;
-      this.stack = content.stack;
-      this.content = (<any>content).content || {};
+      if (!(<any>content).content) {
+        this.content = parseError(content);
+        delete this.message;
+        delete this.stack;
+      }
+      else {
+        this.message = content.message;
+        this.stack = content.stack;
+        this.content = (<any>content).content;
+      }
     }
     else {
       this.content = content || {};

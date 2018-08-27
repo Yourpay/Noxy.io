@@ -10,7 +10,6 @@ Include({path: __dirname + "/init"})
 .then(() => Include({path: __dirname + "/plugins", filter: /^[\w\d\s]+\/init\.js/}))
 .then(() => init_queue.execute())
 .tap(() => {
-  // console.log(Cache.getNamespace(Cache.types.RESOURCE, "user", {value: true}));
   console.log("Server is up and running.");
 })
 .catch(err => {

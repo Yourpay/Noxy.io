@@ -25,7 +25,7 @@ resource_queue.promise("user", (resolve, reject) => {
   }))
   .tap(() => fs.writeFileSync(path.resolve(process.cwd(), "./env.json"), JSON.stringify(env, null, 2)))
   .then(res => resolve(res))
-  .catch(err => console.log(err) || reject(new Response.error(err.code || 500, err.type || "any", err)));
+  .catch(err => reject(new Response.error(err.code, err.type, err)));
 });
 
 resource_queue.promise("role", (resolve, reject) =>

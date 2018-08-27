@@ -5,7 +5,7 @@ import * as Response from "./Response";
 const Cache: iCache = Default;
 const __store: iCacheStore = {};
 const __config: iCacheOptions = {
-  timeout: 30000
+  timeout: 1000
 };
 
 function Default<T>(type: string, namespace: string, key: Key[], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<T | (T | Response.error)[]> {
@@ -45,7 +45,7 @@ function cacheGetOne<T>(type: string, namespace: string, key: Key): Promise<T> {
 
 Cache.getOne = cacheGetOne;
 
-function cacheGetAny<T>(type: string, namespace, keys: Key[]): Promise<T> {
+function cacheGetAny<T>(type: string, namespace: string, keys: Key[]): Promise<T> {
   return Promise.any(_.map(keys, key => {
     const object = _.get(__store, [type, namespace, key]);
     if (!object) { return Promise.reject(new Response.error(404, "cache", {type: type, namespace: namespace, keys: key})); }
@@ -55,7 +55,7 @@ function cacheGetAny<T>(type: string, namespace, keys: Key[]): Promise<T> {
     return Promise.reject(new Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
   }))
   .catch(err => {
-    if (_.every(err, e => e.code === 404 && e.type === "cache")) { throw new Response.error(404, "cache", _.map(err, "content")); }
+    if (_.every(_.initial(_.values(err)), e => e.code === 404 && e.type === "cache")) { throw new Response.error(404, "cache", _.map(err, "content")); }
     const t_error = _.find(err, e => !e.code && !e.type);
     if (t_error) { throw new Response.error(500, "cache", t_error); }
     throw new Response.error(500, "cache", err);
@@ -64,57 +64,68 @@ function cacheGetAny<T>(type: string, namespace, keys: Key[]): Promise<T> {
 
 Cache.getAny = cacheGetAny;
 
-function cacheSet<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> {
+function handleSetPromise<T>(type: string, namespace: string, keys: Key | Key[], promise: Promise<T>, options: iCacheSetOptions): Promise<T> {
+  return promise
+  .finally(() => {
+    _.each(_.concat(keys), key => {
+      _.unset(__store, [type, namespace, key]);
+    });
+  })
+  .tap(res => {
+    _.each(_.concat(keys), key => {
+      if (_.get(options, "timeout") !== 0) {
+        _.setWith(__store, [type, namespace, key], {
+          value:   res,
+          timeout: Cache.unsetAfter(type, namespace, key, _.get(options, "timeout"))
+        }, Object);
+      }
+    });
+  });
+}
+
+function cacheSet<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options?: iCacheSetOptions): Promise<T> {
   if (_.some(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
+    if (options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getAny(type, namespace, keys); }
     return Promise.reject(new Response.error(409, "cache", _.filter(_.map(keys, k => _.get(__store, [type, namespace, k, "promise"]) ? k : null))));
   }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
   _.each(keys, key => _.set(__store, [type, namespace, key, "promise"], promise));
-  return promise.tap(res => {
-    _.each(keys, key => {
-      _.unset(__store, [type, namespace, key, "promise"]);
-      _.setWith(__store, [type, namespace, key], {
-        value:   res,
-        timeout: Cache.unsetAfter(type, namespace, key, _.get(options, "timeout"))
-      }, Object);
-    });
-  });
+  return handleSetPromise(type, namespace, keys, promise, options);
 }
 
 Cache.set = cacheSet;
 
-function cacheSetOne<T>(type: string, namespace: string, key: Key, value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> {
-  if (_.get(__store, [type, namespace, key, "promise"])) { return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: key})); }
+function cacheSetOne<T>(type: string, namespace: string, key: Key, value: T | (() => Promise<T>), options?: iCacheSetOptions): Promise<T> {
+  if (_.get(__store, [type, namespace, key, "promise"])) {
+    if (options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getOne(type, namespace, key); }
+    return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: key}));
+  }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
   _.set(__store, [type, namespace, key, "promise"], promise);
-  return promise.tap(res => {
-    _.unset(__store, [type, namespace, key, "promise"]);
-    _.setWith(__store, [type, namespace, key], {
-      value:   res,
-      timeout: Cache.unsetAfter(type, namespace, key, _.get(options, "timeout"))
-    }, Object);
-  });
+  return handleSetPromise(type, namespace, key, promise, options);
 }
 
 Cache.setOne = cacheSetOne;
 
-function cacheSetAny<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options?: iCacheOptions): Promise<T> {
-  if (_.every(keys, key => _.get(__store, [type, namespace, key, "promise"]))) { return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: keys})); }
+function cacheSetAny<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options?: iCacheSetOptions): Promise<T> {
+  if (_.every(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
+    if (options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getAny(type, namespace, keys); }
+    return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: keys}));
+  }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
   const sets = _.filter(_.map(keys, key => !_.get(__store, [type, namespace, key, "promise"]) ? key : null));
   _.each(keys, key => _.set(__store, [type, namespace, key, "promise"], promise));
-  return promise.tap(res => {
-    _.each(sets, key => {
-      _.unset(__store, [type, namespace, key, "promise"]);
-      _.setWith(__store, [type, namespace, key], {
-        value:   res,
-        timeout: Cache.unsetAfter(type, namespace, key, _.get(options, "timeout"))
-      }, Object);
-    });
-  });
+  return handleSetPromise(type, namespace, sets, promise, options);
 }
 
 Cache.setAny = cacheSetAny;
+
+function cacheSetOr<T>(setter: cacheOrObject<T>, ...next: cacheOrObject<T>[]): Promise<T> {
+  return (_.isArray(setter.keys) ? Cache.set.apply(Cache, _.values(setter)) : Cache.setOne.apply(Cache, _.values(setter)))
+  .catch(err => next.length === 0 ? Promise.reject(err) : cacheSetOr.apply(Cache, next));
+}
+
+Cache.setOr = cacheSetOr;
 
 function cacheUnset(type: string, namespace: string, keys: Key[]) {
   _.each(keys, key => {
@@ -135,12 +146,7 @@ function cacheUnsetOne(type: string, namespace: string, key: Key) {
 Cache.unsetOne = cacheUnsetOne;
 
 function cacheUnsetAfter(type: string, namespace: string, key: Key, milliseconds: number): iCacheTimer {
-  if (milliseconds === null) { return null; }
-  if (milliseconds === 0) {
-    _.unset(__store, [type, namespace, key]);
-    return undefined;
-  }
-  return <iCacheTimer>setTimeout(() => _.unset(__store, [type, namespace, key]), milliseconds || __config.timeout);
+  return milliseconds === null ? null : <iCacheTimer>setTimeout(() => _.unset(__store, [type, namespace, key]), milliseconds || __config.timeout);
 }
 
 Cache.unsetAfter = cacheUnsetAfter;
@@ -196,14 +202,16 @@ Cache.types = {
 export = Cache;
 
 interface iCache {
-  set?: <T>(type: string, namespace: string, key: Key[], value: T | (() => Promise<T>), options?: iCacheOptions) => Promise<T>
+  set?: <T>(type: string, namespace: string, key: Key[], value: T | (() => Promise<T>), options?: iCacheSetOptions) => Promise<T>
   get?: <T>(type: string, namespace: string, key: Key[]) => Promise<(T | Response.error)[]>
   
-  setOne?: <T>(type: string, namespace: string, key: Key, value: T | (() => Promise<T>), options?: iCacheOptions) => Promise<T>
+  setOne?: <T>(type: string, namespace: string, key: Key, value: T | (() => Promise<T>), options?: iCacheSetOptions) => Promise<T>
   getOne?: <T>(type: string, namespace: string, key: Key) => Promise<T>
   
-  setAny?: <T>(type: string, namespace: string, key: Key[], value: T | (() => Promise<T>), options?: iCacheOptions) => Promise<T>
+  setAny?: <T>(type: string, namespace: string, key: Key[], value: T | (() => Promise<T>), options?: iCacheSetOptions) => Promise<T>
   getAny?: <T>(type: string, namespace: string, key: Key[]) => Promise<T>
+  
+  setOr?: <T>(setter: cacheOrObject<T>, ...next: cacheOrObject<T>[]) => Promise<T>
   
   unset?: (type: string, namespace: string, key: Key[]) => void
   unsetOne?: (type: string, namespace: string, key: Key) => void
@@ -237,6 +245,10 @@ interface iCacheOptions {
   timeout?: number
 }
 
+interface iCacheSetOptions extends iCacheOptions {
+  collision_fallback?: boolean | (() => Promise<any>)
+}
+
 interface iGetNamespaceOptions {
   promise?: boolean
   value?: boolean
@@ -248,4 +260,5 @@ interface iCacheTimer extends NodeJS.Timer {
 }
 
 type Key = number | string;
+type cacheOrObject<T> = {type: string, namespace: string, keys: Key | Key[], promise: () => Promise<T>, options: iCacheSetOptions};
 

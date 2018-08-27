@@ -95,14 +95,29 @@ class DatabasePool {
     });
   }
   
-  public query<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T[]> {
-    return new Promise((resolve, reject) => {
+  public query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T[]>
+  public query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T[][]>
+  public query<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T[] | T[][]> {
+    const query = Database.parse(sql, replacers);
+    return new Promise<T[] | T[][]>((resolve, reject) => {
       const cb = (err, res) => err ? reject(err) : resolve(res);
-      const query = Database.parse(sql, replacers);
       if (options.slave && options.master) { return Database.cluster.of(this.id).query(query, cb); }
       if (options.slave) { return Database.cluster.of(_.isString(options.slave) ? options.slave : (this.id + "::*")).query(query, cb); }
       return Database.cluster.of(this.id).query(query, cb);
-    });
+    })
+    .catch(err => Promise.reject(new Response.error(err.code || 500, err.type || "query", err)))
+    .then(res => !_.isEmpty(res) && _.every(res, r => !_.isArray(r) || !_.isEmpty(r)) ? Promise.resolve(res) : Promise.reject(new Response.error(404, "query", query)));
+  }
+  
+  public queryOne<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T> {
+    const query = Database.parse(sql, replacers);
+    return new Promise((resolve, reject) => {
+      const cb = (err, res) => err ? reject(err) : resolve(res);
+      if (options.slave && options.master) { return Database.cluster.of(this.id).query(query, cb); }
+      if (options.slave) { return Database.cluster.of(_.isString(options.slave) ? options.slave : (this.id + "::*")).query(query, cb); }
+      return Database.cluster.of(this.id).query(query, cb);
+    })
+    .then(res => res[0] ? Promise.resolve(res[0]) : Promise.reject(new Response.error(404, "query", query)));
   }
   
   private add(config: DatabaseEnvironmental) {
