@@ -7,16 +7,16 @@ const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
   name:         {type: "varchar(32)", required: true},
   key:          {type: "varchar(32)", required: true, protected: true, unique_index: "key"},
-  description:  {type: "text"},
+  description:  {type: "text", default: ""},
   time_created: Table.generateTimeColumn("time_created"),
   time_updated: Table.generateTimeColumn(null, true)
 };
 
 @Resources.implement<Resources.iResource>()
-export default class Documentation extends Resources.Constructor {
+export default class DocumentationRoute extends Resources.Constructor {
   
-  public static readonly __type: string = "documentation";
-  public static readonly __table: Table = new Table(Documentation, options, columns);
+  public static readonly __type: string = "documentation/route";
+  public static readonly __table: Table = new Table(DocumentationRoute, options, columns);
   
   public name: string;
   public key: string;
