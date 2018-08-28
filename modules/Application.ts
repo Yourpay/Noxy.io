@@ -178,7 +178,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         )
         .catch(err => Promise.reject(new Response.json(401, "jwt", err)))
       )
-      .catch(err => err.code === 404 && err.type === "query" ? next() : Promise.reject(new Response.error(err.code, err.type, err)));
+      .catch(err => err.code === 404 && err.type === "query" ? Promise.resolve(next()) : Promise.reject(new Response.error(err.code, err.type, err)));
     }
     return Promise.reject(new Response.json(404, "any"));
   })

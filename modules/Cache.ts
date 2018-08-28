@@ -5,7 +5,7 @@ import * as Response from "./Response";
 const Cache: iCache = Default;
 const __store: iCacheStore = {};
 const __config: iCacheOptions = {
-  timeout: 1000
+  timeout: 30000
 };
 
 function Default<T>(type: string, namespace: string, key: Key[], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<T | (T | Response.error)[]> {
@@ -28,7 +28,7 @@ function cacheGet<T>(type: string, namespace: string, keys: Key[]): Promise<(T |
     return Promise.reject(new Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
   })
   .then(values => {
-    if (_.every(values, value => value instanceof Error)) { throw new Response.error(404, "cache", _.map(values, "content")); }
+    if (_.every(values, value => <Response.error>value instanceof Error)) { throw new Response.error(404, "cache", _.map(values, "content")); }
     return Promise.resolve(values);
   });
 }
@@ -83,9 +83,9 @@ function handleSetPromise<T>(type: string, namespace: string, keys: Key | Key[],
   });
 }
 
-function cacheSet<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options?: iCacheSetOptions): Promise<T> {
+function cacheSet<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options: iCacheSetOptions = {}): Promise<T> {
   if (_.some(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
-    if (options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getAny(type, namespace, keys); }
+    if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getAny(type, namespace, keys); }
     return Promise.reject(new Response.error(409, "cache", _.filter(_.map(keys, k => _.get(__store, [type, namespace, k, "promise"]) ? k : null))));
   }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
@@ -95,9 +95,9 @@ function cacheSet<T>(type: string, namespace: string, keys: Key[], value: T | ((
 
 Cache.set = cacheSet;
 
-function cacheSetOne<T>(type: string, namespace: string, key: Key, value: T | (() => Promise<T>), options?: iCacheSetOptions): Promise<T> {
+function cacheSetOne<T>(type: string, namespace: string, key: Key, value: T | (() => Promise<T>), options: iCacheSetOptions = {}): Promise<T> {
   if (_.get(__store, [type, namespace, key, "promise"])) {
-    if (options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getOne(type, namespace, key); }
+    if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getOne(type, namespace, key); }
     return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: key}));
   }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
@@ -107,9 +107,9 @@ function cacheSetOne<T>(type: string, namespace: string, key: Key, value: T | ((
 
 Cache.setOne = cacheSetOne;
 
-function cacheSetAny<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options?: iCacheSetOptions): Promise<T> {
+function cacheSetAny<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options: iCacheSetOptions = {}): Promise<T> {
   if (_.every(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
-    if (options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getAny(type, namespace, keys); }
+    if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getAny(type, namespace, keys); }
     return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: keys}));
   }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
@@ -260,5 +260,5 @@ interface iCacheTimer extends NodeJS.Timer {
 }
 
 type Key = number | string;
-type cacheOrObject<T> = {type: string, namespace: string, keys: Key | Key[], promise: () => Promise<T>, options: iCacheSetOptions};
+type cacheOrObject<T> = {type: string, namespace: string, keys: Key | Key[], promise: () => Promise<T>, options?: iCacheSetOptions};
 
