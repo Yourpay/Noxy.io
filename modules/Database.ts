@@ -2,13 +2,14 @@ import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as mysql from "mysql";
 import {database_queue} from "../init/database";
+import {iDatabase, iDatabaseConfig, iDatabasePool, iDatabaseQueryConfig} from "../interfaces/iDatabase";
 import * as Response from "./Response";
 
 const Database: iDatabase = Default;
 
-function Default(id: string): DatabasePool
-function Default(id: string, config: DatabaseMasterEnvironmental): DatabasePool
-function Default(id: string, config?: DatabaseMasterEnvironmental): DatabasePool {
+function Default(id: string): iDatabasePool
+function Default(id: string, config: DatabaseMasterEnvironmental): iDatabasePool
+function Default(id: string, config?: DatabaseMasterEnvironmental): iDatabasePool {
   const pool = Database.pools[id];
   if (config) { return pool ? Database.update(id, config) : Database.add(id, config); }
   if (pool) { return pool; }
@@ -27,7 +28,7 @@ function databaseAdd(id: string, config: DatabaseEnvironmental): DatabasePool {
 
 Database.add = databaseAdd;
 
-function databaseUpdate(id: string, config: DatabaseEnvironmental): DatabasePool {
+function databaseUpdate(id: string, config: DatabaseEnvironmental): iDatabasePool {
   const pool = Database.pools[id];
   if (!pool) { throw new Response.error(409, "db_update", id); }
   Database.remove(id);
@@ -68,7 +69,7 @@ Database.parse = databaseParse;
 
 export = Database;
 
-class DatabasePool {
+class DatabasePool implements iDatabasePool {
   
   public id: string;
   private __pool: mysql.Pool;
@@ -144,45 +145,4 @@ class DatabasePool {
     );
   }
   
-}
-
-interface iDatabase extends Object {
-  cluster?: mysql.PoolCluster
-  pools?: {[key: string]: DatabasePool}
-  
-  add?: (id: string, config: DatabaseEnvironmental) => DatabasePool
-  update?: (id: string, config: DatabaseEnvironmental) => DatabasePool
-  remove?: (id: string) => boolean
-  parse?: (sql: string, replacers: any | any[]) => string
-  
-  (pool: string): DatabasePool
-  
-  (pool: string, options: DatabaseMasterEnvironmental): DatabasePool
-}
-
-interface iDatabaseConfig {
-  user: string
-  password: string
-  database: string
-  host?: "localhost" | string
-  port?: 3306 | number
-  socketPath?: string
-  localAddress?: string
-  charset?: "utf8mb4_unicode_ci" | string
-  timezone?: "local" | string
-  connectTimeout?: 10000 | number
-  stringifyObjects?: false | boolean
-  insecureAuth?: false | boolean
-  typeCast?: true
-  supportBigNumbers?: false | boolean
-  bigNumberStrings?: false | boolean
-  debug?: false | boolean | string[]
-  trace?: true | boolean
-  flags?: string[]
-  ssl?: any
-}
-
-interface iDatabaseQueryConfig {
-  slave?: boolean | string
-  master?: boolean
 }

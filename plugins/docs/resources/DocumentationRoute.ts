@@ -1,14 +1,14 @@
-import * as _ from "lodash";
 import * as Resource from "../../../classes/Resource";
 import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
-  route_id:     {type: "binary(16)", required: true, protected: true, index: "route", relation: "route"},
-  description:  {type: "text", default: ""},
-  time_created: Table.generateTimeColumn("time_created"),
-  time_updated: Table.generateTimeColumn(null, true)
+  documentation_id: Table.generateRelationColumn("documentation"),
+  route_id:         Table.generateRelationColumn("route"),
+  description:      {type: "text", default: ""},
+  time_created:     Table.generateTimeColumn("time_created"),
+  time_updated:     Table.generateTimeColumn(null, true)
 };
 
 @Resource.implement<Resource.iResource>()

@@ -5,6 +5,7 @@ import {env} from "../../app";
 import Table from "../../classes/Table";
 import {publicize_queue} from "../../init/publicize";
 import {resource_queue} from "../../init/resource";
+import {iDatabasePool} from "../../interfaces/iDatabase";
 import * as Application from "../../modules/Application";
 import * as Cache from "../../modules/Cache";
 import * as Database from "../../modules/Database";
@@ -13,7 +14,7 @@ import {iInformationSchemaColumn, iInformationSchemaTable} from "./interfaces/iI
 
 resource_queue.promise("docs", (resolve, reject) => {
 
-  const databases = {};
+  const databases: {[key: string]: iDatabasePool} = {};
   Promise.map(_.values(Table.tables), table => {
     const key = _.join([table.__database, "information_schema"], "::");
     const database = databases[key] || (databases[key] = Database(key, _.assign({}, env.databases[table.__database], {database: "information_schema"})));
@@ -21,7 +22,7 @@ resource_queue.promise("docs", (resolve, reject) => {
     .then(table => {
       return database.query<iInformationSchemaColumn>("SELECT * FROM `INNODB_COLUMNS` WHERE `TABLE_ID` = ?", table.TABLE_ID)
       .then(columns => {
-        return _.set(table, "columns", columns.toObject());
+        return _.set(table, "columns", columns);
       })
     })
     .catch(err => console.log("err", err) || err);
@@ -30,6 +31,13 @@ resource_queue.promise("docs", (resolve, reject) => {
   .catch(err => reject(err));
 
 });
+
+const a = new Table2();
+
+console.log(a);
+
+
+console.log(new Table2.Table());
 
 publicize_queue.promise("setup", (resolve, reject) => {
   

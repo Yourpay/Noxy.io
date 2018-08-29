@@ -8,7 +8,6 @@ export interface iInformationSchemaTable {
   ZIP_PAGE_SIZE?: number
   SPACE_TYPE?: string
   INSTANT_COLS?: number
-  
 }
 
 export interface iInformationSchemaColumn {

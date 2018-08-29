@@ -6,8 +6,8 @@ const options: Tables.iTableOptions = {
   junction: true
 };
 const columns: Tables.iTableColumns = {
-  documentation_route_id:     {type: "binary(16)", protected: true, required: true, primary_key: true, index: "documentation_route", relation: "documentation/route"},
-  documentation_parameter_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: "documentation_parameter", relation: "documentation/parameter"}
+  documentation_route_id:     Table.generateRelationColumn("documentation/route"),
+  documentation_parameter_id: Table.generateRelationColumn("documentation/parameter")
 };
 
 @Resource.implement<Resource.iResource>()

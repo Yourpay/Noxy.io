@@ -11,7 +11,7 @@ export const codes: {[status: number]: {[type: string]: string}} = {
     "post":      "Could not create or change resource due to missing or errorful data.",
     "update":    "Could not update resource due to missing or errorful data.",
     "duplicate": "Resource already exists and no duplicates are allowed.",
-    "cache":     "No keys or value given to Cache function."
+    "cache":     "No keys or value given to cache function."
   },
   401: {
     "any": "Unauthorized",

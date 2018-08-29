@@ -3,7 +3,6 @@ import {env} from "../app";
 import * as Resource from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
-import User from "./User";
 
 const options: Tables.iTableOptions = {};
 const columns: Tables.iTableColumns = {
@@ -15,12 +14,12 @@ const columns: Tables.iTableColumns = {
 };
 
 @Resource.implement<Resource.iResource>()
-export default class Role extends Resource.Constructor {
+export default class Role extends Resource.Constructor implements iQueryObject {
   
   public static readonly __type: string = "role";
   public static readonly __table: Table = new Table(Role, options, columns);
   
-  public name: string;
+  public name?: string;
   public key: string;
   public user_created: Buffer;
   public time_created: number;
@@ -36,10 +35,10 @@ export default class Role extends Resource.Constructor {
 }
 
 interface iQueryObject {
-  id?: string
+  id?: string | Buffer
   name?: string
   key?: string
-  user_created?: User
+  user_created?: string | Buffer
   time_created?: number
   time_updated?: number
 }

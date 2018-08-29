@@ -29,6 +29,18 @@ export default class Table {
     return _.clone(this.__tables);
   }
   
+  public static generateRelationColumn(table: string, hidden: boolean = false): iTableColumn {
+    return {
+      type:      "binary(16)",
+      required:  true,
+      protected: true,
+      default:   null,
+      index:     table,
+      hidden:    hidden,
+      relation:  table
+    };
+  }
+  
   public static generateTimeColumn(index?: string, hidden: boolean = false): iTableColumn {
     return {
       type:      "bigint(13)",
