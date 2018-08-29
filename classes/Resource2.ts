@@ -1,9 +1,11 @@
 import {iConstructor, iResource, iResourceType, iTable} from "../interfaces/iResource";
 
-function Default<T extends Object, R extends Resource>(type: (iResourceType | T), constructor: R): R {
+function Default<T, R extends Resource>(type: Foo<T>, constructor: R): R {
   this.test = type;
   return constructor;
 }
+
+type Foo<T> = T extends keyof {[key: string]: string} ? T : never;
 
 class Table implements iTable {
 
@@ -19,19 +21,16 @@ const module: iResource = _.assign(
   {
     Table:       Table,
     Constructor: Resource,
-    CONSTANTS: {
+    CONSTANTS:   {
       TYPES: iResourceType
     }
   }
 );
 
-// export = module;
+export = module;
 
 enum YPAPI {
   "MERCHANT" = "merchant"
 }
 
-export default module(
-  "",
-  Resource
-);
+Default<iResourceType, Resource>(iResourceType.ROLE, Resource);

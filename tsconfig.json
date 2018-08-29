@@ -4,7 +4,6 @@
     "target": "es6",
     "newLine": "lf",
     "outDir": "./build",
-    "noStrictGenericChecks": true,
     "watch": true,
     "jsx": "React",
     "experimentalDecorators": true

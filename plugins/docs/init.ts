@@ -32,13 +32,6 @@ resource_queue.promise("docs", (resolve, reject) => {
 
 });
 
-const a = new Table2();
-
-console.log(a);
-
-
-console.log(new Table2.Table());
-
 publicize_queue.promise("setup", (resolve, reject) => {
   
   Promise.all([

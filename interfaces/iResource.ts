@@ -1,5 +1,5 @@
 export interface iResource {
-  <Types extends Object, Type extends iConstructor>(type: iResourceType | Types, constructor: Type): Type
+  <Types extends keyof {[key: string]: string}, Type extends iConstructor>(type: Types & keyof iResourceType, constructor: Type): Type
   
   Table: cTable
   Constructor: cConstructor
@@ -7,10 +7,6 @@ export interface iResource {
   CONSTANTS: {
     TYPES: typeof iResourceType
   }
-}
-
-export enum iResourceType {
-  "USER" = "user",
 }
 
 export interface cTable {
@@ -27,4 +23,12 @@ export interface cConstructor {
 
 export interface iConstructor {
 
+}
+
+export enum iResourceType {
+  "USER"       = "user",
+  "ROLE"       = "role",
+  "ROLE_USER"  = "role/user",
+  "ROLE_ROUTE" = "role/route",
+  "ROUTE"      = "route",
 }
