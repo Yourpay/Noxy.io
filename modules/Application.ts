@@ -49,14 +49,14 @@ export function addRoute(subdomain: string, namespace: string, path: string, met
   const key = Cache.toKey([subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method]);
   
   return new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: _.concat(auth, fn)})
-  .save({update_protected: true, cache: {keys: key, timeout: null}});
+  .save({update_protected: true, cache: {keys: key, timeout: null, collision_fallback: true}});
 }
 
 export function updateRoute(route: Route, fn?: Middleware | Middleware[]): Promise<Route> {
   // TODO: Implement middleware changer function
   const key = Cache.toKey([route.subdomain, ("/" + route.namespace + route.path).replace(/\/{2,}/, "/").replace(/\/$/, ""), route.method]);
   
-  return route.save({update_protected: true, cache: {keys: key, timeout: null}});
+  return route.save({update_protected: true, cache: {keys: key, timeout: null, collision_fallback: true}});
 }
 
 export function addRoutes(subdomain: string, namespace: string, route_set: {[path: string]: {[method: string]: Middleware | Middleware[]}}): {[key: string]: Promise<Route>} {

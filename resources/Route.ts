@@ -1,6 +1,6 @@
 import * as express from "express";
 import * as _ from "lodash";
-import * as Resources from "../classes/Resource";
+import * as Resource from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 import * as Application from "../modules/Application";
@@ -16,8 +16,8 @@ const columns: Tables.iTableColumns = {
   time_updated: Table.generateTimeColumn(null, true)
 };
 
-@Resources.implement<Resources.iResource>()
-export default class Route extends Resources.Constructor {
+@Resource.implement<Resource.iResource>()
+export default class Route extends Resource.Constructor {
   
   public static readonly __type: string = "route";
   public static readonly __table: Table = new Table(Route, options, columns);

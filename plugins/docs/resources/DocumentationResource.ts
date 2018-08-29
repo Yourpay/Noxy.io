@@ -1,5 +1,5 @@
 import * as _ from "lodash";
-import * as Resources from "../../../classes/Resource";
+import * as Resource from "../../../classes/Resource";
 import * as Tables from "../../../classes/Table";
 import Table from "../../../classes/Table";
 
@@ -12,8 +12,8 @@ const columns: Tables.iTableColumns = {
   time_updated: Table.generateTimeColumn(null, true)
 };
 
-@Resources.implement<Resources.iResource>()
-export default class DocumentationResource extends Resources.Constructor {
+@Resource.implement<Resource.iResource>()
+export default class DocumentationResource extends Resource.Constructor {
   
   public static readonly __type: string = "documentation/resource";
   public static readonly __table: Table = new Table(DocumentationResource, options, columns);

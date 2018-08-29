@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 import {env} from "../app";
-import * as Resources from "../classes/Resource";
+import * as Resource from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 import User from "./User";
@@ -14,8 +14,8 @@ const columns: Tables.iTableColumns = {
   time_updated: Table.generateTimeColumn(null, true)
 };
 
-@Resources.implement<Resources.iResource>()
-export default class Role extends Resources.Constructor {
+@Resource.implement<Resource.iResource>()
+export default class Role extends Resource.Constructor {
   
   public static readonly __type: string = "role";
   public static readonly __table: Table = new Table(Role, options, columns);
@@ -30,7 +30,7 @@ export default class Role extends Resources.Constructor {
     super(object);
     if (!object.key) { this.key = _.snakeCase(_.deburr(object.name)); }
     this.time_created = object.time_created ? object.time_created : Date.now();
-    this.user_created = Resources.Constructor.bufferFromUuid(_.get(object, "user_created.id", env.users.server.id));
+    this.user_created = Resource.Constructor.bufferFromUuid(_.get(object, "user_created.id", env.users.server.id));
   }
   
 }
