@@ -3,7 +3,7 @@ import * as _ from "lodash";
 import {env} from "../app";
 import {iTableColumn} from "../classes/Table";
 import {tEnum, tNonFnProps} from "../interfaces/iAuxiliary";
-import {eResourceType, iResource, iResourceCacheOptions, iResourceConstructor, iResourceOptions, iTable, iTableDefinition, iTableOptions} from "../interfaces/iResource";
+import {eResourceType, iResource, iResourceConstructor, iResourceOptions, iResourceValidateOptions, iTable, iTableDefinition, iTableOptions} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Response from "./Response";
 import uuid = require("uuid");
@@ -46,22 +46,33 @@ class Resource implements iResourceConstructor {
   public uuid: string;
   
   constructor(initializer = {}) {
+    _.assign(this, initializer);
     let t_uuid = uuid.v4(), t_id = bufferFromUUID(t_uuid);
     Object.defineProperty(this, "id", {configurable: true, enumerable: true, get: () => t_id, set: v => { if (!_.isEqual(v, t_id)) { this.uuid = uuidFromBuffer(this.id = v); } }});
     Object.defineProperty(this, "uuid", {configurable: true, enumerable: true, get: () => t_uuid, set: v => { if (!_.isEqual(v, t_uuid)) { this.id = bufferFromUUID(this.uuid = v); } }});
     this.id = t_id;
   }
   
-  public validate(options: iResourceOptions) {
+  public validate(options?: iResourceOptions) {
     const $this = (<typeof Resource>this.constructor);
     const $columns = $this.table.definition;
     // const query_options: iResourceCacheOptions = _.assign({}, options.cache, {timeout: 0, collision_fallback: true});
     // const keys = _.concat(_.get(options, "cache.keys", Cache.toKeys(this.getKeys())));
     
     return $this.table.validate(this, {})
-    .then(res => {
-      res.id;
+    .then(res => _.assign(new $this(res), {exists: true}))
+    .then(resource => {
+      return _.assign(
+        _.reduce(resource, (target, value, key) => {
+          if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
+            return _.set(target, key, value);
+          }
+          return target;
+        }, this),
+        {validated: true, __database: database.id}
+      );
     })
+    .catch(err => Promise.reject(new Response.error(err.code, err.type, this)));
     
     // return Cache.getAny<T>(Cache.types.RESOURCE, $this.__type, keys)
     // .catch(err => {
@@ -71,7 +82,7 @@ class Resource implements iResourceConstructor {
     //     .catch(err => err.code === 404 && err.type === "query" ? {} : Promise.reject(new Response.error(err.code, err.type, err)));
     //   }, query_options)
     //   .then(query => {
-    //     return _.size(query) > 0 ? _.assign(new $this(query), {__exists: true}) : query;
+    //     return _.size(query) > 0 ?
     //   });
     // })
     // .then(resource => {
@@ -116,27 +127,26 @@ class Table implements iTable {
     return {type: "bigint(13)", required: true, protected: true, default: null, index: index ? _.concat(index) : null, hidden: hidden};
   }
   
-  public validate<T extends Resource>(resource: T, options?: iResourceCacheOptions): Promise<Exclude<tNonFnProps<T>, "uuid"> | {}> {
+  public validate(resource: Resource, options?: iResourceValidateOptions): Promise<tNonFnProps<Resource>> {
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
-  
+    const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
+    
     if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", this)); }
     
-    return Cache.set<T | {}>(Cache.types.QUERY, this.resource.type, options.keys || _.map(keys, key => Cache.toKey(_.values(key))), () => {
-      const where = _.join(_.map(this.keys, (key) => Database.parse(_.join(_.map(key, () => "?? = ?"), " AND "), _.flatten(_.toPairs(key)))), " OR ");
-      return Database(this.options.database).queryOne<T>(Database.parse("SELECT * FROM ??" + (where.length ? `WHERE ${where}` : "") + " LIMIT 1", this.resource.type))
-      .catch(err => err.code === 404 && err.type === "query" ? {} : Promise.reject(new Response.error(err.code, err.type, err)));
-    }, options)
-    
-    // const keys = _.concat([_.values(this.getPrimaryKeys())], _.values(this.getUniqueKeys()));
-    // const where = _.join(_.map(keys, index => _.join(_.map(index, v => Database.parse("?? = ?", [v, resource[v]])), " AND ")), " OR ");
-    // return Database.parse(`SELECT * FROM ?? WHERE ${where}`, this.__resource.__type);
+    return Cache.getAny<tNonFnProps<Resource>>(Cache.types.RESOURCE, this.resource.type, cache_keys)
+    .catch(err => {
+      return Cache.set<tNonFnProps<Resource>>(Cache.types.QUERY, this.resource.type, cache_keys, () => {
+        const where = _.join(_.map(this.keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
+        return Database(this.options.database).queryOne<tNonFnProps<Resource>>(Database.parse("SELECT * FROM ??" + (where.length ? `WHERE ${where}` : "") + " LIMIT 1", this.resource.type));
+      }, {timeout: 0, collision_fallback: true});
+    });
   }
   
 }
 
 Object.defineProperty(Default, "resources", {enumerable: true, value: resources});
 Object.defineProperty(Default, "TYPES", {enumerable: true, value: eResourceType});
-Object.defineProperty(Default, "uuidromBuffer", {value: uuidFromBuffer});
+Object.defineProperty(Default, "uuidFromBuffer", {value: uuidFromBuffer});
 Object.defineProperty(Default, "bufferFromUUID", {value: bufferFromUUID});
 Object.defineProperty(Default, "Table", {value: Table});
 Object.defineProperty(Default, "Constructor", {value: Resource});

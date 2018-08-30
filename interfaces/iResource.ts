@@ -23,10 +23,10 @@ export interface iResourceConstructor {
 export interface iResourceOptions {
   database?: string,
   update_protected?: boolean
-  cache?: iResourceCacheOptions
+  cache?: iResourceValidateOptions
 }
 
-export interface iResourceCacheOptions {
+export interface iResourceValidateOptions {
   keys?: string[]
   timeout?: number
   collision_fallback?: boolean | (() => Promise<any>)
