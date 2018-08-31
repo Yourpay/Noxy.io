@@ -189,7 +189,7 @@ class Table {
   }
   
   public delete(resource: Resource, options: iResourceActionOptions = {}) {
-  
+    
   }
   
 }
