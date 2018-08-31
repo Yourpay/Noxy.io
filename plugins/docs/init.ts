@@ -13,7 +13,7 @@ import Route from "../../resources/Route";
 import {iInformationSchemaColumn, iInformationSchemaTable} from "./interfaces/iInformationSchema";
 
 resource_queue.promise("docs", (resolve, reject) => {
-
+  
   const databases: {[key: string]: iDatabasePool} = {};
   Promise.map(_.values(Table.tables), table => {
     const key = _.join([table.__database, "information_schema"], "::");
@@ -23,13 +23,13 @@ resource_queue.promise("docs", (resolve, reject) => {
       return database.query<iInformationSchemaColumn>("SELECT * FROM `INNODB_COLUMNS` WHERE `TABLE_ID` = ?", table.TABLE_ID)
       .then(columns => {
         return _.set(table, "columns", columns);
-      })
+      });
     })
-    .catch(err => console.log("err", err) || err);
+    .catch(err => /*console.log("err", err) ||*/ err);
   })
-  .then(res => console.log(res) || resolve(res))
+  .then(res => /* console.log(res) || */ resolve(res))
   .catch(err => reject(err));
-
+  
 });
 
 publicize_queue.promise("setup", (resolve, reject) => {

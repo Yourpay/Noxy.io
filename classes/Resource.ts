@@ -168,7 +168,7 @@ export class Constructor {
     const time_started = Date.now();
     const database = Database(db || env.mode);
     
-    return database.query(this.__table.selectSQL(0, 1, where))
+    return database.query<Constructor[]>(this.__table.selectSQL(0, 1, where))
     .then(res => res.length > 0 ? new Response.json(200, "any", new this(res[0]).toObject(), time_started) : new Response.json(404, "any", null, time_started))
     .catch(() => new Response.json(500, "any", {}, time_started));
   }

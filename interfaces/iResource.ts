@@ -11,24 +11,26 @@ export interface iResource {
 }
 
 export interface cResourceConstructor {
-  new(): iResourceConstructor
+  new(initializer?: Object): iResourceConstructor
+  
   table: iTable
+  type: string
 }
 
 export interface iResourceConstructor {
   id: Buffer
   uuid: string
+  validated: boolean;
+  exists: boolean;
+  
+  validate: (options?: iResourceActionOptions) => Promise<iResourceConstructor>
+  save: (options?: iResourceActionOptions) => Promise<iResourceConstructor>
 }
 
-export interface iResourceOptions {
-  database?: string,
+export interface iResourceActionOptions {
   update_protected?: boolean
-  cache?: iResourceValidateOptions
-}
-
-export interface iResourceValidateOptions {
-  keys?: string[]
   timeout?: number
+  keys?: string[]
   collision_fallback?: boolean | (() => Promise<any>)
 }
 
@@ -44,6 +46,9 @@ export interface iTable {
   readonly definition: iTableDefinition;
   readonly options: iTableOptions;
   readonly keys: string[][];
+  
+  validate: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
+  save: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
 }
 
 export interface iTableOptions {
@@ -109,4 +114,5 @@ export enum eResourceType {
   "ROLE_USER"  = "role/user",
   "ROLE_ROUTE" = "role/route",
   "ROUTE"      = "route",
+  "TEST"       = "test",
 }

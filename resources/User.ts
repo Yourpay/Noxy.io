@@ -7,6 +7,7 @@ import * as Resource from "../classes/Resource";
 import * as Tables from "../classes/Table";
 import Table from "../classes/Table";
 import {publicize_queue} from "../init/publicize";
+import {cResourceConstructor, eResourceType} from "../interfaces/iResource";
 import * as Application from "../modules/Application";
 import * as Cache from "../modules/Cache";
 import * as Response from "../modules/Response";

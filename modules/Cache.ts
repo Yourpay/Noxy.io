@@ -196,7 +196,9 @@ Cache.types = {
   QUERY:    "query",
   RESOURCE: "resource",
   EXTERNAL: "external",
-  REQUEST:  "request"
+  REQUEST:  "request",
+  VALIDATE: "validate",
+  SAVE: "save"
 };
 
 export = Cache;
@@ -222,9 +224,9 @@ interface iCache {
   
   getNamespace?: (type: string, namespace: string, options?: iGetNamespaceOptions) => {[key: string]: iCacheObject};
   
-  types?: {QUERY: "query", RESOURCE: "resource", EXTERNAL: "external", REQUEST: "request"}
+  types?: {VALIDATE: "validate", SAVE: "save", "QUERY": "query", RESOURCE: "resource", EXTERNAL: "external", REQUEST: "request"}
   
-  <T>(type: string, namespace: string, key: Key[], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<(T | Response.error)[]>
+  <T>(type: string, namespace: string, key: Key[], value?: T | (() => Promise<T>), options?: iCacheOptions): Promise<T | (T | Response.error)[]>
 }
 
 interface iCacheStore {

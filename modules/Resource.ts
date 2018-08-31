@@ -1,13 +1,13 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
+import * as uuid from "uuid";
 import {env} from "../app";
-import {iTableColumn} from "../classes/Table";
 import {tEnum, tNonFnProps} from "../interfaces/iAuxiliary";
-import {eResourceType, iResource, iResourceConstructor, iResourceOptions, iResourceValidateOptions, iTable, iTableDefinition, iTableOptions} from "../interfaces/iResource";
+import {iDatabaseActionResult} from "../interfaces/iDatabase";
+import {eResourceType, iResource, iResourceActionOptions, iTableColumn, iTableDefinition, iTableOptions} from "../interfaces/iResource";
 import * as Cache from "./Cache";
+import * as Database from "./Database";
 import * as Response from "./Response";
-import uuid = require("uuid");
-import Database = require("./Database");
 
 const resources = {};
 
@@ -37,13 +37,15 @@ function bufferFromUUID(uuid: string): Buffer {
   return Buffer.alloc(16, uuid.replace(/-/g, ""), "hex");
 }
 
-class Resource implements iResourceConstructor {
+class Resource {
   
   public static readonly type: string;
   public static readonly table: Table;
   
   public id: Buffer;
   public uuid: string;
+  public validated: boolean;
+  public exists: boolean;
   
   constructor(initializer = {}) {
     _.assign(this, initializer);
@@ -53,54 +55,73 @@ class Resource implements iResourceConstructor {
     this.id = t_id;
   }
   
-  public validate(options?: iResourceOptions) {
+  public validate(options: iResourceActionOptions = {}): Promise<this> {
     const $this = (<typeof Resource>this.constructor);
     const $columns = $this.table.definition;
-    // const query_options: iResourceCacheOptions = _.assign({}, options.cache, {timeout: 0, collision_fallback: true});
-    // const keys = _.concat(_.get(options, "cache.keys", Cache.toKeys(this.getKeys())));
     
-    return $this.table.validate(this, {})
+    return $this.table.validate(this, options)
     .then(res => _.assign(new $this(res), {exists: true}))
+    .catch(err => err.code === 404 ? {} : Promise.reject(new Response.error(err.code, err.type, err)))
     .then(resource => {
       return _.assign(
         _.reduce(resource, (target, value, key) => {
-          if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
+          if (_.includes(["id", "uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
             return _.set(target, key, value);
           }
           return target;
         }, this),
-        {validated: true, __database: database.id}
+        {validated: true}
       );
     })
-    .catch(err => Promise.reject(new Response.error(err.code, err.type, this)));
+    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
+  }
+  
+  public save(options: iResourceActionOptions = {}) {
+    const $this = (<typeof Resource>this.constructor);
     
-    // return Cache.getAny<T>(Cache.types.RESOURCE, $this.__type, keys)
-    // .catch(err => {
-    //   if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code, err.type, err)); }
-    //   return Cache.set(Cache.types.QUERY, $this.__type, keys, () => {
-    //     return database.queryOne($this.__table.validationSQL(this))
-    //     .catch(err => err.code === 404 && err.type === "query" ? {} : Promise.reject(new Response.error(err.code, err.type, err)));
-    //   }, query_options)
-    //   .then(query => {
-    //     return _.size(query) > 0 ?
-    //   });
-    // })
-    // .then(resource => {
-    //   return _.assign(
-    //     _.reduce(resource, (target, value, key) => {
-    //       if (_.includes(["__id", "__uuid"], key) || !target[key] || ($columns[key] && ($columns[key].primary_key || (!options.update_protected && $columns[key].protected)))) {
-    //         return _.set(target, key, value);
-    //       }
-    //       return target;
-    //     }, this),
-    //     {__validated: true, __database: database.id}
-    //   );
-    // });
+    return this.validate(options)
+    .then(res => $this.table.save(res, options))
+    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
+  }
+  
+  public delete(options: iResourceActionOptions = {}) {
+    
+  }
+  
+  public toObject(shallow?: boolean): Promise<Partial<this>> {
+    const $this = (<typeof Resource>this.constructor);
+    
+    return <any>Promise.props(
+      _.transform(_.omitBy($this.table.definition, v => v.hidden),
+        (r, v, k) => {
+          const [datatype, type, value] = _.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0));
+          if (type === "binary") {
+            if (value === "16") {
+              if (!shallow && v.relation && (_.isString(v.relation) || _.isPlainObject(v.relation) || _.size(v.relation) === 1)) {
+                Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[k])
+                .catch(err => {
+                  if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code, err.type, err)); }
+                  return new resources[_.join([$this.table.options.database, _.get(v, "relation.table", v.relation)], "::")].__resource({id: this[k]}).validate();
+                })
+                .then(res => res.toObject())
+                .then(res => _.set(r, k, res));
+              }
+              return _.set(r, k, uuidFromBuffer(this[k]));
+            }
+            return _.set(r, k, (<Buffer>this[k]).toString("hex"));
+          }
+          if (type === "varbinary") { return _.set(r, k, (<Buffer>this[k]).toString("utf8")); }
+          if (type === "blob") { return _.set(r, k, (<Buffer>this[k]).toString("base64")); }
+          return _.set(r, k, this[k]);
+        },
+        {}
+      )
+    );
   }
   
 }
 
-class Table implements iTable {
+class Table {
   
   public readonly resource: typeof Resource;
   public readonly definition: iTableDefinition;
@@ -109,14 +130,14 @@ class Table implements iTable {
   
   constructor(resource: typeof Resource, definition: iTableDefinition, options?: iTableOptions) {
     this.resource = resource;
-    this.definition = _.merge(options.junction ? {} : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}}, definition);
-    this.options = _.assign({database: env.mode}, options);
+    this.definition = options.junction ? {...definition} : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}, ...definition};
+    this.options = {database: env.mode, ...options};
     this.keys = _.values(_.reduce(this.definition, (result, col, key) => {
       if (col.unique_index) { _.each(_.concat(col.unique_index), index => { result[index] = [...result[index] || [], key]; }); }
-      if (col.index) { _.each(_.concat(col.index), index => { result[index] = [...result[index] || [], key]; }); }
       if (col.primary_key) { result["PRIMARY_KEY"] = [...result["PRIMARY_KEY"] || [], key]; }
       return result;
     }, {}));
+    
   }
   
   public static toRelationColumn(table: string, hidden: boolean = false): iTableColumn {
@@ -127,19 +148,48 @@ class Table implements iTable {
     return {type: "bigint(13)", required: true, protected: true, default: null, index: index ? _.concat(index) : null, hidden: hidden};
   }
   
-  public validate(resource: Resource, options?: iResourceValidateOptions): Promise<tNonFnProps<Resource>> {
+  public validate(resource: Resource, options: iResourceActionOptions = {}): Promise<tNonFnProps<Resource>> {
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
     
-    if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", this)); }
+    if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
     
     return Cache.getAny<tNonFnProps<Resource>>(Cache.types.RESOURCE, this.resource.type, cache_keys)
     .catch(err => {
-      return Cache.set<tNonFnProps<Resource>>(Cache.types.QUERY, this.resource.type, cache_keys, () => {
-        const where = _.join(_.map(this.keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
-        return Database(this.options.database).queryOne<tNonFnProps<Resource>>(Database.parse("SELECT * FROM ??" + (where.length ? `WHERE ${where}` : "") + " LIMIT 1", this.resource.type));
+      if (err.code !== 404) { return Promise.reject(new Response.error(err.code, err.type, err)); }
+      const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
+      if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
+      return Cache.set<tNonFnProps<Resource>>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
+        return Database(this.options.database).queryOne<tNonFnProps<Resource>>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
       }, {timeout: 0, collision_fallback: true});
     });
+  }
+  
+  public save(resource: Resource, options: iResourceActionOptions = {}): Promise<Resource> {
+    const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
+    const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
+    
+    if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
+    if (!resource.validated) { return Promise.reject(new Response.error(400, "resource", this)); }
+    
+    if (resource.exists) {
+      const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
+      if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
+    }
+    
+    return Cache.set<iDatabaseActionResult>(Cache.types.SAVE, this.resource.type, cache_keys, () => {
+      const set = [this.resource.type, _.pick(resource, _.keys(this.definition))];
+      if (resource.exists) { return Database(this.options.database).query<iDatabaseActionResult>(`UPDATE ?? SET ? WHERE {where}`, _.concat(set)); }
+      return Database(this.options.database).query<iDatabaseActionResult>("INSERT INTO ?? SET ?", _.concat(set));
+    }, {timeout: 0, collision_fallback: true})
+    .then(res => {
+      if (res.affectedRows === 0) { return Promise.reject(new Response.error(500, "resource", {keys: keys, object: resource})); }
+      return Cache.set(Cache.types.RESOURCE, this.resource.type, cache_keys, resource, options);
+    });
+  }
+  
+  public delete(resource: Resource, options: iResourceActionOptions = {}) {
+  
   }
   
 }

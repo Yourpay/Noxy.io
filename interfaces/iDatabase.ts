@@ -8,6 +8,8 @@ export interface cDatabasePool {
 export interface iDatabasePool extends Object {
   id: string;
   
+  query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T>
+  
   query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T[]>
   
   query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T[][]>
@@ -54,4 +56,15 @@ export interface iDatabaseConfig {
 export interface iDatabaseQueryConfig {
   slave?: boolean | string
   master?: boolean
+}
+
+export interface iDatabaseActionResult {
+  fieldCount: number
+  affectedRows: number
+  insertId: number
+  serverStatus: number
+  warningCount: number
+  message: string
+  protocol41: boolean
+  changedRows: number
 }

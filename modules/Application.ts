@@ -143,7 +143,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
           new User(user).validate()
           .then(user => {
             if (!user.exists) { return Promise.reject(new Response.json(404, "any")); }
-            Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
+            Database(env.mode).query<RoleUser[]>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
             .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(new Response.json(404, "any")) : Promise.reject(new Response.json(err.code, err.type)))
             .then(user_roles => {
               if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(role.role_id) === env.roles.admin.id)) {
@@ -157,14 +157,14 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         )
         .catch(() => Promise.reject(new Response.json(404, "any")));
       }
-      return Database(env.mode).query<RoleRoute>(RoleRoute.__table.selectSQL(0, 1000, {route_id: route.id}))
+      return Database(env.mode).query<RoleRoute[]>(RoleRoute.__table.selectSQL(0, 1000, {route_id: route.id}))
       .then(route_roles =>
         !route_roles.length ? next() : new Promise(resolve => resolve(jwt.verify(request.get("Authorization"), env.tokens.jwt)))
         .then(user =>
           new User(user).validate()
           .then(user => {
             if (!user.exists) { Promise.reject(new Response.json(401, "jwt", request.get("Authorization"))); }
-            Database(env.mode).query<RoleUser>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
+            Database(env.mode).query<RoleUser[]>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
             .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(new Response.json(403, "any")) : Promise.reject(new Response.json(err.code, err.type)))
             .then(user_roles => {
               if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) {
