@@ -62,6 +62,9 @@ export interface iTableOptions {
   collation?: "utf8mb4_unicode_ci" | string
   /* The database engine to run the table under */
   engine?: "InnoDB" | "MyISAM" | "Aria" | "CSV" | string
+  
+  temporary?: boolean
+  exists_check?: boolean
 }
 
 export interface iTableDefinition {
@@ -92,14 +95,18 @@ export interface iTableColumn {
   /* Is this part of the primary key? */
   primary_key?: boolean
   /* Defines the foreign key relations this column has to another */
-  relation?: string | iTableRelation
+  reference?: string | iReferenceDefinition
   /* The default collation to use with the column */
   collation?: "utf8mb4_unicode_ci" | string
   /* Add a comment to the column in the database */
   comment?: string
+  
+  auto_increment?: boolean,
+  
+  column_format?: "FIXED" | "DYNAMIC" | "DEFAULT"
 }
 
-export interface iTableRelation {
+export interface iReferenceDefinition {
   database?: string
   table: string
   column?: string

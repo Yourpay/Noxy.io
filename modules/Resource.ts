@@ -4,7 +4,7 @@ import * as uuid from "uuid";
 import {env} from "../app";
 import {tEnum, tNonFnProps} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {eResourceType, iResource, iResourceActionOptions, iTableColumn, iTableDefinition, iTableOptions} from "../interfaces/iResource";
+import {eResourceType, iReferenceDefinition, iResource, iResourceActionOptions, iTableColumn, iTableDefinition, iTableOptions} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
@@ -97,11 +97,11 @@ class Resource {
           const [datatype, type, value] = _.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0));
           if (type === "binary") {
             if (value === "16") {
-              if (!shallow && v.relation && (_.isString(v.relation) || _.isPlainObject(v.relation) || _.size(v.relation) === 1)) {
+              if (!shallow && v.reference && (_.isString(v.reference) || _.isPlainObject(v.reference) || _.size(v.reference) === 1)) {
                 Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[k])
                 .catch(err => {
                   if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code, err.type, err)); }
-                  return new resources[_.join([$this.table.options.database, _.get(v, "relation.table", v.relation)], "::")].__resource({id: this[k]}).validate();
+                  return new resources[_.join([$this.table.options.database, _.get(v, "relation.table", v.reference)], "::")].__resource({id: this[k]}).validate();
                 })
                 .then(res => res.toObject())
                 .then(res => _.set(r, k, res));
@@ -141,7 +141,7 @@ class Table {
   }
   
   public static toRelationColumn(table: string, hidden: boolean = false): iTableColumn {
-    return {type: "binary(16)", required: true, protected: true, default: null, index: table, hidden: hidden, relation: table};
+    return {type: "binary(16)", required: true, protected: true, default: null, index: table, hidden: hidden, reference: table};
   }
   
   public static toTimeColumn(index?: string, hidden: boolean = false): iTableColumn {
@@ -190,6 +190,54 @@ class Table {
   
   public delete(resource: Resource, options: iResourceActionOptions = {}) {
     
+  }
+  
+  public toSQL(): string {
+    return _.template("CREATE ${temporary} TABLE ${exists} ${name} ${definition} ${table_options} ${partition_options}")({
+      temporary:         this.options.temporary ? "TEMPORARY" : "",
+      exists_check:      this.options.exists_check ? "IF NOT EXISTS" : "",
+      name:              this.resource.type,
+      definition:        Table.sqlFromDefinition(this.definition),
+      table_options:     "",
+      partition_options: ""
+    });
+  }
+  
+  private static sqlFromDefinition(definition: iTableDefinition): string {
+    return _.template("($columns)")({
+      columns: _.join(_.map(definition, column =>
+        _.template("${data_type} ${null} ${default} ${ai} ${unique} ${primary} ${comment} ${format} ${reference}")({
+          data_type: column.type,
+          null:      column.null,
+          default:   column.default ? "DEFAULT " + column.default : "",
+          ai:        column.auto_increment ? "AUTO_INCREMENT" : "",
+          unique:    column.unique_index,
+          primary:   column.primary_key,
+          comment:   column.comment,
+          format:    column.column_format ? column.column_format : "",
+          reference: column.reference ? Table.sqlFromReference(typeof column.reference === "string" ? column.reference : column.reference) : ""
+        })
+      ), " ")
+    });
+  }
+  
+  private static sqlFromReference(reference: string | iReferenceDefinition): string {
+    reference = typeof reference === "string" ? {table: reference} : reference;
+    return _.template("REFERENCES ${table} (${keys}) ${match} ${on_delete} ${on_update}")({
+      table:     reference.table,
+      keys:      reference.column ? reference.column : "id",
+      match:     reference.match ? "MATCH " + reference.match : "",
+      on_delete: reference.on_delete ? reference.on_delete : "CASCADE",
+      on_update: reference.on_update ? reference.on_update : "CASCADE"
+    });
+  }
+  
+  private static sqlFromTableOptions(table_options: iTableDefinition): string {
+    return "";
+  }
+  
+  private static sqlFromPartitionOptions(partition_options: iTableDefinition): string {
+    return "";
   }
   
 }

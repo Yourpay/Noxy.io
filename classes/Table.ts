@@ -151,7 +151,7 @@ export default class Table {
   private getRelationSQL(): string[] {
     return _.reduce(
       this.__columns,
-      (result, options, col) => result.concat(_.map(_.filter(_.concat(options.relation)), rel =>
+      (result, options, col) => result.concat(_.map(_.filter(_.concat(options.reference)), rel =>
         _.template("CONSTRAINT `${cs}` FOREIGN KEY (`${fk}`) REFERENCES `${db}`.`${tbl}` (`${cl}`) ON UPDATE ${ou} ON DELETE ${od}")({
           cs:  this.__resource.__type + ":" + col,
           fk:  col,
