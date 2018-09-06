@@ -49,6 +49,7 @@ export interface iTable {
   
   validate: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
   save: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
+  toSQL(): () => string
 }
 
 export interface iTableOptions {

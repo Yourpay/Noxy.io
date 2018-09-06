@@ -26,6 +26,8 @@ const a = Resource<eResourceType, cResourceConstructor>(
   options
 );
 
+console.log(a.table.toSQL())
+
 const b = new a();
 b.validate()
 .then(res => {

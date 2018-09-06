@@ -206,10 +206,12 @@ class Table {
   private static sqlFromDefinition(definition: iTableDefinition): string {
     return _.template("($columns)")({
       columns: _.join(_.map(definition, column =>
-        _.template("${data_type} ${null} ${default} ${ai} ${unique} ${primary} ${comment} ${format} ${reference}")({
+        console.log(column) ||
+        console.log("default", column.default ? "DEFAULT " + (column.default === null ? "NULL" : column.default.toString()) : "") ||
+        _.template("${data_type} ${null} ${default_value} ${ai} ${unique} ${primary} ${comment} ${format} ${reference}")({
           data_type: column.type,
-          null:      column.null,
-          default:   column.default ? "DEFAULT " + column.default : "",
+          null:      column.null ? "NULL" : "NOT NULL",
+          default_value:   column.default ? "DEFAULT " + (column.default === null ? "NULL" : column.default.toString()) : "",
           ai:        column.auto_increment ? "AUTO_INCREMENT" : "",
           unique:    column.unique_index,
           primary:   column.primary_key,
