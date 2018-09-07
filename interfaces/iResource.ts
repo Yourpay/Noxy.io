@@ -107,6 +107,14 @@ export interface iTableColumn {
   column_format?: "FIXED" | "DYNAMIC" | "DEFAULT"
 }
 
+export interface iTableIndexes {
+  primary: string[],
+  index: {[key: string]: string[]}
+  unique: {[key: string]: string[]}
+  spatial: {[key: string]: string[]}
+  fulltext: {[key: string]: string[]}
+}
+
 export interface iReferenceDefinition {
   database?: string
   table: string

@@ -4,7 +4,7 @@ import * as uuid from "uuid";
 import {env} from "../app";
 import {tEnum, tNonFnProps} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {eResourceType, iReferenceDefinition, iResource, iResourceActionOptions, iTableColumn, iTableDefinition, iTableOptions} from "../interfaces/iResource";
+import {eResourceType, iReferenceDefinition, iResource, iResourceActionOptions, iTableColumn, iTableDefinition, iTableIndexes, iTableOptions} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
@@ -126,15 +126,37 @@ class Table {
   public readonly resource: typeof Resource;
   public readonly definition: iTableDefinition;
   public readonly options: iTableOptions;
+  public readonly indexes: iTableIndexes = {primary: [], index: {}, unique: {}, spatial: {}, fulltext: {}};
   public readonly keys: string[][];
   
   constructor(resource: typeof Resource, definition: iTableDefinition, options?: iTableOptions) {
     this.resource = resource;
-    this.definition = options.junction ? {...definition} : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}, ...definition};
+    this.definition = options.junction ? definition : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}, ...definition};
     this.options = {database: env.mode, ...options};
+    this.indexes = _.reduce(this.definition, (result, col, key) => {
+      if (col.primary_key) { result.primary.push(key); }
+      if (col.index) {
+        if (!_.isArray(col.index)) { this.definition[key].index = [...this.definition[key].index]; }
+        _.each(col.unique_index, index => { return result.index[index] = [...result.index[index] || [], key] })
+      }
+      if (col.unique_index) {
+        if (!_.isArray(col.unique_index)) { this.definition[key].unique_index = [...this.definition[key].unique_index]; }
+        _.each(col.unique_index, index => { return result.unique[index] = [...result.unique[index] || [], key] })
+      }
+      if (col.spatial_index) {
+        if (!_.isArray(col.unique_index)) { this.definition[key].unique_index = [...this.definition[key].unique_index]; }
+        _.each(col.unique_index, index => { return result.spatial[index] = [...result.spatial[index] || [], key] })
+      }
+      if (col.fulltext_index) {
+        if (!_.isArray(col.fulltext_index)) { this.definition[key].fulltext_index = [...this.definition[key].fulltext_index]; }
+        _.each(col.fulltext_index, index => { return result.fulltext[index] = [...result.fulltext[index] || [], key] })
+      }
+      return result;
+    }, this.indexes);
     this.keys = _.values(_.reduce(this.definition, (result, col, key) => {
-      if (col.unique_index) { _.each(_.concat(col.unique_index), index => { result[index] = [...result[index] || [], key]; }); }
+      
       if (col.primary_key) { result["PRIMARY_KEY"] = [...result["PRIMARY_KEY"] || [], key]; }
+      if (col.unique_index) { _.each(_.concat(col.unique_index), index => { result[index] = [...result[index] || [], key]; }); }
       return result;
     }, {}));
     
@@ -198,28 +220,29 @@ class Table {
       exists_check:      this.options.exists_check ? "IF NOT EXISTS" : "",
       name:              this.resource.type,
       definition:        Table.sqlFromDefinition(this.definition),
-      table_options:     "",
-      partition_options: ""
+      table_options:     Table.sqlFromTableOptions(this.options),
+      partition_options: Table.sqlFromPartitionOptions(this.options)
     });
   }
   
   private static sqlFromDefinition(definition: iTableDefinition): string {
-    return _.template("($columns)")({
-      columns: _.join(_.map(definition, column =>
+    return _.template("(${columns}, ${constraints})")({
+      columns:     _.join(_.map(definition, column =>
         console.log(column) ||
         console.log("default", column.default ? "DEFAULT " + (column.default === null ? "NULL" : column.default.toString()) : "") ||
         _.template("${data_type} ${null} ${default_value} ${ai} ${unique} ${primary} ${comment} ${format} ${reference}")({
-          data_type: column.type,
-          null:      column.null ? "NULL" : "NOT NULL",
-          default_value:   column.default ? "DEFAULT " + (column.default === null ? "NULL" : column.default.toString()) : "",
-          ai:        column.auto_increment ? "AUTO_INCREMENT" : "",
-          unique:    column.unique_index,
-          primary:   column.primary_key,
-          comment:   column.comment,
-          format:    column.column_format ? column.column_format : "",
-          reference: column.reference ? Table.sqlFromReference(typeof column.reference === "string" ? column.reference : column.reference) : ""
+          data_type:     column.type,
+          null:          column.null ? "NULL" : "NOT NULL",
+          default_value: column.default ? "DEFAULT " + (column.default === null ? "NULL" : column.default.toString()) : "",
+          ai:            column.auto_increment ? "AUTO_INCREMENT" : "",
+          collate:       column.collation ? "COLLATE " + column.collation : "",
+          comment:       column.comment ? "COMMENT " + column.comment : "",
+          format:        column.column_format ? "COLUMN_FORMAT " + column.column_format : ""
         })
-      ), " ")
+      ), ", "),
+      constraints: _.join(_.reduce(definition, (indexes, column) => {
+        if (column.unique_index) { _.each(_.concat(column.unique_index), i => _.set(indexes, ["UNIQUE INDEX", i]) }
+      }, {}))
     });
   }
   
@@ -234,11 +257,11 @@ class Table {
     });
   }
   
-  private static sqlFromTableOptions(table_options: iTableDefinition): string {
+  private static sqlFromTableOptions(table_options: iTableOptions): string {
     return "";
   }
   
-  private static sqlFromPartitionOptions(partition_options: iTableDefinition): string {
+  private static sqlFromPartitionOptions(partition_options: iTableOptions): string {
     return "";
   }
   
