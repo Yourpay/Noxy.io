@@ -136,25 +136,24 @@ class Table {
     this.indexes = _.reduce(this.definition, (result, col, key) => {
       if (col.primary_key) { result.primary.push(key); }
       if (col.index) {
-        if (!_.isArray(col.index)) { this.definition[key].index = [...this.definition[key].index]; }
-        _.each(col.unique_index, index => { return result.index[index] = [...result.index[index] || [], key] })
+        if (!_.isArray(col.index)) { this.definition[key].index = _.concat(this.definition[key].index); }
+        _.each(col.index, index => { return result.index[index] = [...result.index[index] || [], key]; });
       }
       if (col.unique_index) {
-        if (!_.isArray(col.unique_index)) { this.definition[key].unique_index = [...this.definition[key].unique_index]; }
-        _.each(col.unique_index, index => { return result.unique[index] = [...result.unique[index] || [], key] })
+        if (!_.isArray(col.unique_index)) { this.definition[key].unique_index = _.concat(this.definition[key].unique_index); }
+        _.each(col.unique_index, index => { return result.unique[index] = [...result.unique[index] || [], key]; });
       }
       if (col.spatial_index) {
-        if (!_.isArray(col.unique_index)) { this.definition[key].unique_index = [...this.definition[key].unique_index]; }
-        _.each(col.unique_index, index => { return result.spatial[index] = [...result.spatial[index] || [], key] })
+        if (!_.isArray(col.unique_index)) { this.definition[key].spatial_index = _.concat(this.definition[key].spatial_index); }
+        _.each(col.spatial_index, index => { return result.spatial[index] = [...result.spatial[index] || [], key]; });
       }
       if (col.fulltext_index) {
-        if (!_.isArray(col.fulltext_index)) { this.definition[key].fulltext_index = [...this.definition[key].fulltext_index]; }
-        _.each(col.fulltext_index, index => { return result.fulltext[index] = [...result.fulltext[index] || [], key] })
+        if (!_.isArray(col.fulltext_index)) { this.definition[key].fulltext_index = _.concat(this.definition[key].fulltext_index); }
+        _.each(col.fulltext_index, index => { return result.fulltext[index] = [...result.fulltext[index] || [], key]; });
       }
       return result;
     }, this.indexes);
     this.keys = _.values(_.reduce(this.definition, (result, col, key) => {
-      
       if (col.primary_key) { result["PRIMARY_KEY"] = [...result["PRIMARY_KEY"] || [], key]; }
       if (col.unique_index) { _.each(_.concat(col.unique_index), index => { result[index] = [...result[index] || [], key]; }); }
       return result;
@@ -167,7 +166,7 @@ class Table {
   }
   
   public static toTimeColumn(index?: string, hidden: boolean = false): iTableColumn {
-    return {type: "bigint(13)", required: true, protected: true, default: null, index: index ? _.concat(index) : null, hidden: hidden};
+    return {type: "bigint(13)", required: true, protected: true, default: null, index: index ? index : null, hidden: hidden};
   }
   
   public validate(resource: Resource, options: iResourceActionOptions = {}): Promise<tNonFnProps<Resource>> {
@@ -215,34 +214,43 @@ class Table {
   }
   
   public toSQL(): string {
-    return _.template("CREATE ${temporary} TABLE ${exists} ${name} ${definition} ${table_options} ${partition_options}")({
+    return _.template("CREATE ${temporary} TABLE ${exists} `${name}` ${definition} ${table_options} ${partition_options}")({
       temporary:         this.options.temporary ? "TEMPORARY" : "",
-      exists_check:      this.options.exists_check ? "IF NOT EXISTS" : "",
+      exists:            this.options.exists_check ? "IF NOT EXISTS" : "",
       name:              this.resource.type,
-      definition:        Table.sqlFromDefinition(this.definition),
+      definition:        Table.sqlFromDefinition(this),
       table_options:     Table.sqlFromTableOptions(this.options),
       partition_options: Table.sqlFromPartitionOptions(this.options)
-    });
+    }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
   }
   
-  private static sqlFromDefinition(definition: iTableDefinition): string {
+  private static sqlFromDefinition(table: Table): string {
     return _.template("(${columns}, ${constraints})")({
-      columns:     _.join(_.map(definition, column =>
-        console.log(column) ||
-        console.log("default", column.default ? "DEFAULT " + (column.default === null ? "NULL" : column.default.toString()) : "") ||
-        _.template("${data_type} ${null} ${default_value} ${ai} ${unique} ${primary} ${comment} ${format} ${reference}")({
-          data_type:     column.type,
-          null:          column.null ? "NULL" : "NOT NULL",
-          default_value: column.default ? "DEFAULT " + (column.default === null ? "NULL" : column.default.toString()) : "",
+      columns:     _.join(_.map(table.definition, (column, key) =>
+        _.template("`${name}` ${data_type} ${is_null} ${default_value} ${ai} ${comment} ${format}")({
+          name:          key,
+          data_type:     _.toUpper(column.type),
+          is_null:       column.null || column.default === null ? "NULL" : "NOT NULL",
+          default_value: column.default !== undefined ? "DEFAULT " + (column.default ? column.default.toString() : "NULL") : "",
           ai:            column.auto_increment ? "AUTO_INCREMENT" : "",
           collate:       column.collation ? "COLLATE " + column.collation : "",
           comment:       column.comment ? "COMMENT " + column.comment : "",
           format:        column.column_format ? "COLUMN_FORMAT " + column.column_format : ""
-        })
+        }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "")
       ), ", "),
-      constraints: _.join(_.reduce(definition, (indexes, column) => {
-        if (column.unique_index) { _.each(_.concat(column.unique_index), i => _.set(indexes, ["UNIQUE INDEX", i]) }
-      }, {}))
+      constraints: _.join(_.reduce(table.indexes, (indexes, index, type) => {
+        if (type === "primary") { indexes.push(_.template("PRIMARY KEY (`${keys}`)")({keys: _.join(<string[]>index, "`, `")})); }
+        else {
+          _.each(index, (i, k) => {
+            indexes.push(_.template("${index} INDEX `${name}` (`${keys}`)")({
+              index: type !== "index" ? _.toUpper(type) : "",
+              name: k,
+              keys:  _.join(i, "`, `")
+            }));
+          });
+        }
+        return indexes;
+      }, []), ", ")
     });
   }
   
@@ -254,7 +262,7 @@ class Table {
       match:     reference.match ? "MATCH " + reference.match : "",
       on_delete: reference.on_delete ? reference.on_delete : "CASCADE",
       on_update: reference.on_update ? reference.on_update : "CASCADE"
-    });
+    }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
   }
   
   private static sqlFromTableOptions(table_options: iTableOptions): string {

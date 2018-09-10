@@ -5,6 +5,7 @@ import * as Resource from "../modules/Resource";
 const definition = {
   name:         {type: "varchar(32)", required: true},
   key:          {type: "varchar(32)", required: true, protected: true, unique_index: "key"},
+  type:         {type: "int(11)", index: "key", default: 0},
   user_created: Resource.Table.toRelationColumn<eResourceType>(eResourceType.USER),
   time_created: Resource.Table.toTimeColumn("time_created"),
   time_updated: Resource.Table.toTimeColumn(null, true)
@@ -26,7 +27,8 @@ const a = Resource<eResourceType, cResourceConstructor>(
   options
 );
 
-console.log(a.table.toSQL())
+console.log("Indexes", a.table.indexes);
+console.log("SQL", a.table.toSQL());
 
 const b = new a();
 b.validate()
@@ -37,7 +39,7 @@ b.validate()
   console.log(err);
 });
 
-console.log("Resource", a);
-console.log("Instance", b, b.id, b.uuid);
+// console.log("Resource", a);
+// console.log("Instance", b, b.id, b.uuid);
 // console.log("ID", b.id, b.uuid);
-console.log("Table", a.table);
+// console.log("Table", a.table);

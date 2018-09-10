@@ -46,6 +46,7 @@ export interface iTable {
   readonly definition: iTableDefinition;
   readonly options: iTableOptions;
   readonly keys: string[][];
+  readonly indexes: string[];
   
   validate: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
   save: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
