@@ -2,12 +2,16 @@ import * as Promise from "bluebird";
 import {tEnum} from "./iAuxiliary";
 
 export interface iResource {
-  <T, R extends cResourceConstructor>(type: tEnum<T> & string, constructor: R, definition: iTableDefinition, options?: iTableOptions): R
+  <T>(type: tEnum<T> & string, constructor: cResourceConstructor, definition: iTableDefinition, options?: iTableOptions): cResourceConstructor
   
   Table: cTable
   Constructor: cResourceConstructor
   
+  list: cResourceConstructor[]
   TYPES: typeof eResourceType
+
+  uuidFromBuffer: (buffer: Buffer) => string
+  bufferFromUUID: (uuid: string) => Buffer
 }
 
 export interface cResourceConstructor {
@@ -18,13 +22,16 @@ export interface cResourceConstructor {
 }
 
 export interface iResourceConstructor {
+  [key: string]: any
+  
   id: Buffer
   uuid: string
   validated: boolean;
   exists: boolean;
   
-  validate: (options?: iResourceActionOptions) => Promise<iResourceConstructor>
-  save: (options?: iResourceActionOptions) => Promise<iResourceConstructor>
+  validate: (options?: iResourceActionOptions) => Promise<this>
+  save: (options?: iResourceActionOptions) => Promise<this>
+  delete: (options?: iResourceActionOptions) => Promise<this>
 }
 
 export interface iResourceActionOptions {
@@ -50,23 +57,60 @@ export interface iTable {
   
   validate: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
   save: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
+  
   toSQL(): () => string
 }
 
 export interface iTableOptions {
-  /* Is this table coextensive? Can it exist in multiple databases? */
-  coextensive?: boolean
-  /* The database that this table should be assigned to if it is not coextensive */
-  database?: string;
+  resource?: iTableResourceOptions
+  table?: iTableDefaultOptions
+  partition?: iTablePartitionOptions
+}
+
+export interface iTableResourceOptions {
+  /* The database that this table should be assigned to, defaults to environment defined database. */
+  database?: string
   /* Is the table a junction table? If it is, the ID column will not be added automatically. */
   junction?: boolean
+  /* Is the table a temporary table? */
+  temporary?: boolean
+  /* Should the 'IF EXISTS' clause be added? */
+  exists_check?: boolean
+}
+
+export interface iTableDefaultOptions {
+  /* Where should the auto_increment start from */
+  auto_increment?: number
+  /* Which value the avg_row_length parameter should default to */
+  average_row_length?: number
+  charset?: string
+  checksum?: boolean
+  comment?: string
   /* The default collation to use with the table */
   collation?: "utf8mb4_unicode_ci" | string
+  compression?: "ZLIB" | "LZ4" | "NONE"
+  connection?: string
+  directory?: string
+  delay_key_write?: boolean
+  encryption?: boolean
   /* The database engine to run the table under */
   engine?: "InnoDB" | "MyISAM" | "Aria" | "CSV" | string
-  
-  temporary?: boolean
-  exists_check?: boolean
+  insert_method?: "NO" | "FIRST" | "LAST"
+  key_block_size?: number
+  max_rows?: number
+  min_rows?: number
+  pack_keys?: boolean | "DEFAULT"
+  password?: string
+  row_format?: "DEFAULT" | "DYNAMIC" | "FIXED" | "COMPRESSED" | "REDUNDANT" | "COMPACT"
+  stats_auto_recalc?: boolean | "DEFAULT"
+  stats_persistent?: boolean | "DEFAULT"
+  stats_sample_pages?: number
+  tablespace?: string
+  union?: string | string[]
+}
+
+export interface iTablePartitionOptions {
+
 }
 
 export interface iTableDefinition {
@@ -102,9 +146,9 @@ export interface iTableColumn {
   collation?: "utf8mb4_unicode_ci" | string
   /* Add a comment to the column in the database */
   comment?: string
-  
+  /* Should the column be an auto_increment column */
   auto_increment?: boolean,
-  
+  /* The kind of format the columns should follow */
   column_format?: "FIXED" | "DYNAMIC" | "DEFAULT"
 }
 
@@ -131,5 +175,5 @@ export enum eResourceType {
   "ROLE_USER"  = "role/user",
   "ROLE_ROUTE" = "role/route",
   "ROUTE"      = "route",
-  "TEST"       = "test",
+  "TEST"       = "test"
 }

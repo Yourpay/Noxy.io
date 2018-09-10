@@ -4,14 +4,14 @@ import * as uuid from "uuid";
 import {env} from "../app";
 import {tEnum, tNonFnProps} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {eResourceType, iReferenceDefinition, iResource, iResourceActionOptions, iTableColumn, iTableDefinition, iTableIndexes, iTableOptions} from "../interfaces/iResource";
+import {eResourceType, iResource, iResourceActionOptions, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
 
 const resources = {};
 
-function Default<T, R extends typeof Resource>(type: tEnum<T> & string, constructor: R, definition: iTableDefinition, options?: iTableOptions): R {
+function Default<T>(type: tEnum<T> & string, constructor: typeof Resource, definition: iTableDefinition, options?: iTableOptions): typeof Resource {
   
   const key = _.join([_.get(options, "database", env.databases[env.mode].database), type], "::");
   
@@ -48,10 +48,11 @@ class Resource {
   public exists: boolean;
   
   constructor(initializer = {}) {
+    const $this = (<typeof Resource>this.constructor);
     _.assign(this, initializer);
     let t_uuid = uuid.v4(), t_id = bufferFromUUID(t_uuid);
-    Object.defineProperty(this, "id", {configurable: true, enumerable: true, get: () => t_id, set: v => { if (!_.isEqual(v, t_id)) { this.uuid = uuidFromBuffer(this.id = v); } }});
-    Object.defineProperty(this, "uuid", {configurable: true, enumerable: true, get: () => t_uuid, set: v => { if (!_.isEqual(v, t_uuid)) { this.id = bufferFromUUID(this.uuid = v); } }});
+    Object.defineProperty(this, "id", {configurable: true, enumerable: true, get: () => t_id, set: v => { if (!_.isEqual(v, t_id)) { this.uuid = uuidFromBuffer(this.id = t_id = v); } }});
+    Object.defineProperty(this, "uuid", {configurable: true, enumerable: true, get: () => t_uuid, set: v => { if (!_.isEqual(v, t_uuid)) { this.id = bufferFromUUID(this.uuid = t_uuid = v); } }});
     this.id = t_id;
   }
   
@@ -61,7 +62,7 @@ class Resource {
     
     return $this.table.validate(this, options)
     .then(res => _.assign(new $this(res), {exists: true}))
-    .catch(err => err.code === 404 ? {} : Promise.reject(new Response.error(err.code, err.type, err)))
+    .catch(err => err.code === 404 ? Promise.resolve({exists: false}) : Promise.reject(new Response.error(err.code, err.type, err)))
     .then(resource => {
       return _.assign(
         _.reduce(resource, (target, value, key) => {
@@ -101,7 +102,7 @@ class Resource {
                 Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[k])
                 .catch(err => {
                   if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code, err.type, err)); }
-                  return new resources[_.join([$this.table.options.database, _.get(v, "relation.table", v.reference)], "::")].__resource({id: this[k]}).validate();
+                  return new resources[_.join([$this.table.options.resource.database, _.get(v, "relation.table", v.reference)], "::")].__resource({id: this[k]}).validate();
                 })
                 .then(res => res.toObject())
                 .then(res => _.set(r, k, res));
@@ -131,8 +132,8 @@ class Table {
   
   constructor(resource: typeof Resource, definition: iTableDefinition, options?: iTableOptions) {
     this.resource = resource;
-    this.definition = options.junction ? definition : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}, ...definition};
-    this.options = {database: env.mode, ...options};
+    this.options = _.merge({resource: {database: env.mode, exists_check: true}, table: {}, partition: {}}, options);
+    this.definition = this.options.resource.junction ? definition : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}, ...definition};
     this.indexes = _.reduce(this.definition, (result, col, key) => {
       if (col.primary_key) { result.primary.push(key); }
       if (col.index) {
@@ -181,12 +182,13 @@ class Table {
       const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
       if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
       return Cache.set<tNonFnProps<Resource>>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
-        return Database(this.options.database).queryOne<tNonFnProps<Resource>>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
+        return Database(this.options.resource.database).queryOne<tNonFnProps<Resource>>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
       }, {timeout: 0, collision_fallback: true});
     });
   }
   
   public save(resource: Resource, options: iResourceActionOptions = {}): Promise<Resource> {
+    let where = "";
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
     
@@ -194,14 +196,14 @@ class Table {
     if (!resource.validated) { return Promise.reject(new Response.error(400, "resource", this)); }
     
     if (resource.exists) {
-      const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
+      where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
       if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
     }
     
     return Cache.set<iDatabaseActionResult>(Cache.types.SAVE, this.resource.type, cache_keys, () => {
       const set = [this.resource.type, _.pick(resource, _.keys(this.definition))];
-      if (resource.exists) { return Database(this.options.database).query<iDatabaseActionResult>(`UPDATE ?? SET ? WHERE {where}`, _.concat(set)); }
-      return Database(this.options.database).query<iDatabaseActionResult>("INSERT INTO ?? SET ?", _.concat(set));
+      if (resource.exists) { return Database(this.options.resource.database).query<iDatabaseActionResult>(`UPDATE ?? SET ? WHERE ${where}`, _.concat(set)); }
+      return Database(this.options.resource.database).query<iDatabaseActionResult>("INSERT INTO ?? SET ?", _.concat(set));
     }, {timeout: 0, collision_fallback: true})
     .then(res => {
       if (res.affectedRows === 0) { return Promise.reject(new Response.error(500, "resource", {keys: keys, object: resource})); }
@@ -215,12 +217,12 @@ class Table {
   
   public toSQL(): string {
     return _.template("CREATE ${temporary} TABLE ${exists} `${name}` ${definition} ${table_options} ${partition_options}")({
-      temporary:         this.options.temporary ? "TEMPORARY" : "",
-      exists:            this.options.exists_check ? "IF NOT EXISTS" : "",
+      temporary:         this.options.resource.temporary ? "TEMPORARY" : "",
+      exists:            this.options.resource.exists_check ? "IF NOT EXISTS" : "",
       name:              this.resource.type,
       definition:        Table.sqlFromDefinition(this),
-      table_options:     Table.sqlFromTableOptions(this.options),
-      partition_options: Table.sqlFromPartitionOptions(this.options)
+      table_options:     Table.sqlFromTableOptions(this.options.table),
+      partition_options: Table.sqlFromPartitionOptions(this.options.partition)
     }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
   }
   
@@ -231,56 +233,85 @@ class Table {
           name:          key,
           data_type:     _.toUpper(column.type),
           is_null:       column.null || column.default === null ? "NULL" : "NOT NULL",
-          default_value: column.default !== undefined ? "DEFAULT " + (column.default ? column.default.toString() : "NULL") : "",
+          default_value: column.default !== undefined ? "DEFAULT " + (column.default !== null ? column.default.toString() : "NULL") : "",
           ai:            column.auto_increment ? "AUTO_INCREMENT" : "",
           collate:       column.collation ? "COLLATE " + column.collation : "",
           comment:       column.comment ? "COMMENT " + column.comment : "",
           format:        column.column_format ? "COLUMN_FORMAT " + column.column_format : ""
         }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "")
       ), ", "),
-      constraints: _.join(_.reduce(table.indexes, (indexes, index, type) => {
-        if (type === "primary") { indexes.push(_.template("PRIMARY KEY (`${keys}`)")({keys: _.join(<string[]>index, "`, `")})); }
-        else {
-          _.each(index, (i, k) => {
-            indexes.push(_.template("${index} INDEX `${name}` (`${keys}`)")({
-              index: type !== "index" ? _.toUpper(type) : "",
-              name: k,
-              keys:  _.join(i, "`, `")
-            }));
-          });
-        }
-        return indexes;
-      }, []), ", ")
+      constraints: _.join([
+        Table.sqlFromIndexes(table.indexes),
+        Table.sqlFromReferences(table)
+      ], ", ")
     });
   }
   
-  private static sqlFromReference(reference: string | iReferenceDefinition): string {
-    reference = typeof reference === "string" ? {table: reference} : reference;
-    return _.template("REFERENCES ${table} (${keys}) ${match} ${on_delete} ${on_update}")({
-      table:     reference.table,
-      keys:      reference.column ? reference.column : "id",
-      match:     reference.match ? "MATCH " + reference.match : "",
-      on_delete: reference.on_delete ? reference.on_delete : "CASCADE",
-      on_update: reference.on_update ? reference.on_update : "CASCADE"
-    }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
+  private static sqlFromIndexes(indexes) {
+    return _.join(_.reduce(indexes, (result, index, type) => {
+      if (type === "primary") { result.push(_.template("PRIMARY KEY (`${keys}`)")({keys: _.join(<string[]>index, "`, `")})); }
+      else { _.each(index, (i, k) => { result.push(_.template("${index} INDEX `${name}` (`${keys}`)")({index: type !== "index" ? _.toUpper(type) : "", name: k, keys: _.join(i, "`, `")})); }); }
+      return result;
+    }, []), ", ");
   }
   
-  private static sqlFromTableOptions(table_options: iTableOptions): string {
-    return "";
+  private static sqlFromReferences(table: Table): string {
+    return _.join(_.reduce(table.definition, (result, column, key) => {
+      if (!column.reference || !column.reference) { return result; }
+      const reference = typeof column.reference === "string" ? {table: column.reference} : column.reference;
+      return _.concat(result, _.template("CONSTRAINT `${name}` FOREIGN KEY (`${column}`) REFERENCES `${table}` (`${keys}`) ${match} ON UPDATE ${on_update} ON DELETE ${on_delete}")({
+        name:      table.resource.type + ":" + key,
+        column:    key,
+        table:     reference.table,
+        keys:      reference.column ? reference.column : "id",
+        match:     reference.match ? "MATCH " + reference.match : "",
+        on_delete: reference.on_delete ? reference.on_delete : "CASCADE",
+        on_update: reference.on_update ? reference.on_update : "CASCADE"
+      }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, ""));
+    }, []), ", ");
   }
   
-  private static sqlFromPartitionOptions(partition_options: iTableOptions): string {
+  private static sqlFromTableOptions(options: iTableDefaultOptions): string {
+    return _.join(_.values({
+      ai:     options.auto_increment ? `AUTO_INCREMENT = ${options.auto_increment}` : "",
+      avg:    options.average_row_length ? `AVERAGE_ROW_LENGTH = ${options.average_row_length}` : "",
+      char:   options.charset ? `CHARACTER SET = ${options.charset}` : "",
+      chksum: options.checksum ? `CHECKSUM = ${options.checksum}` : "",
+      clt:    options.collation ? `COLLATE = ${options.collation}` : "",
+      cmnt:   options.comment ? `COMMENT = '${options.comment}'` : "",
+      cmpr:   options.compression ? `COMPRESSION = '${options.compression}'` : "",
+      con:    options.connection ? `CONNECTION = '${options.connection}'` : "",
+      dir:    options.directory ? `DIRECTORY = '${options.directory}'` : "",
+      delay:  _.isBoolean(options.delay_key_write) ? `DELAY_KEY_WRITE = ${options.delay_key_write ? "1" : "0"}` : "",
+      enc:    _.isBoolean(options.encryption) ? `ENCRYPTION = '${options.encryption ? "Y" : "N"}'` : "",
+      eng:    options.engine ? `ENGINE = ${options.engine}` : "",
+      insert: options.insert_method ? `INSERT_METHOD = ${options.insert_method}` : "",
+      kbsize: options.key_block_size ? `KEY_BLOCK_SIZE = ${options.key_block_size}` : "",
+      min:    options.min_rows ? `MIN_ROWS = ${options.min_rows}` : "",
+      max:    options.max_rows ? `MAX_ROWS = ${options.max_rows}` : "",
+      pack:   _.isBoolean(options.pack_keys) || options.pack_keys === "DEFAULT" ? `PACK_KEYS = ${_.isString(options.pack_keys) ? "DEFAULT" : (options.pack_keys ? "1" : "0")}` : "",
+      pwd:    options.password ? `PASSWORD = '${options.password}'` : "",
+      fmt:    options.row_format ? `ROW_FORMAT = ${options.row_format}` : "",
+      sar:    _.isBoolean(options.stats_auto_recalc) || options.stats_auto_recalc === "DEFAULT" ? `STATS_AUTO_RECALC = ${_.isString(options.stats_auto_recalc) ? "DEFAULT" : (options.stats_auto_recalc ? "1" : "0")}` : "",
+      sp:     _.isBoolean(options.stats_persistent) || options.stats_persistent === "DEFAULT" ? `STATS_PERSISTENT = ${_.isString(options.stats_persistent) ? "DEFAULT" : (options.stats_persistent ? "1" : "0")}` : "",
+      ssp:    options.stats_sample_pages ? `STATS_SAMPLE_PAGES = ${options.stats_sample_pages}` : "",
+      tspace: options.tablespace ? `TABLESPACE = ${options.tablespace}` : "",
+      union:  options.union ? `UNION = ${_.join(_.concat(options.union))}` : ""
+    }), " ");
+  }
+  
+  private static sqlFromPartitionOptions(partition_options: iTablePartitionOptions): string {
     return "";
   }
   
 }
 
-Object.defineProperty(Default, "resources", {enumerable: true, value: resources});
+Object.defineProperty(Default, "list", {enumerable: true, value: resources});
 Object.defineProperty(Default, "TYPES", {enumerable: true, value: eResourceType});
 Object.defineProperty(Default, "uuidFromBuffer", {value: uuidFromBuffer});
 Object.defineProperty(Default, "bufferFromUUID", {value: bufferFromUUID});
 Object.defineProperty(Default, "Table", {value: Table});
 Object.defineProperty(Default, "Constructor", {value: Resource});
 
-const exported = <iResource>Default;
+const exported = <iResource>(<any>Default);
 export = exported;

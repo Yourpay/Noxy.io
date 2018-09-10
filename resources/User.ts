@@ -1,51 +1,42 @@
 import * as Promise from "bluebird";
 import * as crypto from "crypto";
 import * as jwt from "jsonwebtoken";
-import * as _ from "lodash";
 import {env} from "../app";
-import * as Resource from "../classes/Resource";
-import * as Tables from "../classes/Table";
-import Table from "../classes/Table";
 import {publicize_queue} from "../init/publicize";
-import {cResourceConstructor, eResourceType} from "../interfaces/iResource";
+import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
+import {eResourceType} from "../interfaces/iResource";
 import * as Application from "../modules/Application";
 import * as Cache from "../modules/Cache";
+import * as Resource from "../modules/Resource";
 import * as Response from "../modules/Response";
 import Route from "./Route";
 
-const options: Tables.iTableOptions = {};
-const columns: Tables.iTableColumns = {
+const definition = {
   username:     {type: "varchar(64)", required: true, protected: true},
   email:        {type: "varchar(128)", required: true, protected: true, unique_index: "email"},
   salt:         {type: "binary(64)", required: true, protected: true, hidden: true},
   hash:         {type: "binary(64)", required: true, protected: true, hidden: true},
-  time_login:   Table.generateTimeColumn("time_login"),
-  time_created: Table.generateTimeColumn("time_created"),
-  time_updated: Table.generateTimeColumn(null, true)
+  time_login:   Resource.Table.toTimeColumn("time_login"),
+  time_created: Resource.Table.toTimeColumn("time_created"),
+  time_updated: Resource.Table.toTimeColumn(null, true)
 };
+const options = {};
 
-@Resource.implement<Resource.iResource>()
 export default class User extends Resource.Constructor {
   
-  public static readonly __type: string = "user";
-  public static readonly __table: Table = new Table(User, options, columns);
-  private static __login_callbacks: ((user: iUserJWTObject) => Promise<Object>)[] = [];
+  private static __login_callbacks: ((user: iUserJWTObject) => Promise<Object>)[];
+  
   public username: string;
   public email: string;
   public salt: Buffer;
   public hash: Buffer;
   public time_login: number;
-  public time_created?: number;
-  private __password: string;
+  public time_created: number;
+  public time_updated: number;
   
-  constructor(object: iResourceObject = {}) {
-    super(object);
-    if (this.password) {
-      this.salt = User.generateSalt();
-      this.hash = User.generateHash(this.password, this.salt);
-      delete this.password;
-    }
-    this.time_created = object.time_created ? object.time_created : Date.now();
+  constructor(initializer: tNonFnPropsOptional<User> = {}) {
+    super(initializer);
+    this.time_created = initializer.time_created ? initializer.time_created : Date.now();
   }
   
   public static get login_callbacks() {
@@ -65,7 +56,7 @@ export default class User extends Resource.Constructor {
     return crypto.pbkdf2Sync(password, salt.toString("base64"), 10000, 64, "sha512");
   }
   
-  public static addLoginCallback(callback: (user: iUserJWTObject) => Promise<Object>): void {
+  public static addLoginCallback(callback: (user: {username: string, email: string, time_login: }) => Promise<Object>): void {
     User.__login_callbacks.push(callback);
   }
   
@@ -94,7 +85,7 @@ export default class User extends Resource.Constructor {
 }
 
 publicize_queue.promise("setup", resolve => {
-  Application.addRoute(env.subdomains.api, User.__type, "/login", "POST", (request, response) =>
+  Application.addRoute(env.subdomains.api, User.type, "/login", "POST", (request, response) =>
     User.login(request.body, request.get("Authorization"))
     .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
     .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
@@ -125,16 +116,4 @@ interface iUserCredentials {
   password: string
 }
 
-interface iQueryObject {
-  id?: string
-  username?: string
-  email?: string
-  salt?: Buffer
-  hash?: Buffer
-  time_login?: number
-  time_created?: number
-}
-
-interface iResourceObject extends iQueryObject {
-  password?: string
-}
+Resource<eResourceType>(eResourceType.USER, User, definition, options);

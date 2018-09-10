@@ -8,8 +8,20 @@ import * as Response from "../modules/Response";
 import Role from "../resources/Role";
 import RoleUser from "../resources/RoleUser";
 import User from "../resources/User";
+import Test from "../resources/Test";
 
 export const resource_queue = new PromiseQueue(["user", "role", "role/user"]);
+
+resource_queue.promise("test", (resolve, reject) => {
+  const b = new Test({name: "Test", key: "any", template: 1, type: 1, user_created: env.users.server.id});
+  b.save({update_protected: true})
+  .then(res => {
+    resolve(res);
+  })
+  .catch(err => {
+    reject(err);
+  });
+});
 
 resource_queue.promise("user", (resolve, reject) => {
   Promise.props(_.mapValues(env.users, (user, key) => {

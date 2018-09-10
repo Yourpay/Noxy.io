@@ -1,48 +1,41 @@
-import * as _ from "lodash";
 import {env} from "../app";
-import * as Resource from "../classes/Resource";
-import * as Tables from "../classes/Table";
-import Table from "../classes/Table";
+import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
+import {eResourceType} from "../interfaces/iResource";
+import * as Resource from "../modules/Resource";
+import User from "./User";
 
-const options: Tables.iTableOptions = {};
-const columns: Tables.iTableColumns = {
+const definition = {
   name:         {type: "varchar(32)", required: true},
   key:          {type: "varchar(32)", required: true, protected: true, unique_index: "key"},
-  user_created: Table.generateUserColumn("user_created"),
-  time_created: Table.generateTimeColumn("time_created"),
-  time_updated: Table.generateTimeColumn(null, true)
+  user_created: Resource.Table.toRelationColumn<eResourceType>(eResourceType.USER),
+  time_created: Resource.Table.toTimeColumn("time_created"),
+  time_updated: Resource.Table.toTimeColumn(null, true)
 };
+const options = {};
 
-@Resource.implement<Resource.iResource>()
-export default class Role extends Resource.Constructor implements iQueryObject {
-  
-  public static readonly __type: string = "role";
-  public static readonly __table: Table = new Table(Role, options, columns);
+export default class Role extends Resource.Constructor {
   
   public name?: string;
   public key: string;
-  public user_created: Buffer;
+  public user_created: User | Buffer | string;
   public time_created: number;
   public time_updated: number;
   
-  constructor(object: iResourceObject = {}) {
-    super(object);
-    if (!object.key) { this.key = _.snakeCase(_.deburr(object.name)); }
-    this.time_created = object.time_created ? object.time_created : Date.now();
-    this.user_created = Resource.Constructor.bufferFromUuid(_.get(object, "user_created.id", env.users.server.id));
+  constructor(initializer: tNonFnPropsOptional<Role> = {}) {
+    super(initializer);
+    this.time_created = initializer.time_created ? initializer.time_created : Date.now();
+    if (initializer.user_created) {
+      if (typeof initializer.user_created === "string") { this.user_created = Resource.bufferFromUUID(initializer.user_created); }
+      else if (initializer.user_created instanceof Buffer) { this.user_created = initializer.user_created; }
+      else {
+        this.user_created = initializer.user_created.id;
+      }
+    }
+    else {
+      this.user_created = Resource.bufferFromUUID(env.users.server.id);
+    }
   }
   
 }
 
-interface iQueryObject {
-  id?: string | Buffer
-  name?: string
-  key?: string
-  user_created?: string | Buffer
-  time_created?: number
-  time_updated?: number
-}
-
-interface iResourceObject extends iQueryObject {
-
-}
+Resource<eResourceType>(eResourceType.ROLE, Role, definition, options);

@@ -6,6 +6,7 @@ import PromiseQueue from "../classes/PromiseQueue";
 import Table from "../classes/Table";
 import * as Database from "../modules/Database";
 import * as Include from "../modules/Include";
+import * as Resource from "../modules/Resource";
 
 export const database_queue = new PromiseQueue(["connect", "register", "create", "alter"]);
 
@@ -26,6 +27,18 @@ database_queue.promise("create", (resolve, reject) => {
     Database(table.__database).query(_.join([
       "SET FOREIGN_KEY_CHECKS = 0",
       table.toSQL(),
+      "SET FOREIGN_KEY_CHECKS = 1"
+    ], ";"))
+  )
+  .then(res => resolve(res))
+  .catch(err => reject(err));
+});
+
+database_queue.promise("create", (resolve, reject) => {
+  Promise.map(_.values(Resource.list), resource =>
+    Database(resource.table.options.resource.database).query(_.join([
+      "SET FOREIGN_KEY_CHECKS = 0",
+      resource.table.toSQL(),
       "SET FOREIGN_KEY_CHECKS = 1"
     ], ";"))
   )
