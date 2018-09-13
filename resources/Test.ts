@@ -9,7 +9,7 @@ const definition = {
   key:          {type: "varchar(32)", required: true, protected: true, unique_index: "key"},
   type:         {type: "int(11)", index: "type", default: 0},
   template:     {type: "int(11)", index: "type", default: 0},
-  user_created: Resource.Table.toRelationColumn<eResourceType>(eResourceType.USER),
+  user_created: Resource.Table.toReferenceColumn<eResourceType>(eResourceType.USER),
   time_created: Resource.Table.toTimeColumn("time_created"),
   time_updated: Resource.Table.toTimeColumn(null, true)
 };

@@ -19,6 +19,7 @@ export interface cResourceConstructor {
   
   table: iTable
   type: string
+  select: (start?: number, limit?: number, where?: {[key: string]: string | string[]}) => Promise<iResourceConstructor[]>
 }
 
 export interface iResourceConstructor {
@@ -31,7 +32,13 @@ export interface iResourceConstructor {
   
   validate: (options?: iResourceActionOptions) => Promise<this>
   save: (options?: iResourceActionOptions) => Promise<this>
-  delete: (options?: iResourceActionOptions) => Promise<this>
+  remove: (options?: iResourceActionOptions) => Promise<this>
+}
+
+export interface iResourceSelectOptions{
+  timeout?: number
+  keys?: string[]
+  collision_fallback?: boolean | (() => Promise<any>)
 }
 
 export interface iResourceActionOptions {
@@ -44,7 +51,7 @@ export interface iResourceActionOptions {
 export interface cTable {
   new(): iTable
   
-  toRelationColumn: <T>(table: tEnum<T> & string, hidden?: boolean) => iTableColumn
+  toReferenceColumn: <T>(table: tEnum<T> & string, hidden?: boolean) => iTableColumn
   toTimeColumn: (index?: string, hidden?: boolean) => iTableColumn
 }
 
@@ -57,6 +64,8 @@ export interface iTable {
   
   validate: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
   save: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
+  remove: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
+  select: (start?: number, limit?: number, where?: {[key: string]: string | string[]}) => Promise<iResourceConstructor[]>
   
   toSQL(): () => string
 }

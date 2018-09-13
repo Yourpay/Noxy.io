@@ -1,37 +1,24 @@
-import * as Resource from "../classes/Resource";
-import * as Tables from "../classes/Table";
-import Table from "../classes/Table";
+import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
+import {eResourceType, iTableDefinition} from "../interfaces/iResource";
+import * as Resource from "../modules/Resource";
 
-const options: Tables.iTableOptions = {
-  junction: true
+const definition: iTableDefinition = {
+  role_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: "role_id", reference: eResourceType.ROLE},
+  user_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: "user_id", reference: eResourceType.USER}
 };
-const columns: Tables.iTableColumns = {
-  role_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: "role_id", relation: "role"},
-  user_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: "user_id", relation: "user"}
-};
+const options = {resource: {junction: true}};
 
-@Resource.implement<Resource.iResource>()
 export default class RoleUser extends Resource.Constructor {
   
-  public static readonly __type: string = "role/user";
-  public static readonly __table: Table = new Table(RoleUser, options, columns);
+  public role_id: Buffer | string;
+  public user_id: Buffer | string;
   
-  public role_id: Buffer;
-  public user_id: Buffer;
-  
-  constructor(object: iResourceObject) {
-    super(object);
-    this.role_id = typeof object.role_id === "string" ? Resource.Constructor.bufferFromUuid(object.role_id) : object.role_id;
-    this.user_id = typeof object.user_id === "string" ? Resource.Constructor.bufferFromUuid(object.user_id) : object.user_id;
+  constructor(initializer: tNonFnPropsOptional<RoleUser> = {}) {
+    super(initializer);
+    this.role_id = typeof initializer.role_id === "string" ? Resource.bufferFromUUID(initializer.role_id) : initializer.role_id;
+    this.user_id = typeof initializer.user_id === "string" ? Resource.bufferFromUUID(initializer.user_id) : initializer.user_id;
   }
   
 }
 
-interface iQueryObject {
-  role_id: string | Buffer
-  user_id: string | Buffer
-}
-
-interface iResourceObject extends iQueryObject {
-
-}
+Resource<eResourceType>(eResourceType.ROLE_USER, RoleUser, definition, options);

@@ -1,37 +1,24 @@
-import * as Resource from "../classes/Resource";
-import * as Tables from "../classes/Table";
-import Table from "../classes/Table";
+import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
+import {eResourceType, iTableDefinition} from "../interfaces/iResource";
+import * as Resource from "../modules/Resource";
 
-const options: Tables.iTableOptions = {
-  junction: true
+const definition: iTableDefinition = {
+  role_id:  {type: "binary(16)", protected: true, required: true, primary_key: true, index: "role_id", reference: "role"},
+  route_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: "route_id", reference: "route"}
 };
-const columns: Tables.iTableColumns = {
-  role_id:  {type: "binary(16)", protected: true, required: true, primary_key: true, index: "role_id", relation: "role"},
-  route_id: {type: "binary(16)", protected: true, required: true, primary_key: true, index: "route_id", relation: "route"}
-};
+const options = {resource: {junction: true}};
 
-@Resource.implement<Resource.iResource>()
 export default class RoleRoute extends Resource.Constructor {
   
-  public static readonly __type: string = "role/route";
-  public static readonly __table: Table = new Table(RoleRoute, options, columns);
+  public role_id: Buffer | string;
+  public route_id: Buffer | string;
   
-  public role_id: Buffer;
-  public route_id: Buffer;
-  
-  constructor(object: iResourceObject) {
-    super(object);
-    this.role_id = typeof object.role_id === "string" ? Resource.Constructor.bufferFromUuid(object.role_id) : object.role_id;
-    this.route_id = typeof object.route_id === "string" ? Resource.Constructor.bufferFromUuid(object.route_id) : object.route_id;
+  constructor(initializer: tNonFnPropsOptional<RoleRoute> = {}) {
+    super(initializer);
+    this.role_id = typeof initializer.role_id === "string" ? Resource.bufferFromUUID(initializer.role_id) : initializer.role_id;
+    this.route_id = typeof initializer.route_id === "string" ? Resource.bufferFromUUID(initializer.route_id) : initializer.route_id;
   }
   
 }
 
-interface iQueryObject {
-  role_id: string | Buffer
-  route_id: string | Buffer
-}
-
-interface iResourceObject extends iQueryObject {
-
-}
+Resource<eResourceType>(eResourceType.ROLE_ROUTE, RoleRoute, definition, options);

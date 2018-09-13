@@ -54,6 +54,7 @@ function databaseParse(sql: string, replacers: any | any[]) {
     const length = (match.match(/\?/g) || []).length;
     const regex = new RegExp("(\\\s+|^|\\\()\\\?{" + length + "}(\\\s+|$|\\\))");
     if (length === 3) {
+      if (r.type === "where")
       if (r.type === "in" && r.key && r.values) { return result.replace(regex, "$1`" + r.key + "` IN (" + mysql.escape(r.values) + ")$2"); }
       return result.replace(regex, "$1" + mysql.escape(r) + "$2");
     }

@@ -49,14 +49,14 @@ export function addRoute(subdomain: string, namespace: string, path: string, met
   const key = Cache.toKey([subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method]);
   
   return new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: _.concat(auth, fn)})
-  .save({update_protected: true, cache: {keys: key, timeout: null, collision_fallback: true}});
+  .save({update_protected: true, keys: [key], timeout: null, collision_fallback: true});
 }
 
 export function updateRoute(route: Route, fn?: Middleware | Middleware[]): Promise<Route> {
   // TODO: Implement middleware changer function
   const key = Cache.toKey([route.subdomain, ("/" + route.namespace + route.path).replace(/\/{2,}/, "/").replace(/\/$/, ""), route.method]);
   
-  return route.save({update_protected: true, cache: {keys: key, timeout: null, collision_fallback: true}});
+  return route.save({update_protected: true, keys: [key], timeout: null, collision_fallback: true});
 }
 
 export function addRoutes(subdomain: string, namespace: string, route_set: {[path: string]: {[method: string]: Middleware | Middleware[]}}): {[key: string]: Promise<Route>} {
@@ -96,7 +96,7 @@ export function publicize(): boolean {
   
   if (__published) { return __published; }
   
-  _.each(_.orderBy(_.uniqBy(_.map(Cache.getNamespace(Cache.types.RESOURCE, Route.__type), "value"), v => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
+  _.each(_.orderBy(_.uniqBy(_.map(Cache.getNamespace(Cache.types.RESOURCE, Route.type), "value"), v => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
     if (!(subdomain = __subdomains[route.subdomain])) {
       subdomain = __subdomains[route.subdomain] = express.Router();
       if (route.subdomain !== env.subdomains.default) { __application.use(vhost(route.subdomain + "." + __domain, subdomain)); }
@@ -134,7 +134,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   const key = Cache.toKey([subdomain, path, request.method]);
   
   response.locals.time = Date.now();
-  Cache.getOne<Route>(Cache.types.RESOURCE, Route.__type, key)
+  Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, key)
   .then(route => {
     if (route && route.exists) {
       if (!route.flag_active) {
@@ -143,10 +143,10 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
           new User(user).validate()
           .then(user => {
             if (!user.exists) { return Promise.reject(new Response.json(404, "any")); }
-            Database(env.mode).query<RoleUser[]>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
+            Database(env.mode).query<RoleUser[]>(RoleUser.select(0, 1000, {user_id: user.id}))
             .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(new Response.json(404, "any")) : Promise.reject(new Response.json(err.code, err.type)))
             .then(user_roles => {
-              if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(role.role_id) === env.roles.admin.id)) {
+              if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(<Buffer>role.role_id) === env.roles.admin.id)) {
                 response.locals.user = user;
                 response.locals.roles = user_roles;
                 return next();
@@ -157,14 +157,14 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         )
         .catch(() => Promise.reject(new Response.json(404, "any")));
       }
-      return Database(env.mode).query<RoleRoute[]>(RoleRoute.__table.selectSQL(0, 1000, {route_id: route.id}))
+      return Database(env.mode).query<RoleRoute[]>(RoleRoute.select(0, 1000, {route_id: route.id}))
       .then(route_roles =>
         !route_roles.length ? next() : new Promise(resolve => resolve(jwt.verify(request.get("Authorization"), env.tokens.jwt)))
         .then(user =>
           new User(user).validate()
           .then(user => {
             if (!user.exists) { Promise.reject(new Response.json(401, "jwt", request.get("Authorization"))); }
-            Database(env.mode).query<RoleUser[]>(RoleUser.__table.selectSQL(0, 1000, {user_id: user.id}))
+            Database(env.mode).query<RoleUser[]>(RoleUser.select(0, 1000, {user_id: user.id}))
             .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(new Response.json(403, "any")) : Promise.reject(new Response.json(err.code, err.type)))
             .then(user_roles => {
               if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) {

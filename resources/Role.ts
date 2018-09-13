@@ -7,7 +7,7 @@ import User from "./User";
 const definition = {
   name:         {type: "varchar(32)", required: true},
   key:          {type: "varchar(32)", required: true, protected: true, unique_index: "key"},
-  user_created: Resource.Table.toRelationColumn<eResourceType>(eResourceType.USER),
+  user_created: Resource.Table.toReferenceColumn<eResourceType>(eResourceType.USER),
   time_created: Resource.Table.toTimeColumn("time_created"),
   time_updated: Resource.Table.toTimeColumn(null, true)
 };

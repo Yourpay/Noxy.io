@@ -24,7 +24,7 @@ const options = {};
 
 export default class User extends Resource.Constructor {
   
-  private static __login_callbacks: ((user: iUserJWTObject) => Promise<Object>)[];
+  private static __login_callbacks: ((user: {id: string, username: string, email: string, time_login: number}) => Promise<Object>)[];
   
   public username: string;
   public email: string;
@@ -56,15 +56,15 @@ export default class User extends Resource.Constructor {
     return crypto.pbkdf2Sync(password, salt.toString("base64"), 10000, 64, "sha512");
   }
   
-  public static addLoginCallback(callback: (user: {username: string, email: string, time_login: }) => Promise<Object>): void {
+  public static addLoginCallback(callback: (user: {id: string, username: string, email: string, time_login: number}) => Promise<Object>): void {
     User.__login_callbacks.push(callback);
   }
   
-  public static login(credentials: User | iUserCredentials, jwt?: string): Promise<User> {
+  public static login(credentials: User | {username: string, password: string}, jwt?: string): Promise<User> {
     return User.loginPW(credentials).catch(err => jwt ? User.loginJWT(jwt) : Promise.reject(err));
   }
   
-  private static loginPW(credentials: User | iUserCredentials): Promise<User> {
+  private static loginPW(credentials: User | {username: string, password: string}): Promise<User> {
     return (credentials instanceof User ? credentials : new User(credentials)).validate()
     .then(user => {
       if (!user.exists) { return Promise.reject(new Response.json(400, "any")); }
@@ -98,22 +98,10 @@ publicize_queue.promise("setup", resolve => {
 
 publicize_queue.promise("publish", (resolve, reject) => {
   Promise.all([
-    Cache.getOne<Route>(Cache.types.RESOURCE, Route.__type, Cache.toKey([env.subdomains.api, "/user/login", "POST"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
+    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey([env.subdomains.api, "/user/login", "POST"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
   ])
   .then(res => resolve(res))
   .catch(err => reject(err));
 });
-
-interface iUserJWTObject {
-  id: string
-  username: string
-  email: string
-  time_login: number
-}
-
-interface iUserCredentials {
-  email: string
-  password: string
-}
 
 Resource<eResourceType>(eResourceType.USER, User, definition, options);

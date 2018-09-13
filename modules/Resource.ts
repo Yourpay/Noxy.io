@@ -4,7 +4,7 @@ import * as uuid from "uuid";
 import {env} from "../app";
 import {tEnum, tNonFnProps} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {eResourceType, iResource, iResourceActionOptions, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions} from "../interfaces/iResource";
+import {eResourceType, iResource, iResourceActionOptions, iResourceSelectOptions, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
@@ -85,11 +85,11 @@ class Resource {
     .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
   }
   
-  public delete(options: iResourceActionOptions = {}) {
+  public remove(options: iResourceActionOptions = {}) {
     
   }
   
-  public toObject(shallow?: boolean): Promise<Partial<this>> {
+  public toObject(deep?: boolean): Promise<Partial<this>> {
     const $this = (<typeof Resource>this.constructor);
     
     return <any>Promise.props(
@@ -98,11 +98,11 @@ class Resource {
           const [datatype, type, value] = _.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0));
           if (type === "binary") {
             if (value === "16") {
-              if (!shallow && v.reference && (_.isString(v.reference) || _.isPlainObject(v.reference) || _.size(v.reference) === 1)) {
+              if (deep && v.reference && (_.isString(v.reference) || _.isPlainObject(v.reference) || _.size(v.reference) === 1)) {
                 Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[k])
                 .catch(err => {
                   if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code, err.type, err)); }
-                  return new resources[_.join([$this.table.options.resource.database, _.get(v, "relation.table", v.reference)], "::")].__resource({id: this[k]}).validate();
+                  return new resources[_.join([$this.table.options.resource.database, _.get(v, "reference.table", v.reference)], "::")].__resource({id: this[k]}).validate();
                 })
                 .then(res => res.toObject())
                 .then(res => _.set(r, k, res));
@@ -118,6 +118,12 @@ class Resource {
         {}
       )
     );
+  }
+  
+  public static select(start: number = 0, limit: number = 100, where: {[key: string]: string | string[]}, options: iResourceSelectOptions) {
+    return this.table.select(start, limit, where, options)
+    .map(resource => resource.toObject(options.deep))
+    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
   }
   
 }
@@ -162,7 +168,7 @@ class Table {
     
   }
   
-  public static toRelationColumn(table: string, hidden: boolean = false): iTableColumn {
+  public static toReferenceColumn(table: string, hidden: boolean = false): iTableColumn {
     return {type: "binary(16)", required: true, protected: true, default: null, index: table, hidden: hidden, reference: table};
   }
   
@@ -211,8 +217,14 @@ class Table {
     });
   }
   
-  public delete(resource: Resource, options: iResourceActionOptions = {}) {
+  public remove(resource: Resource, options: iResourceActionOptions = {}) {
     
+  }
+  
+  public select(start: number = 0, limit: number = 100): Promise<Resource[]> {
+    return Cache.setOne<Resource[]>(Cache.types.QUERY, this.resource.type, Cache.toKey([start, limit]), () => {
+      return Database(this.options.resource.database).query<Resource[]>("SELECT * FROM ?? LIMIT ? OFFSET ?", [this.resource.type, limit, start]);
+    }, {timeout: 0, collision_fallback: true});
   }
   
   public toSQL(): string {

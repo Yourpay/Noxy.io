@@ -10,10 +10,6 @@ export interface iDatabasePool extends Object {
   
   query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T>
   
-  query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T[]>
-  
-  query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T[][]>
-  
   queryOne<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T>
 }
 

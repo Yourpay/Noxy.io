@@ -28,7 +28,7 @@ publicize_queue.promise("setup", (resolve, reject) => {
 publicize_queue.promise("publish", (resolve, reject) => {
   
   Promise.all([
-    Cache.getOne<Route>(Cache.types.RESOURCE, Route.__type, Cache.toKey(["admin", "/*", "GET"])).then(route => Application.updateRoute(route))
+    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey(["admin", "/*", "GET"])).then(route => Application.updateRoute(route))
   ])
   .then(res => resolve(res))
   .catch(err => reject(err));
