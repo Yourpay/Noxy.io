@@ -1,4 +1,5 @@
 import * as Promise from "bluebird";
+import * as _ from "lodash";
 import * as path from "path";
 import {publicize_queue} from "../../init/publicize";
 import * as Application from "../../modules/Application";
@@ -20,12 +21,10 @@ publicize_queue.promise("setup", (resolve, reject) => {
   
 });
 
-publicize_queue.promise("publish", (resolve, reject) => {
-
+publicize_queue.promise("publish", (resolve, reject) =>
   Promise.all([
-    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey([subdomain, "/*", "GET"])).then(route => Application.updateRoute(route))
+    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey([subdomain, "/*", "GET"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
   ])
   .then(res => resolve(res))
-  .catch(err => reject(err));
-
-});
+  .catch(err => reject(err))
+);

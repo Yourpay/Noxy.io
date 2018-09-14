@@ -15,7 +15,6 @@ import {iInformationSchemaColumn, iInformationSchemaTable} from "./interfaces/iI
 export const subdomain = "docs";
 
 resource_queue.promise(subdomain, (resolve, reject) => {
-  
   const databases: {[key: string]: iDatabasePool} = {};
   Promise.map(_.values(Table.tables), table => {
     const key = _.join([table.__database, "information_schema"], "::");
@@ -29,12 +28,11 @@ resource_queue.promise(subdomain, (resolve, reject) => {
     })
     .catch(err => err);
   })
-  .then(res => resolve(res))
-  .catch(err => reject(err));
+  .then(res => resolve(res));
   
 });
 
-publicize_queue.promise("setup", (resolve, reject) => {
+publicize_queue.promise("setup", (resolve, reject) =>
   Promise.all([
     Application.addStatic(path.resolve(__dirname, "./public"), subdomain),
     Application.addRoute(subdomain, "/", "*", "GET", (request, response) => {
@@ -42,15 +40,13 @@ publicize_queue.promise("setup", (resolve, reject) => {
     })
   ])
   .then(res => resolve(res))
-  .error(err => reject(err));
-  
-});
+  .error(err => reject(err))
+);
 
-publicize_queue.promise("publish", (resolve, reject) => {
+publicize_queue.promise("publish", (resolve, reject) =>
   Promise.all([
-    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey([subdomain, "/*", "GET"])).then(route => Application.updateRoute(route))
+    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey([subdomain, "/*", "GET"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
   ])
   .then(res => resolve(res))
-  .catch(err => reject(err));
-  
-});
+  .catch(err => reject(err))
+);
