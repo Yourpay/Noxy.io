@@ -9,7 +9,7 @@ export interface iResource {
   
   list: cResourceConstructor[]
   TYPES: typeof eResourceType
-
+  
   uuidFromBuffer: (buffer: Buffer) => string
   bufferFromUUID: (uuid: string) => Buffer
 }
@@ -35,17 +35,18 @@ export interface iResourceConstructor {
   remove: (options?: iResourceActionOptions) => Promise<this>
 }
 
-export interface iResourceSelectOptions{
+export interface iResourceCacheOptions {
+  collision_fallback?: boolean | (() => Promise<any>)
   timeout?: number
   keys?: string[]
-  collision_fallback?: boolean | (() => Promise<any>)
 }
 
-export interface iResourceActionOptions {
+export interface iResourceSelectOptions extends iResourceCacheOptions {
+  deep?: boolean
+}
+
+export interface iResourceActionOptions extends iResourceCacheOptions {
   update_protected?: boolean
-  timeout?: number
-  keys?: string[]
-  collision_fallback?: boolean | (() => Promise<any>)
 }
 
 export interface cTable {
@@ -67,7 +68,7 @@ export interface iTable {
   remove: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
   select: (start?: number, limit?: number, where?: {[key: string]: string | string[]}) => Promise<iResourceConstructor[]>
   
-  toSQL(): () => string
+  toSQL: () => string
 }
 
 export interface iTableOptions {

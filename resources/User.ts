@@ -1,6 +1,7 @@
 import * as Promise from "bluebird";
 import * as crypto from "crypto";
 import * as jwt from "jsonwebtoken";
+import * as _ from "lodash";
 import {env} from "../app";
 import {publicize_queue} from "../init/publicize";
 import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";

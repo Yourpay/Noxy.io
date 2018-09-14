@@ -1,10 +1,9 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
-import * as uuid from "uuid";
 import {env} from "../app";
 import {tEnum, tNonFnProps} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {eResourceType, iResource, iResourceActionOptions, iResourceSelectOptions, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions} from "../interfaces/iResource";
+import {eResourceType, iResource, iResourceActionOptions, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
@@ -47,13 +46,19 @@ class Resource {
   public validated: boolean;
   public exists: boolean;
   
-  constructor(initializer = {}) {
+  constructor(initializer: {id?: Buffer | string, uuid?: string} = {}) {
     const $this = (<typeof Resource>this.constructor);
-    _.assign(this, initializer);
-    let t_uuid = uuid.v4(), t_id = bufferFromUUID(t_uuid);
+    let t_id, t_uuid;
+    if (initializer.id) {
+      typeof initializer.id === "string" ? t_id = bufferFromUUID(t_uuid = initializer.id) : t_uuid = uuidFromBuffer(t_id = initializer.id);
+    }
+    else if (initializer.uuid) {
+      t_uuid = initializer.uuid;
+      t_id = bufferFromUUID(t_uuid);
+    }
     Object.defineProperty(this, "id", {configurable: true, enumerable: true, get: () => t_id, set: v => { if (!_.isEqual(v, t_id)) { this.uuid = uuidFromBuffer(this.id = t_id = v); } }});
     Object.defineProperty(this, "uuid", {configurable: true, enumerable: true, get: () => t_uuid, set: v => { if (!_.isEqual(v, t_uuid)) { this.id = bufferFromUUID(this.uuid = t_uuid = v); } }});
-    this.id = t_id;
+    _.assign(this, _.assign({id: t_id}, initializer));
   }
   
   public validate(options: iResourceActionOptions = {}): Promise<this> {
@@ -120,9 +125,9 @@ class Resource {
     );
   }
   
-  public static select(start: number = 0, limit: number = 100, where: {[key: string]: string | string[]}, options: iResourceSelectOptions) {
-    return this.table.select(start, limit, where, options)
-    .map(resource => resource.toObject(options.deep))
+  public static select(start: number = 0, limit: number = 100) {
+    return this.table.select(start, limit)
+    .map(resource => new this(resource))
     .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
   }
   
@@ -202,13 +207,15 @@ class Table {
     if (!resource.validated) { return Promise.reject(new Response.error(400, "resource", this)); }
     
     if (resource.exists) {
-      where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
+      where = _.join(_.map(this.indexes.primary, key => Database.parse("?? = ?", [key, resource[key]])), " AND ");
       if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
     }
     
     return Cache.set<iDatabaseActionResult>(Cache.types.SAVE, this.resource.type, cache_keys, () => {
       const set = [this.resource.type, _.pick(resource, _.keys(this.definition))];
-      if (resource.exists) { return Database(this.options.resource.database).query<iDatabaseActionResult>(`UPDATE ?? SET ? WHERE ${where}`, _.concat(set)); }
+      if (resource.exists) {
+        return Database(this.options.resource.database).query<iDatabaseActionResult>(`UPDATE ?? SET ? WHERE ${where}`, _.concat(set));
+      }
       return Database(this.options.resource.database).query<iDatabaseActionResult>("INSERT INTO ?? SET ?", _.concat(set));
     }, {timeout: 0, collision_fallback: true})
     .then(res => {
@@ -255,7 +262,7 @@ class Table {
       constraints: _.join([
         Table.sqlFromIndexes(table.indexes),
         Table.sqlFromReferences(table)
-      ], ", ")
+      ], ", ").replace(/\s{2,}/g, " ").replace(/^\s|\s$|,\s*$/g, "")
     });
   }
   

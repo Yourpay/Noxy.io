@@ -37,7 +37,6 @@ export default class Route extends Resource.Constructor {
   
   constructor(initializer: tNonFnPropsOptional<Route> = {}) {
     super(initializer);
-    super(initializer);
     this.path = initializer.path || "/";
     this.namespace = initializer.namespace || "/";
     this.url = ("/" + initializer.namespace + initializer.path).replace(/\/{2,}/g, "/").replace(/(\w)\/$/, "$1");
