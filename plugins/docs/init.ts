@@ -2,24 +2,30 @@ import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as path from "path";
 import {env} from "../../app";
-import Table from "../../classes/Table";
 import {publicize_queue} from "../../init/publicize";
 import {resource_queue} from "../../init/resource";
 import {iDatabasePool} from "../../interfaces/iDatabase";
 import * as Application from "../../modules/Application";
 import * as Cache from "../../modules/Cache";
 import * as Database from "../../modules/Database";
+import * as Resource from "../../modules/Resource";
 import Route from "../../resources/Route";
 import {iInformationSchemaColumn, iInformationSchemaTable} from "./interfaces/iInformationSchema";
 
 export const subdomain = "docs";
 
+export enum eDocumentationType {
+  "DOCUMENTATION"       = "documentation",
+  "DOCUMENTATION_ROUTE" = "documentation/route"
+}
+
 resource_queue.promise(subdomain, (resolve, reject) => {
   const databases: {[key: string]: iDatabasePool} = {};
-  Promise.map(_.values(Table.tables), table => {
-    const key = _.join([table.__database, "information_schema"], "::");
-    const database = databases[key] || (databases[key] = Database(key, _.assign({}, env.databases[table.__database], {database: "information_schema"})));
-    return database.queryOne<iInformationSchemaTable>("SELECT * FROM `INNODB_TABLES` WHERE NAME = ?", env.databases[table.__database].database + "/" + table.__resource.__type.replace(/\//g, "@002f"))
+  Promise.map(_.values(Resource.list), resource => {
+    const name = resource.table.options.resource.database;
+    const key = _.join([name, "information_schema"], "::");
+    const database = databases[key] || (databases[key] = Database(key, _.assign({}, env.databases[name], {database: "information_schema"})));
+    return database.queryOne<iInformationSchemaTable>("SELECT * FROM `INNODB_TABLES` WHERE NAME = ?", env.databases[name].database + "/" + resource.type.replace(/\//g, "@002f"))
     .then(table => {
       return database.query<iInformationSchemaColumn>("SELECT * FROM `INNODB_COLUMNS` WHERE `TABLE_ID` = ?", table.TABLE_ID)
       .then(columns => {

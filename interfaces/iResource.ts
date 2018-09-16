@@ -20,6 +20,8 @@ export interface cResourceConstructor {
   table: iTable
   type: string
   select: (start?: number, limit?: number, where?: {[key: string]: string | string[]}) => Promise<iResourceConstructor[]>
+  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<iResourceConstructor>
+  count: () => Promise<number>
 }
 
 export interface iResourceConstructor {
@@ -66,7 +68,9 @@ export interface iTable {
   validate: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
   save: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
   remove: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
-  select: (start?: number, limit?: number, where?: {[key: string]: string | string[]}) => Promise<iResourceConstructor[]>
+  select: (start?: number, limit?: number) => Promise<iResourceConstructor[]>
+  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<iResourceConstructor>
+  count: () => Promise<number>
   
   toSQL: () => string
 }

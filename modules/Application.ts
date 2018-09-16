@@ -9,10 +9,10 @@ import * as path from "path";
 import * as favicon from "serve-favicon";
 import * as vhost from "vhost";
 import {env} from "../app";
-import * as Resource from "../classes/Resource";
 import {eResourceType} from "../interfaces/iResource";
 import * as Cache from "../modules/Cache";
 import * as Database from "../modules/Database";
+import * as Resource from "../modules/Resource";
 import * as Response from "../modules/Response";
 import RoleRoute from "../resources/RoleRoute";
 import RoleUser from "../resources/RoleUser";
@@ -72,22 +72,30 @@ export function addRoutes(subdomain: string, namespace: string, route_set: {[pat
 }
 
 export function addResource(resource: typeof Resource.Constructor): {[key: string]: Promise<Route>} {
-  return addRoutes(env.subdomains.api, resource.__type, {
+  return addRoutes(env.subdomains.api, resource.type, {
     "/":      {
-      "GET":  (request, response) => resource.get(request.query.start, request.query.limit).then(res => response.status(res.code).json(res)),
+      "GET":  (request, response) => {
+        resource.select(request.query.start, request.query.limit)
+        .catch(err => err instanceof Response.json ? err : new Response.json(404, "any", {start: request.query.start, limit: request.query.limit}))
+        .then(res => response.status((<Response.json>res).code || 200).json(res));
+      },
       "POST": []
     },
     "/:id":   {
       "GET":    (request, response) => {
-        resource.getBy({id: Resource.Constructor.bufferFromUuid(request.query.id)})
+        resource.selectByID(Resource.bufferFromUUID(request.query.id))
         .catch(err => err instanceof Response.json ? err : new Response.json(404, "any", {id: request.query.id}))
-        .then(res => response.status(res.code).json(res));
+        .then(res => response.status((<Response.json>res).code || 200).json(res));
       },
       "PUT":    [],
       "DELETE": []
     },
     "/count": {
-      "GET": (request, response) => resource.count().then(res => response.status(res.code).json(res))
+      "GET": (request, response) => {
+        resource.count()
+        .catch(err => err instanceof Response.json ? err : new Response.json(404, "any"))
+        .then(res => response.status(200).json(res));
+      }
     }
   });
 }
@@ -147,7 +155,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
             Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [eResourceType.ROLE_USER, user.id])
             .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(new Response.json(404, "any")) : Promise.reject(new Response.json(err.code, err.type)))
             .then(user_roles => {
-              if (_.some(user_roles, role => Resource.Constructor.uuidFromBuffer(<Buffer>role.role_id) === env.roles.admin.id)) {
+              if (_.some(user_roles, role => Resource.uuidFromBuffer(<Buffer>role.role_id) === env.roles.admin.id)) {
                 response.locals.user = user;
                 response.locals.roles = user_roles;
                 return next();

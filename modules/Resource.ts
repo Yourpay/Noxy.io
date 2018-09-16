@@ -131,6 +131,17 @@ class Resource {
     .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
   }
   
+  public static selectByID(id: string | Buffer | {[key: string]: Buffer | string}) {
+    return this.table.selectByID(id)
+    .then(resource => new this(resource))
+    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
+  }
+  
+  public static count() {
+    return this.table.count()
+    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
+  }
+  
 }
 
 class Table {
@@ -231,6 +242,21 @@ class Table {
   public select(start: number = 0, limit: number = 100): Promise<Resource[]> {
     return Cache.setOne<Resource[]>(Cache.types.QUERY, this.resource.type, Cache.toKey([start, limit]), () => {
       return Database(this.options.resource.database).query<Resource[]>("SELECT * FROM ?? LIMIT ? OFFSET ?", [this.resource.type, limit, start]);
+    }, {timeout: 0, collision_fallback: true});
+  }
+  
+  public selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<Resource> {
+    const keys = typeof id === "string" || id instanceof Buffer ? {id: id instanceof Buffer ? id : bufferFromUUID(id)} : id;
+    return Cache.setOne<Resource>(Cache.types.QUERY, this.resource.type, Cache.toKey(_.values(id)), () => {
+      const where = _.join(_.map(keys, (v, k) => Database.parse("?? = ?", [k, v])), " AND ");
+      return Database(this.options.resource.database).query<Resource>(`SELECT * FROM ?? WHERE ${where}`);
+    }, {timeout: 0, collision_fallback: true});
+  }
+  
+  public count(): Promise<number> {
+    return Cache.setOne<number>(Cache.types.QUERY, this.resource.type, "count", () => {
+      return Database(this.options.resource.database).queryOne<{count: number}>("SELECT COUNT(1) as `count` FROM ??")
+      .then(res => res.count);
     }, {timeout: 0, collision_fallback: true});
   }
   
