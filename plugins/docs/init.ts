@@ -35,7 +35,7 @@ resource_queue.promise(subdomain, (resolve, reject) => {
         return _.set(table, "columns", columns);
       });
     })
-    .catch(err => err);
+    .catch(err => reject(err));
   })
   .then(res => resolve(res));
   

@@ -12,12 +12,12 @@ publicize_queue.promise("setup", (resolve, reject) => {
   
   Promise.all([
     Application.addStatic(path.resolve(__dirname, "./public"), subdomain),
-    Application.addRoute(subdomain, "/", "*", "GET", (request, response, next) => {
+    Application.addRoute(subdomain, "/", "*", "GET", (request, response) => {
       response.sendFile(path.resolve(__dirname, "./public/index.html"));
     })
   ])
   .then(res => resolve(res))
-  .error(err => resolve(err));
+  .error(err => reject(err));
   
 });
 
