@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 import {tNonFnPropsOptional} from "../../../interfaces/iAuxiliary";
 import * as Resource from "../../../modules/Resource";
-import {eDocumentationType} from "../init";
+import {eAPIDocumentationType} from "../init";
 
 const definition = {
   name:         {type: "varchar(32)", required: true},
@@ -12,7 +12,7 @@ const definition = {
 };
 const options = {};
 
-export default class Documentation extends Resource.Constructor {
+export default class APIDocumentationResource extends Resource.Constructor {
   
   public name: string;
   public key: string;
@@ -20,7 +20,7 @@ export default class Documentation extends Resource.Constructor {
   public time_created: number;
   public time_updated: number;
   
-  constructor(initializer: tNonFnPropsOptional<Documentation> = {}) {
+  constructor(initializer: tNonFnPropsOptional<APIDocumentationResource> = {}) {
     super(initializer);
     if (!initializer.key) { this.key = _.snakeCase(_.deburr(initializer.name)); }
     this.time_created = initializer.time_created ? initializer.time_created : Date.now();
@@ -28,4 +28,4 @@ export default class Documentation extends Resource.Constructor {
   
 }
 
-Resource<eDocumentationType>(eDocumentationType.DOCUMENTATION, Documentation, definition, options);
+Resource<eAPIDocumentationType>(eAPIDocumentationType.API_DOCUMENTATION_RESOURCE, APIDocumentationResource, definition, options);

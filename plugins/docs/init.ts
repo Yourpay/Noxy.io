@@ -14,12 +14,12 @@ import {iInformationSchemaColumn, iInformationSchemaTable} from "./interfaces/iI
 
 export const subdomain = "docs";
 
-export enum eDocumentationType {
-  "DOCUMENTATION"                 = "documentation",
-  "DOCUMENTATION_ROUTE"           = "documentation/route",
-  "DOCUMENTATION_PARAMETER"       = "documentation/parameter",
-  "DOCUMENTATION_RESOURCE"        = "documentation/resource",
-  "DOCUMENTATION_ROUTE_PARAMETER" = "documentation/route/parameter"
+export enum eAPIDocumentationType {
+  "API_DOCUMENTATION"                 = "api/documentation",
+  "API_DOCUMENTATION_ROUTE"           = "api/documentation/route",
+  "API_DOCUMENTATION_PARAMETER"       = "api/documentation/parameter",
+  "API_DOCUMENTATION_RESOURCE"        = "api/documentation/resource",
+  "API_DOCUMENTATION_ROUTE_PARAMETER" = "api/documentation/route/parameter"
 }
 
 resource_queue.promise(subdomain, (resolve, reject) => {

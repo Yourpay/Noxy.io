@@ -2,22 +2,22 @@ import * as _ from "lodash";
 import {tNonFnPropsOptional} from "../../../interfaces/iAuxiliary";
 import {iTableOptions} from "../../../interfaces/iResource";
 import * as Resource from "../../../modules/Resource";
-import {eDocumentationType} from "../init";
-import DocumentationParameter from "./DocumentationParameter";
-import DocumentationRoute from "./DocumentationRoute";
+import {eAPIDocumentationType} from "../init";
+import APIDocumentationParameter from "./APIDocumentationParameter";
+import APIDocumentationRoute from "./APIDocumentationRoute";
 
 const definition = {
-  documentation_route_id:     Resource.Table.toReferenceColumn<eDocumentationType>(eDocumentationType.DOCUMENTATION_ROUTE),
-  documentation_parameter_id: Resource.Table.toReferenceColumn<eDocumentationType>(eDocumentationType.DOCUMENTATION_PARAMETER)
+  documentation_route_id:     Resource.Table.toReferenceColumn<eAPIDocumentationType>(eAPIDocumentationType.API_DOCUMENTATION_ROUTE),
+  documentation_parameter_id: Resource.Table.toReferenceColumn<eAPIDocumentationType>(eAPIDocumentationType.API_DOCUMENTATION_PARAMETER)
 };
 const options: iTableOptions = {resource: {junction: true}};
 
-export default class DocumentationRouteParameter extends Resource.Constructor {
+export default class APIDocumentationRouteParameter extends Resource.Constructor {
   
-  public documentation_route_id: string | Buffer | DocumentationRoute;
-  public documentation_parameter_id: string | Buffer | DocumentationParameter;
+  public documentation_route_id: string | Buffer | APIDocumentationRoute;
+  public documentation_parameter_id: string | Buffer | APIDocumentationParameter;
   
-  constructor(initializer: tNonFnPropsOptional<DocumentationRouteParameter> = {}) {
+  constructor(initializer: tNonFnPropsOptional<APIDocumentationRouteParameter> = {}) {
     super(initializer);
     if (initializer.documentation_route_id) {
       if (typeof initializer.documentation_route_id === "string") { this.documentation_route_id = Resource.bufferFromUUID(initializer.documentation_route_id); }
@@ -37,4 +37,4 @@ export default class DocumentationRouteParameter extends Resource.Constructor {
   
 }
 
-Resource<eDocumentationType>(eDocumentationType.DOCUMENTATION_ROUTE_PARAMETER, DocumentationRouteParameter, definition, options);
+Resource<eAPIDocumentationType>(eAPIDocumentationType.API_DOCUMENTATION_ROUTE_PARAMETER, APIDocumentationRouteParameter, definition, options);
