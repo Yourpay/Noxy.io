@@ -73,9 +73,9 @@ export = Database;
 class DatabasePool implements iDatabasePool {
   
   public id: string;
-  private __pool: mysql.Pool;
-  private __configuration: iDatabaseConfig;
-  private __slaves: {[key: string]: {__pool: mysql.Pool, __configuration: iDatabaseConfig}};
+  private readonly __pool: mysql.Pool;
+  private readonly __slaves: {[key: string]: {__pool: mysql.Pool, __configuration: iDatabaseConfig}};
+  private readonly __configuration: iDatabaseConfig;
   
   constructor(id: string, config: DatabaseMasterEnvironmental) {
     this.id = id;
@@ -91,7 +91,7 @@ class DatabasePool implements iDatabasePool {
         if (err) { return reject(err); }
         connector.end(err => {
           if (err) { return reject(err); }
-          return resolve();
+          return resolve(this);
         });
       });
     });
