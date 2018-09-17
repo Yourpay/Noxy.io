@@ -15,8 +15,11 @@ import {iInformationSchemaColumn, iInformationSchemaTable} from "./interfaces/iI
 export const subdomain = "docs";
 
 export enum eDocumentationType {
-  "DOCUMENTATION"       = "documentation",
-  "DOCUMENTATION_ROUTE" = "documentation/route"
+  "DOCUMENTATION"                 = "documentation",
+  "DOCUMENTATION_ROUTE"           = "documentation/route",
+  "DOCUMENTATION_PARAMETER"       = "documentation/parameter",
+  "DOCUMENTATION_RESOURCE"        = "documentation/resource",
+  "DOCUMENTATION_ROUTE_PARAMETER" = "documentation/route/parameter"
 }
 
 resource_queue.promise(subdomain, (resolve, reject) => {
