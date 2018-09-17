@@ -27,9 +27,7 @@ export default class Role extends Resource.Constructor {
     if (initializer.user_created) {
       if (typeof initializer.user_created === "string") { this.user_created = Resource.bufferFromUUID(initializer.user_created); }
       else if (initializer.user_created instanceof Buffer) { this.user_created = initializer.user_created; }
-      else {
-        this.user_created = initializer.user_created.id;
-      }
+      else { this.user_created = initializer.user_created.id; }
     }
     else {
       this.user_created = Resource.bufferFromUUID(env.users.server.id);

@@ -1,13 +1,13 @@
 import * as express from "express";
 import * as _ from "lodash";
-import {publicize_queue} from "../init/publicize";
-import * as Application from "../modules/Application";
 import {env} from "../app";
+import {publicize_queue} from "../init/publicize";
 import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
 import {eResourceType} from "../interfaces/iResource";
+import * as Application from "../modules/Application";
 import * as Resource from "../modules/Resource";
+import * as Response from "../modules/Response";
 import Database = require("../modules/Database");
-import * as Response from "../modules/Response"
 
 const definition = {
   subdomain:    {type: "varchar(64)", protected: true, required: true, unique_index: "route"},
