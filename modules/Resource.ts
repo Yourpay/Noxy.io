@@ -1,16 +1,16 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import {env} from "../app";
-import {tEnum, tNonFnProps} from "../interfaces/iAuxiliary";
+import {tEnumValue, tNonFnProps} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {eResourceType, iResource, iResourceActionOptions, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions} from "../interfaces/iResource";
+import {iResource, iResourceActionOptions, iResourceConstructor, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
 
 const resources = {};
 
-function Default<T>(type: tEnum<T> & string, constructor: typeof Resource, definition: iTableDefinition, options?: iTableOptions): typeof Resource {
+function Default<T>(type: tEnumValue<T> & string, constructor: typeof Resource, definition: iTableDefinition, options?: iTableOptions): typeof Resource {
   
   const key = _.join([_.get(options, "database", env.databases[env.mode].database), type], "::");
   
@@ -36,7 +36,7 @@ function bufferFromUUID(uuid: string): Buffer {
   return Buffer.alloc(16, uuid.replace(/-/g, ""), "hex");
 }
 
-class Resource {
+class Resource implements iResourceConstructor {
   
   public static readonly type: string;
   public static readonly table: Table;
@@ -351,12 +351,13 @@ class Table {
   
 }
 
-Object.defineProperty(Default, "list", {enumerable: true, value: resources});
-Object.defineProperty(Default, "TYPES", {enumerable: true, value: eResourceType});
-Object.defineProperty(Default, "uuidFromBuffer", {value: uuidFromBuffer});
-Object.defineProperty(Default, "bufferFromUUID", {value: bufferFromUUID});
 Object.defineProperty(Default, "Table", {value: Table});
 Object.defineProperty(Default, "Constructor", {value: Resource});
+
+Object.defineProperty(Default, "list", {enumerable: true, value: resources});
+
+Object.defineProperty(Default, "uuidFromBuffer", {value: uuidFromBuffer});
+Object.defineProperty(Default, "bufferFromUUID", {value: bufferFromUUID});
 
 const exported = <iResource>(<any>Default);
 export = exported;

@@ -1,14 +1,13 @@
 import * as Promise from "bluebird";
-import {tEnum} from "./iAuxiliary";
+import {tEnum, tEnumValue} from "./iAuxiliary";
 
 export interface iResource {
-  <T>(type: tEnum<T> & string, constructor: cResourceConstructor, definition: iTableDefinition, options?: iTableOptions): cResourceConstructor
+  <T extends tEnum<T>>(type: T, constructor: cResourceConstructor, definition: iTableDefinition, options?: iTableOptions): cResourceConstructor
   
   Table: cTable
   Constructor: cResourceConstructor
   
   list: cResourceConstructor[]
-  TYPES: typeof eResourceType
   
   uuidFromBuffer: (buffer: Buffer) => string
   bufferFromUUID: (uuid: string) => Buffer
@@ -54,7 +53,7 @@ export interface iResourceActionOptions extends iResourceCacheOptions {
 export interface cTable {
   new(): iTable
   
-  toReferenceColumn: <T>(table: tEnum<T> & string, hidden?: boolean) => iTableColumn
+  toReferenceColumn: <T>(table: tEnumValue<T> & string, hidden?: boolean) => iTableColumn
   toTimeColumn: (index?: string, hidden?: boolean) => iTableColumn
 }
 
