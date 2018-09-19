@@ -1,7 +1,7 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import {env} from "../app";
-import {tEnumValue, tNonFnProps} from "../interfaces/iAuxiliary";
+import {tEnum, tEnumValue, tNonFnProps} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
 import {iResource, iResourceActionOptions, iResourceConstructor, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions} from "../interfaces/iResource";
 import * as Cache from "./Cache";
@@ -10,7 +10,7 @@ import * as Response from "./Response";
 
 const resources = {};
 
-function Default<T>(type: tEnumValue<T> & string, constructor: typeof Resource, definition: iTableDefinition, options?: iTableOptions): typeof Resource {
+function Default<T extends tEnum<T>>(type: tEnumValue<T>, constructor: typeof Resource, definition: iTableDefinition, options?: iTableOptions): typeof Resource {
   
   const key = _.join([_.get(options, "database", env.databases[env.mode].database), type], "::");
   
@@ -91,7 +91,7 @@ class Resource implements iResourceConstructor {
   }
   
   public remove(options: iResourceActionOptions = {}) {
-    
+    return Promise.resolve(this);
   }
   
   public toObject(deep?: boolean): Promise<Partial<this>> {
@@ -209,7 +209,7 @@ class Table {
     });
   }
   
-  public save(resource: Resource, options: iResourceActionOptions = {}): Promise<Resource> {
+  public save<T extends Resource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
     let where = "";
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
@@ -359,5 +359,5 @@ Object.defineProperty(Default, "list", {enumerable: true, value: resources});
 Object.defineProperty(Default, "uuidFromBuffer", {value: uuidFromBuffer});
 Object.defineProperty(Default, "bufferFromUUID", {value: bufferFromUUID});
 
-const exported = <iResource>(<any>Default);
+const exported = <iResource<Resource>>(<any>Default);
 export = exported;

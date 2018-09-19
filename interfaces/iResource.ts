@@ -1,10 +1,10 @@
 import * as Promise from "bluebird";
 import {tEnum, tEnumValue} from "./iAuxiliary";
 
-export interface iResource {
-  <T extends tEnum<T>>(type: T, constructor: cResourceConstructor, definition: iTableDefinition, options?: iTableOptions): cResourceConstructor
+export interface iResource<T extends tEnum<T>> {
+  (type: tEnumValue<T>, constructor: cResourceConstructor, definition: iTableDefinition, options?: iTableOptions): cResourceConstructor
   
-  Table: cTable
+  Table: cTable<T>
   Constructor: cResourceConstructor
   
   list: cResourceConstructor[]
@@ -24,8 +24,6 @@ export interface cResourceConstructor {
 }
 
 export interface iResourceConstructor {
-  [key: string]: any
-  
   id: Buffer
   uuid: string
   validated: boolean;
@@ -36,24 +34,20 @@ export interface iResourceConstructor {
   remove: (options?: iResourceActionOptions) => Promise<this>
 }
 
-export interface iResourceCacheOptions {
+export interface iResourceMethodOptions {
   collision_fallback?: boolean | (() => Promise<any>)
   timeout?: number
   keys?: string[]
 }
 
-export interface iResourceSelectOptions extends iResourceCacheOptions {
-  deep?: boolean
-}
-
-export interface iResourceActionOptions extends iResourceCacheOptions {
+export interface iResourceActionOptions extends iResourceMethodOptions {
   update_protected?: boolean
 }
 
-export interface cTable {
+export interface cTable<T extends tEnum<T>> {
   new(): iTable
   
-  toReferenceColumn: <T>(table: tEnumValue<T> & string, hidden?: boolean) => iTableColumn
+  toReferenceColumn: (table: tEnumValue<T> & string, hidden?: boolean) => iTableColumn
   toTimeColumn: (index?: string, hidden?: boolean) => iTableColumn
 }
 
@@ -188,5 +182,4 @@ export enum eResourceType {
   "ROLE_USER"  = "role/user",
   "ROLE_ROUTE" = "role/route",
   "ROUTE"      = "route",
-  "TEST"       = "test"
 }
