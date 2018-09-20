@@ -1,10 +1,10 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import {env} from "../app";
-import {tEnum, tEnumValue, tNonFnProps, tNonFnPropsOptional} from "../interfaces/iAuxiliary";
+import {tEnum, tEnumValue} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
 import {iTableColumn, iTableDefaultOptions, iTableIndexes, iTablePartitionOptions} from "../interfaces/iResource";
-import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, iTableDefinition, iTableOptions} from "../interfaces/iResource2";
+import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, iTableDefinition, iTableOptions, tResourceObject} from "../interfaces/iResource2";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
@@ -15,7 +15,7 @@ const Service: iResourceFn = function Default<T extends tEnum<T>, R extends cRes
   return constructor;
 };
 
-const Resource: cResource = class Resource implements iResource<any> {
+const Resource: cResource = class Resource implements iResource {
   
   public static table: iTable;
   public static type: string;
@@ -25,7 +25,7 @@ const Resource: cResource = class Resource implements iResource<any> {
   public exists: boolean;
   public validated: boolean;
   
-  constructor(initializer: tNonFnPropsOptional<Resource>) {
+  constructor(initializer: tResourceObject) {
     const $this = (<typeof Resource>this.constructor);
     let t_id, t_uuid;
     if (initializer.id) {
@@ -162,24 +162,24 @@ const Table: cTable = class Table implements iTable {
     }, {}));
   }
   
-  public validate(resource: Resource, options: iResourceActionOptions = {}): Promise<tNonFnProps<Resource>> {
+  public validate(resource: iResource, options: iResourceActionOptions = {}): Promise<tResourceObject> {
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
     
     if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
     
-    return Cache.getAny<tNonFnProps<Resource>>(Cache.types.RESOURCE, this.resource.type, cache_keys)
+    return Cache.getAny<tResourceObject>(Cache.types.RESOURCE, this.resource.type, cache_keys)
     .catch(err => {
       if (err.code !== 404) { return Promise.reject(new Response.error(err.code, err.type, err)); }
       const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
       if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
-      return Cache.set<tNonFnProps<Resource>>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
-        return Database(this.options.resource.database).queryOne<tNonFnProps<Resource>>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
+      return Cache.set<tResourceObject>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
+        return Database(this.options.resource.database).queryOne<tResourceObject>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
       }, {timeout: 0, collision_fallback: true});
     });
   }
   
-  public save<T extends Resource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
+  public save(resource: iResource, options: iResourceActionOptions = {}): Promise<iResource> {
     let where = "";
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
@@ -201,25 +201,25 @@ const Table: cTable = class Table implements iTable {
     }, {timeout: 0, collision_fallback: true})
     .then(res => {
       if (res.affectedRows === 0) { return Promise.reject(new Response.error(500, "resource", {keys: keys, object: resource})); }
-      return Cache.set(Cache.types.RESOURCE, this.resource.type, cache_keys, resource, options);
+      return Cache.set(Cache.types.RESOURCE, this.resource.type, cache_keys, _.set(resource, "exists", true), options);
     });
   }
   
-  public remove(resource: Resource, options: iResourceActionOptions = {}) {
-  
+  public remove(resource: iResource, options: iResourceActionOptions = {}) {
+    return Promise.resolve(resource);
   }
   
-  public select(start: number = 0, limit: number = 100): Promise<Resource[]> {
-    return Cache.setOne<Resource[]>(Cache.types.QUERY, this.resource.type, Cache.toKey([start, limit]), () => {
-      return Database(this.options.resource.database).query<Resource[]>("SELECT * FROM ?? LIMIT ? OFFSET ?", [this.resource.type, limit, start]);
+  public select(start: number = 0, limit: number = 100): Promise<tResourceObject[]> {
+    return Cache.setOne<tResourceObject[]>(Cache.types.QUERY, this.resource.type, Cache.toKey([start, limit]), () => {
+      return Database(this.options.resource.database).query<tResourceObject[]>("SELECT * FROM ?? LIMIT ? OFFSET ?", [this.resource.type, limit, start]);
     }, {timeout: 0, collision_fallback: true});
   }
   
-  public selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<Resource> {
+  public selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<tResourceObject> {
     const keys = typeof id === "string" || id instanceof Buffer ? {id: id instanceof Buffer ? id : bufferFromUUID(id)} : id;
-    return Cache.setOne<Resource>(Cache.types.QUERY, this.resource.type, Cache.toKey(_.values(id)), () => {
+    return Cache.setOne<tResourceObject>(Cache.types.QUERY, this.resource.type, Cache.toKey(_.values(id)), () => {
       const where = _.join(_.map(keys, (v, k) => Database.parse("?? = ?", [k, v])), " AND ");
-      return Database(this.options.resource.database).query<Resource>(`SELECT * FROM ?? WHERE ${where}`);
+      return Database(this.options.resource.database).query<tResourceObject>(`SELECT * FROM ?? WHERE ${where}`);
     }, {timeout: 0, collision_fallback: true});
   }
   

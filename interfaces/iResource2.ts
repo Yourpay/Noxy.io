@@ -1,5 +1,5 @@
 import * as Promise from "bluebird";
-import {tEnum, tEnumValue, tNonFnPropsOptional} from "./iAuxiliary";
+import {Omit, tEnum, tEnumValue, tNonFnPropsOptional} from "./iAuxiliary";
 
 export interface iResourceService extends iResourceFn {
   Table: cTable
@@ -16,19 +16,19 @@ export interface iResourceFn {
 }
 
 export interface cResource {
-  new(initializer?: tNonFnPropsOptional<iResource<this["type"]>>): iResource<this["type"]>
+  new(initializer?: tResourceInitializer<any>)
   
   table: iTable
   type: string
   
-  select(): Promise<iResource<this["type"]>[]>
+  select(): Promise<iResource[]>
   
-  selectByID(): Promise<iResource<this["type"]>[]>
+  selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<tResourceObject>
   
   count(): Promise<number>
 }
 
-export interface iResource<T> {
+export interface iResource {
   id: string | Buffer
   uuid: string
   exists: boolean
@@ -44,7 +44,7 @@ export interface iResource<T> {
 }
 
 export interface cTable {
-  new(): iTable
+  new(resource: cResource, definition: iTableDefinition, options?: iTableOptions)
   
   toReferenceColumn: <T extends tEnum<T>>(table: tEnumValue<T> & string, hidden?: boolean) => iTableColumn
   toTimeColumn: (index?: string, hidden?: boolean) => iTableColumn
@@ -57,18 +57,14 @@ export interface iTable {
   readonly indexes: iTableIndexes;
   readonly keys: string[][];
   
-  validate: <R>(resource: R, options?: iResourceActionOptions) => Promise<R>
-  save: <R>(resource: R, options?: iResourceActionOptions) => Promise<R>
-  remove: <R>(resource: R, options?: iResourceActionOptions) => Promise<R>
-  select: (start?: number, limit?: number) => Promise<this["resource"][]>
-  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<this["resource"]>
+  validate: (resource: iResource, options?: iResourceActionOptions) => Promise<tResourceObject>
+  save: (resource: iResource, options?: iResourceActionOptions) => Promise<iResource>
+  remove: <R>(resource: iResource, options?: iResourceActionOptions) => Promise<iResource>
+  select: (start?: number, limit?: number) => Promise<tResourceObject[]>
+  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<tResourceObject>
   count: () => Promise<number>
   
   toSQL: () => string
-}
-
-export type tResourceInitializer = {
-
 }
 
 export interface iResourceMethodOptions {
@@ -189,6 +185,9 @@ export interface iReferenceDefinition {
   on_delete?: "RESTRICT" | "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT"
   on_update?: "RESTRICT" | "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT"
 }
+
+export type tResourceObject = Omit<tNonFnPropsOptional<iResource>, "exists" | "validated">
+export type tResourceInitializer<T extends iResource> = tNonFnPropsOptional<T> & {id?: Buffer | string, uuid?: string}
 
 export enum eResourceType {
   "USER"       = "user",
