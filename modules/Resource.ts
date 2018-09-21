@@ -1,16 +1,16 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import {env} from "../app";
-import {tEnum, tEnumValue, tNonFnProps} from "../interfaces/iAuxiliary";
+import {tEnum, tEnumValue} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {iResource, iResourceActionOptions, iResourceConstructor, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions} from "../interfaces/iResource";
+import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions, tResourceObject} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
 
 const resources = {};
 
-function Default<T extends tEnum<T>>(type: tEnumValue<T>, constructor: typeof Resource, definition: iTableDefinition, options?: iTableOptions): typeof Resource {
+const Service: iResourceFn = function Default<T extends tEnum<T>, R extends cResource>(type: tEnumValue<T>, constructor: R, definition: iTableDefinition, options?: iTableOptions): R {
   
   const key = _.join([_.get(options, "database", env.databases[env.mode].database), type], "::");
   
@@ -20,48 +20,29 @@ function Default<T extends tEnum<T>>(type: tEnumValue<T>, constructor: typeof Re
   _.set(constructor, "type", type);
   _.set(constructor, "table", new Table(constructor, definition, options));
   return constructor;
-}
-
-function isUUID(uuid) {
-  return !!`${uuid}`.match(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
-}
-
-function uuidFromBuffer(buffer: Buffer): string {
-  const hex = buffer.toString("hex");
-  return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
-}
-
-function bufferFromUUID(uuid: string): Buffer {
-  if (!isUUID(uuid)) { return Buffer.from(uuid, "hex"); }
-  return Buffer.alloc(16, uuid.replace(/-/g, ""), "hex");
-}
-
-class Resource implements iResourceConstructor {
   
-  public static readonly type: string;
-  public static readonly table: Table;
+};
+
+const Resource: cResource = class Resource implements iResource {
   
-  public id: Buffer;
+  public static table: iTable;
+  public static type: string;
+  
+  public id: string | Buffer;
   public uuid: string;
-  public validated: boolean;
   public exists: boolean;
+  public validated: boolean;
   
-  constructor(initializer: {id?: Buffer | string, uuid?: string} = {}) {
-    const $this = (<typeof Resource>this.constructor);
+  constructor(initializer: tResourceObject) {
     let t_id, t_uuid;
-    if (initializer.id) {
-      typeof initializer.id === "string" ? t_id = bufferFromUUID(t_uuid = initializer.id) : t_uuid = uuidFromBuffer(t_id = initializer.id);
-    }
-    else if (initializer.uuid) {
-      t_uuid = initializer.uuid;
-      t_id = bufferFromUUID(t_uuid);
-    }
+    if (initializer.id) { typeof initializer.id === "string" ? t_id = bufferFromUUID(t_uuid = initializer.id) : t_uuid = uuidFromBuffer(t_id = initializer.id); }
+    else if (initializer.uuid) { t_id = bufferFromUUID(t_uuid = initializer.uuid); }
     Object.defineProperty(this, "id", {configurable: true, enumerable: true, get: () => t_id, set: v => { if (!_.isEqual(v, t_id)) { this.uuid = uuidFromBuffer(this.id = t_id = v); } }});
     Object.defineProperty(this, "uuid", {configurable: true, enumerable: true, get: () => t_uuid, set: v => { if (!_.isEqual(v, t_uuid)) { this.id = bufferFromUUID(this.uuid = t_uuid = v); } }});
     _.assign(this, _.assign({id: t_id}, initializer));
   }
   
-  public validate(options: iResourceActionOptions = {}): Promise<this> {
+  public validate(options?: iResourceActionOptions) {
     const $this = (<typeof Resource>this.constructor);
     const $columns = $this.table.definition;
     
@@ -82,7 +63,7 @@ class Resource implements iResourceConstructor {
     .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
   }
   
-  public save(options: iResourceActionOptions = {}) {
+  public save(options?: iResourceActionOptions) {
     const $this = (<typeof Resource>this.constructor);
     
     return this.validate(options)
@@ -90,11 +71,11 @@ class Resource implements iResourceConstructor {
     .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
   }
   
-  public remove(options: iResourceActionOptions = {}) {
+  public remove() {
     return Promise.resolve(this);
   }
   
-  public toObject(deep?: boolean): Promise<Partial<this>> {
+  public toObject(deep?: boolean) {
     const $this = (<typeof Resource>this.constructor);
     
     return <any>Promise.props(
@@ -142,11 +123,11 @@ class Resource implements iResourceConstructor {
     .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
   }
   
-}
+};
 
-class Table {
+const Table: cTable = class Table implements iTable {
   
-  public readonly resource: typeof Resource;
+  public readonly resource: cResource;
   public readonly definition: iTableDefinition;
   public readonly options: iTableOptions;
   public readonly indexes: iTableIndexes = {primary: [], index: {}, unique: {}, spatial: {}, fulltext: {}};
@@ -181,35 +162,26 @@ class Table {
       if (col.unique_index) { _.each(_.concat(col.unique_index), index => { result[index] = [...result[index] || [], key]; }); }
       return result;
     }, {}));
-    
   }
   
-  public static toReferenceColumn(table: string, hidden: boolean = false): iTableColumn {
-    return {type: "binary(16)", required: true, protected: true, default: null, index: table, hidden: hidden, reference: table};
-  }
-  
-  public static toTimeColumn(index?: string, hidden: boolean = false): iTableColumn {
-    return {type: "bigint(13)", required: true, protected: true, default: null, index: index ? index : null, hidden: hidden};
-  }
-  
-  public validate(resource: Resource, options: iResourceActionOptions = {}): Promise<tNonFnProps<Resource>> {
+  public validate(resource: iResource, options: iResourceActionOptions = {}): Promise<tResourceObject> {
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
     
     if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
     
-    return Cache.getAny<tNonFnProps<Resource>>(Cache.types.RESOURCE, this.resource.type, cache_keys)
+    return Cache.getAny<tResourceObject>(Cache.types.RESOURCE, this.resource.type, cache_keys)
     .catch(err => {
       if (err.code !== 404) { return Promise.reject(new Response.error(err.code, err.type, err)); }
       const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
       if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
-      return Cache.set<tNonFnProps<Resource>>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
-        return Database(this.options.resource.database).queryOne<tNonFnProps<Resource>>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
+      return Cache.set<tResourceObject>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
+        return Database(this.options.resource.database).queryOne<tResourceObject>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
       }, {timeout: 0, collision_fallback: true});
     });
   }
   
-  public save<T extends Resource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
+  public save(resource: iResource, options: iResourceActionOptions = {}): Promise<iResource> {
     let where = "";
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
@@ -231,25 +203,25 @@ class Table {
     }, {timeout: 0, collision_fallback: true})
     .then(res => {
       if (res.affectedRows === 0) { return Promise.reject(new Response.error(500, "resource", {keys: keys, object: resource})); }
-      return Cache.set(Cache.types.RESOURCE, this.resource.type, cache_keys, resource, options);
+      return Cache.set(Cache.types.RESOURCE, this.resource.type, cache_keys, _.set(resource, "exists", true), options);
     });
   }
   
-  public remove(resource: Resource, options: iResourceActionOptions = {}) {
-    
+  public remove(resource: iResource, options: iResourceActionOptions = {}) {
+    return Promise.resolve(resource);
   }
   
-  public select(start: number = 0, limit: number = 100): Promise<Resource[]> {
-    return Cache.setOne<Resource[]>(Cache.types.QUERY, this.resource.type, Cache.toKey([start, limit]), () => {
-      return Database(this.options.resource.database).query<Resource[]>("SELECT * FROM ?? LIMIT ? OFFSET ?", [this.resource.type, limit, start]);
+  public select(start: number = 0, limit: number = 100): Promise<tResourceObject[]> {
+    return Cache.setOne<tResourceObject[]>(Cache.types.QUERY, this.resource.type, Cache.toKey([start, limit]), () => {
+      return Database(this.options.resource.database).query<tResourceObject[]>("SELECT * FROM ?? LIMIT ? OFFSET ?", [this.resource.type, limit, start]);
     }, {timeout: 0, collision_fallback: true});
   }
   
-  public selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<Resource> {
+  public selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<tResourceObject> {
     const keys = typeof id === "string" || id instanceof Buffer ? {id: id instanceof Buffer ? id : bufferFromUUID(id)} : id;
-    return Cache.setOne<Resource>(Cache.types.QUERY, this.resource.type, Cache.toKey(_.values(id)), () => {
+    return Cache.setOne<tResourceObject>(Cache.types.QUERY, this.resource.type, Cache.toKey(_.values(id)), () => {
       const where = _.join(_.map(keys, (v, k) => Database.parse("?? = ?", [k, v])), " AND ");
-      return Database(this.options.resource.database).query<Resource>(`SELECT * FROM ?? WHERE ${where}`);
+      return Database(this.options.resource.database).query<tResourceObject>(`SELECT * FROM ?? WHERE ${where}`);
     }, {timeout: 0, collision_fallback: true});
   }
   
@@ -349,15 +321,44 @@ class Table {
     return "";
   }
   
+  public static toReferenceColumn(table: string, hidden: boolean = false): iTableColumn {
+    return {type: "binary(16)", required: true, protected: true, default: null, index: table, hidden: hidden, reference: table};
+  }
+  
+  public static toTimeColumn(index?: string, hidden: boolean = false): iTableColumn {
+    return {type: "bigint(13)", required: true, protected: true, default: null, index: index ? index : null, hidden: hidden};
+  }
+  
+};
+
+function isUUID(uuid) {
+  return !!`${uuid}`.match(/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/);
 }
 
-Object.defineProperty(Default, "Table", {value: Table});
-Object.defineProperty(Default, "Constructor", {value: Resource});
+function bufferFromUUID(uuid: string): Buffer {
+  if (!isUUID(uuid)) { return Buffer.from(uuid, "hex"); }
+  return Buffer.alloc(16, uuid.replace(/-/g, ""), "hex");
+}
 
-Object.defineProperty(Default, "list", {enumerable: true, value: resources});
+function uuidFromBuffer(buffer: Buffer): string {
+  const hex = buffer.toString("hex");
+  return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
+}
 
-Object.defineProperty(Default, "uuidFromBuffer", {value: uuidFromBuffer});
-Object.defineProperty(Default, "bufferFromUUID", {value: bufferFromUUID});
+const exported: iResourceService = _.assign(
+  Service,
+  {
+    Constructor:    Resource,
+    Table:          Table,
+    list:           resources,
+    isUUID:         isUUID,
+    bufferFromUUID: bufferFromUUID,
+    uuidFromBuffer: uuidFromBuffer
+  }
+);
 
-const exported = <iResource<Resource>>(<any>Default);
 export = exported;
+
+
+
+

@@ -1,37 +1,69 @@
 import * as Promise from "bluebird";
-import {tEnum, tEnumValue} from "./iAuxiliary";
+import {Omit, tEnum, tEnumValue, tNonFnPropsOptional} from "./iAuxiliary";
 
-export interface iResource<T extends tEnum<T>> {
-  (type: tEnumValue<T>, constructor: cResourceConstructor, definition: iTableDefinition, options?: iTableOptions): cResourceConstructor
+export interface iResourceService extends iResourceFn {
+  Table: cTable
+  Constructor: cResource
   
-  Table: cTable<T>
-  Constructor: cResourceConstructor
-  
-  list: cResourceConstructor[]
+  list: {[key: string]: cResource}
   
   uuidFromBuffer: (buffer: Buffer) => string
   bufferFromUUID: (uuid: string) => Buffer
 }
 
-export interface cResourceConstructor {
-  new(initializer?: Object): iResourceConstructor
+export interface iResourceFn {
+  <T extends tEnum<T>, R extends cResource>(type: tEnumValue<T>, constructor: R, definition: iTableDefinition, options?: iTableOptions): R
+}
+
+export interface cResource {
+  new(initializer?: tResourceInitializer<any>)
   
   table: iTable
   type: string
-  select: (start?: number, limit?: number, where?: {[key: string]: string | string[]}) => Promise<iResourceConstructor[]>
-  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<iResourceConstructor>
-  count: () => Promise<number>
+  
+  select(): Promise<iResource[]>
+  
+  selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<tResourceObject>
+  
+  count(): Promise<number>
 }
 
-export interface iResourceConstructor {
-  id: Buffer
-  uuid: string
-  validated: boolean;
-  exists: boolean;
+export interface iResource {
+  id?: string | Buffer
+  uuid?: string
+  exists: boolean
+  validated: boolean
   
-  validate: (options?: iResourceActionOptions) => Promise<this>
-  save: (options?: iResourceActionOptions) => Promise<this>
-  remove: (options?: iResourceActionOptions) => Promise<this>
+  validate(options?: iResourceActionOptions): Promise<this>
+  
+  save(options?: iResourceActionOptions): Promise<this>
+  
+  remove(options?: iResourceActionOptions): Promise<this>
+  
+  toObject(deep: boolean): Promise<Partial<this>>
+}
+
+export interface cTable {
+  new(resource: cResource, definition: iTableDefinition, options?: iTableOptions)
+  
+  toReferenceColumn: <T extends tEnum<T>>(table: tEnumValue<T> & string, hidden?: boolean) => iTableColumn
+  toTimeColumn: (index?: string, hidden?: boolean) => iTableColumn
+}
+
+export interface iTable {
+  readonly resource: cResource;
+  readonly definition: iTableDefinition;
+  readonly options: iTableOptions;
+  readonly indexes: iTableIndexes;
+  readonly keys: string[][];
+  
+  validate: (resource: iResource, options?: iResourceActionOptions) => Promise<tResourceObject>
+  save: (resource: iResource, options?: iResourceActionOptions) => Promise<iResource>
+  remove: <R>(resource: iResource, options?: iResourceActionOptions) => Promise<iResource>
+  select: (start?: number, limit?: number) => Promise<tResourceObject[]>
+  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<tResourceObject>
+  count: () => Promise<number>
+  toSQL: () => string
 }
 
 export interface iResourceMethodOptions {
@@ -42,30 +74,6 @@ export interface iResourceMethodOptions {
 
 export interface iResourceActionOptions extends iResourceMethodOptions {
   update_protected?: boolean
-}
-
-export interface cTable<T extends tEnum<T>> {
-  new(): iTable
-  
-  toReferenceColumn: (table: tEnumValue<T> & string, hidden?: boolean) => iTableColumn
-  toTimeColumn: (index?: string, hidden?: boolean) => iTableColumn
-}
-
-export interface iTable {
-  readonly resource: cResourceConstructor;
-  readonly definition: iTableDefinition;
-  readonly options: iTableOptions;
-  readonly keys: string[][];
-  readonly indexes: string[];
-  
-  validate: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
-  save: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
-  remove: (resource: iResourceConstructor, options?: iResourceActionOptions) => Promise<iResourceConstructor>
-  select: (start?: number, limit?: number) => Promise<iResourceConstructor[]>
-  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<iResourceConstructor>
-  count: () => Promise<number>
-  
-  toSQL: () => string
 }
 
 export interface iTableOptions {
@@ -124,6 +132,7 @@ export interface iTableDefinition {
   [key: string]: iTableColumn
 }
 
+//
 export interface iTableColumn {
   /* The MySQL denoted type */
   type: string
@@ -175,6 +184,9 @@ export interface iReferenceDefinition {
   on_delete?: "RESTRICT" | "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT"
   on_update?: "RESTRICT" | "CASCADE" | "SET NULL" | "NO ACTION" | "SET DEFAULT"
 }
+
+export type tResourceObject = Omit<tNonFnPropsOptional<iResource>, "exists" | "validated">
+export type tResourceInitializer<T extends Omit<tNonFnPropsOptional<T>, "exists" | "validated">> = T & {id?: Buffer | string, uuid?: string}
 
 export enum eResourceType {
   "USER"       = "user",
