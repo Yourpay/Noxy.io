@@ -1,6 +1,6 @@
 import * as Promise from "bluebird";
 import * as uuid from "uuid";
-import {tEnum, tEnumKey, tEnumValue, tPromiseFn} from "../interfaces/iAuxiliary";
+import {tEnum, tEnumKeys, tEnumValue, tPromiseFn} from "../interfaces/iAuxiliary";
 import {iPromisePipe} from "../interfaces/iPromisePipe";
 import * as Response from "../modules/Response";
 
@@ -15,7 +15,7 @@ class PromisePipe<T extends tEnum<T>> {
   public flag_execute: boolean;
   
   public readonly stages: T;
-  public readonly promises: { [K in tEnumKey<T>]?: {[key: string]: tPromiseFn<any>} };
+  public readonly promises: { [K in tEnumKeys<T>]?: {[key: string]: tPromiseFn<any>} };
   
   constructor(stages: T) {
     this.flag_execute = false;

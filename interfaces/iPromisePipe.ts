@@ -1,14 +1,34 @@
-import {tEnumValue, tEnum, tPromiseFn, tEV} from "./iAuxiliary";
+import {tEnum, tEnumKeys, tEnumValue, tPromiseFn} from "./iAuxiliary";
 
-
-export interface iPromisePipe {
-  <T extends tEnum<T>>(type: T): iPromisePipeConstructor<T>
+export interface iPromisePipeService extends iPromisePipeFn {
+  Constructor: cPromisePipe
 }
 
-export interface iPromisePipeConstructor<T> {
-  promises: {[stage: tEV<T>]: {[key: string]: tPromiseFn}}
+export interface iPromisePipeFn {
+  <T extends tEnum<T>>(stages: T): iPromisePipe<T>
+}
+
+export interface cPromisePipe {
+  new<T extends tEnum<T>>(stages: T): iPromisePipe<T>
+}
+
+export interface iPromisePipe<T> {
+  status: tEnumValue<ePromisePipeStatus>
+  stages: T
+  promises: { [key in tEnumKeys<T>]: {[key: string]: tPromiseFn<any>} }
   
-  promise: (stage: tEV<T>, promise: tPromiseFn) => string
+  add(stage: tEnumValue<T>, fn: tPromiseFn<any>): string
+  
+  remove(stage: tEnumValue<T>, key: string): boolean
+  
+  resolve(): Promise<any>
+}
+
+export enum ePromisePipeStatus {
+  "READY"     = 0,
+  "RESOLVING" = 1,
+  "RESOLVED"  = 2,
+  "REJECTED"  = -1
 }
 
 export enum ePromisePipeStagesInit {

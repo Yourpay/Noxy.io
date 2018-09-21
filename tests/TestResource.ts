@@ -16,4 +16,4 @@ Test.select();
 
 new Test({test: "", swag: ""});
 
-Resource<eResourceType, cResource>(eResourceType.ROLE, Test);
+Resource<eResourceType, cResource>(eResourceType.ROLE, Test, {}, {});
