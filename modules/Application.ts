@@ -166,7 +166,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         )
         .catch(() => Promise.reject(new Response.json(404, "any")));
       }
-      return Database(env.mode).query<RoleRoute[]>("SELECT * FROM ?? WHERE `route_id` = ?", [eResourceType.ROUTE, route.id])
+      return Database(env.mode).query<RoleRoute[]>("SELECT * FROM ?? WHERE `route_id` = ?", [eResourceType.ROLE_ROUTE, route.id])
       .then(route_roles =>
         !route_roles.length ? next() : new Promise(resolve => resolve(jwt.verify(request.get("Authorization"), env.tokens.jwt)))
         .then(user =>

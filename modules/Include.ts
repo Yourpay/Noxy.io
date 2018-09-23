@@ -1,72 +1,98 @@
 import * as Promise from "bluebird";
-import * as flat from "flat";
 import * as fs from "fs";
 import * as _ from "lodash";
+import * as minimatch from "minimatch";
 import * as path from "path";
+import {base_dir} from "../app";
+import {iIncludeFn, iIncludeOptions, iIncludeService} from "../interfaces/iInclude";
 
-const service: Include = Include;
+const Service: iIncludeFn = Default;
 
-function Include(dir_path: string): Promise<{[key: string]: any}>
-function Include(options: iIncludeOptions & {sync: true}): {[key: string]: any}
-function Include(options: iIncludeOptions): Promise<{[key: string]: any}>
-function Include(path_or_options: string | iIncludeOptions): Promise<{[key: string]: string}> | {[key: string]: any} {
-  if (typeof path_or_options === "string") { return service.async({path: path_or_options}); }
-  return path_or_options.sync ? service.sync(path_or_options) : service.async(path_or_options);
+function Default(directory: string, options?: iIncludeOptions & {sync?: boolean}): any | Promise<any>;
+function Default(directory: string, options?: iIncludeOptions & {sync: true}): any;
+function Default(directory: string, options?: iIncludeOptions & {sync: false}): Promise<any>;
+function Default(directory: string, options: iIncludeOptions = {}) {
+  return options.sync ? sync(directory, options) : async(directory, options);
 }
 
-service.async = (options: iIncludeOptions): Promise<{[key: string]: any}> => {
-  return new Promise<{[key: string]: any}>((resolve, reject) => {
-    const offset = options.path.length;
-    walkDirAsync(path.resolve(options.path))
-    .then(res => resolve(_.transform(res, (result, full_path: string) => {
-      const file_path = full_path.substring(offset + 1).replace(/\\/g, "/");
-      if (options.filter) {
-        if (options.filter instanceof RegExp && !file_path.match(options.filter)) { return result; }
-        if (typeof options.filter === "function" && !options.filter(file_path, _.last(file_path.split("/")))) { return result; }
+function sync(directory: string, options: Exclude<iIncludeOptions, "sync"> = {}) {
+  const dir_path = path.resolve(directory.match(/^[.\/\\]/) ? base_dir : "", directory);
+  
+  return _.reduce(syncFn(dir_path, options, []), (result, file_path) => {
+    return set(result, options.transform ? options.transform(file_path) : file_path, require(path.resolve(dir_path, file_path)), options.hierarchy);
+  }, {});
+}
+
+function syncFn(directory, options, result = [], base_path?) {
+  const files = fs.readdirSync(directory);
+  if (!base_path) { base_path = directory; }
+  
+  return _.reduce(files, (result, file) => {
+    const file_path = path.resolve(directory, file);
+    const file_stats = fs.statSync(file_path);
+    const file_key = path.relative(base_path, path.resolve(directory, file)).replace(/\\/g, "/");
+    if (file_stats.isDirectory()) {
+      return options.recursive || options.hierarchy ? syncFn(file_path, options, result, base_path) : result;
+    }
+    if (options.filter && ((typeof options.filter === "function" && !options.filter(file_key)) || (typeof options.filter === "string" && !minimatch(file_key, options.filter)))) {
+      return result;
+    }
+    return _.concat(result, file_key);
+  }, result);
+}
+
+function async(directory: string, options: Exclude<iIncludeOptions, "sync">) {
+  const dir_path = path.resolve(directory.match(/^[.\/\\]/) ? base_dir : "", directory);
+  
+  return Promise.reduce<string, {[key: string]: any}>(asyncFn(dir_path, options, []), (result, file_path) => {
+    return set(result, options.transform ? options.transform(file_path) : file_path, require(path.resolve(dir_path, file_path)), options.hierarchy);
+  }, {});
+}
+
+function asyncFn(directory, options, result = [], base_path?) {
+  if (!base_path) { base_path = directory; }
+  
+  return new Promise<string[]>((resolve, reject) => fs.readdir(directory, (err, files) => !err ? resolve(files) : reject(err)))
+  .reduce((result, file) => {
+    const file_path = path.resolve(directory, file);
+    const file_key = path.relative(base_path, path.resolve(directory, file)).replace(/\\/g, "/");
+    return new Promise<fs.Stats>((resolve, reject) => { fs.stat(file_path, (err, file_stats) => !err ? resolve(file_stats) : reject(err)); })
+    .then(file_stats => {
+      if (file_stats.isDirectory()) {
+        return options.recursive || options.hierarchy ? asyncFn(file_path, options, result, base_path) : result;
       }
-      return _.merge(result, flat.unflatten({[file_path]: require(full_path)}, {delimiter: "/"}));
-    }, {})))
-    .catch(err => reject(err));
-  })
-  .then(res => options.transform ? _.transform(res, options.transform, {}) : res);
-};
-
-service.sync = (options: iIncludeOptions): {[key: string]: string} => {
-  return {};
-};
-
-export = service;
-
-interface Include {
-  async?: (options: iIncludeOptions) => Promise<{[key: string]: any}>
-  sync?: (options: iIncludeOptions) => {[key: string]: any}
-  
-  (dir_path: string): Promise<{[key: string]: any}>
-  
-  (options: iIncludeOptions & {sync: true}): {[key: string]: any}
-  
-  (options: iIncludeOptions): Promise<{[key: string]: any}>
-  
-  (path_or_options: string | iIncludeOptions): Promise<{[key: string]: string}> | {[key: string]: any}
-}
-
-function walkDirAsync(dir: string): Promise<string[]> {
-  return new Promise<string[]>((resolve, reject) => {
-    fs.readdir(dir, (err, files) => {
-      if (err) { reject(err); }
-      Promise.all(_.map(files, file => new Promise((resolve, reject) => {
-        const file_path = path.resolve(dir, file);
-        fs.stat(file_path, (err, stats) => err ? reject(err) : resolve(stats.isDirectory() ? walkDirAsync(file_path) : file_path));
-      })))
-      .then(res => resolve(<string[]>_.flattenDeep(res)))
-      .catch(err => reject(err));
+      if (options.filter && ((typeof options.filter === "function" && !options.filter(file_key)) || (typeof options.filter === "string" && !minimatch(file_key, options.filter)))) {
+        return result;
+      }
+      return _.concat(result, file_key);
     });
-  });
+  }, result);
+  
 }
 
-interface iIncludeOptions {
-  path: string
-  sync?: boolean
-  filter?: RegExp | ((file_path: string, file_name: string) => boolean)
-  transform?: any
+function set(object: object, path: string | string[], value: any, hierarchy: boolean) {
+  if (hierarchy) {
+    if (!_.isArray(path)) { path = path.split("/"); }
+    if (path.length > 1) {
+      if (!object[path[0]]) { object[path[0]] = {}; }
+      set(object[path.shift()], path, value, hierarchy);
+    }
+    else {
+      object[path[0]] = value;
+    }
+  }
+  else {
+    object[_.join(_.concat(path), "")] = value;
+  }
+  return object;
 }
+
+const exported: iIncludeService = _.assign(
+  Service,
+  {
+    sync:  sync,
+    async: async
+  }
+);
+
+export = exported;

@@ -22,6 +22,8 @@ export interface iPromisePipe<T> {
   remove(stage: tEnumValue<T>, key: string): boolean
   
   resolve(): Promise<any>
+  
+  fork(): iPromisePipe<T>
 }
 
 export enum ePromisePipeStatus {

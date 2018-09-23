@@ -1,4 +1,4 @@
-import {cResource, eResourceType, tResourceInitializer} from "../interfaces/iResource";
+import {eResourceType, tResourceInitializer} from "../interfaces/iResource";
 import * as Resource from "../modules/Resource";
 
 class Test extends Resource.Constructor {
@@ -16,4 +16,4 @@ Test.select();
 
 new Test({test: "", swag: ""});
 
-Resource<eResourceType, cResource>(eResourceType.ROLE, Test, {}, {});
+Resource<eResourceType>(eResourceType.ROLE, Test, {}, {});

@@ -1,0 +1,1 @@
+console.log("Writing a console.log from", __dirname);

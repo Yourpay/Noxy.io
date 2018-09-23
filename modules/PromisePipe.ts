@@ -48,5 +48,5 @@ class PromisePipe<T extends tEnum<T>> {
 
 Object.defineProperty(Default, "list", {value: pipes});
 
-const exported = <iPromisePipe>(<any>Default);
+const exported = <iPromisePipe<any>>(<any>Default);
 export = exported;

@@ -1,4 +1,5 @@
 import * as Promise from "bluebird";
+
 import {Omit, tEnum, tEnumValue, tNonFnPropsOptional} from "./iAuxiliary";
 
 export interface iResourceService extends iResourceFn {
@@ -12,7 +13,7 @@ export interface iResourceService extends iResourceFn {
 }
 
 export interface iResourceFn {
-  <T extends tEnum<T>, R extends cResource>(type: tEnumValue<T>, constructor: R, definition: iTableDefinition, options?: iTableOptions): R
+  <T extends tEnum<T>>(type: tEnumValue<T>, constructor: cResource, definition: iTableDefinition, options?: iTableOptions): cResource
 }
 
 export interface cResource {
@@ -21,7 +22,7 @@ export interface cResource {
   table: iTable
   type: string
   
-  select(): Promise<iResource[]>
+  select(start: number, limit: number): Promise<iResource[]>
   
   selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<tResourceObject>
   

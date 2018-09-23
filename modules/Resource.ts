@@ -42,7 +42,7 @@ const Resource: cResource = class Resource implements iResource {
     _.assign(this, _.assign({id: t_id}, initializer));
   }
   
-  public validate(options?: iResourceActionOptions) {
+  public validate(options: iResourceActionOptions = {}) {
     const $this = (<typeof Resource>this.constructor);
     const $columns = $this.table.definition;
     
@@ -63,7 +63,7 @@ const Resource: cResource = class Resource implements iResource {
     .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
   }
   
-  public save(options?: iResourceActionOptions) {
+  public save(options: iResourceActionOptions = {}) {
     const $this = (<typeof Resource>this.constructor);
     
     return this.validate(options)
