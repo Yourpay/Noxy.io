@@ -1,6 +1,6 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
-import {env} from "../app";
+import {env} from "../globals";
 import {tEnum, tEnumValue} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
 import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions, tResourceObject} from "../interfaces/iResource";

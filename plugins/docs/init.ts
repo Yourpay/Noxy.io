@@ -1,8 +1,8 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as path from "path";
-import {publicize_queue} from "../../init/publicize";
-import {resource_queue} from "../../init/resource";
+import {ePromisePipeStagesInitPublicize, publicize_pipe} from "../../init/publicize";
+import {ePromisePipeStagesInitResource, resource_pipe} from "../../init/resource";
 import {iDatabasePool} from "../../interfaces/iDatabase";
 import * as Application from "../../modules/Application";
 import * as Cache from "../../modules/Cache";
@@ -18,7 +18,7 @@ export enum eAPIDocumentationType {
   "API_DOCUMENTATION_ROUTE_PARAMETER" = "api/documentation/route/parameter"
 }
 
-resource_queue.promise(subdomain, (resolve, reject) => {
+resource_pipe.add(ePromisePipeStagesInitResource.PLUGIN, () => {
   const databases: {[key: string]: iDatabasePool} = {};
   // Promise.map(_.values(Resource.list), resource => {
   //   const name = resource.table.options.resource.database;
@@ -35,24 +35,20 @@ resource_queue.promise(subdomain, (resolve, reject) => {
   // })
   // .then(res => resolve(res));
   //
-  resolve();
+  return Promise.resolve();
 });
 
-publicize_queue.promise("setup", (resolve, reject) =>
+publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
   Promise.all([
     Application.addStatic(path.resolve(__dirname, "./public"), subdomain),
     Application.addRoute(subdomain, "/", "*", "GET", (request, response) => {
       response.sendFile(path.resolve(__dirname, "./public/index.html"));
     })
   ])
-  .then(res => resolve(res))
-  .error(err => reject(err))
 );
 
-publicize_queue.promise("publish", (resolve, reject) =>
+publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
   Promise.all([
     Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey([subdomain, "/*", "GET"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
   ])
-  .then(res => resolve(res))
-  .catch(err => reject(err))
 );

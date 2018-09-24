@@ -8,7 +8,7 @@ import * as methodOverride from "method-override";
 import * as path from "path";
 import * as favicon from "serve-favicon";
 import * as vhost from "vhost";
-import {env} from "../app";
+import {env} from "../globals";
 import {eResourceType} from "../interfaces/iResource";
 import * as Cache from "../modules/Cache";
 import * as Database from "../modules/Database";

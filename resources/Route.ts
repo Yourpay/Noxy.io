@@ -1,7 +1,8 @@
+import * as Promise from "bluebird";
 import * as express from "express";
 import * as _ from "lodash";
-import {env} from "../app";
-import {publicize_queue} from "../init/publicize";
+import {env} from "../globals";
+import {ePromisePipeStagesInitPublicize, publicize_pipe} from "../init/publicize";
 import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
 import {eResourceType} from "../interfaces/iResource";
 import * as Application from "../modules/Application";
@@ -49,8 +50,8 @@ export default class Route extends Resource.Constructor {
 
 Resource<eResourceType>(eResourceType.ROUTE, Route, definition, options);
 
-publicize_queue.promise("setup", resolve => {
-  Application.addRoute(env.subdomains.api, Route.type, "/", "GET", (request, response) => {
+publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
+  Promise.resolve(Application.addRoute(env.subdomains.api, Route.type, "/", "GET", (request, response) => {
     const start = request.query.start > 0 ? +request.query.start : 0, limit = request.query.limit > 0 && request.query.limit < 100 ? +request.query.limit : 100;
     Database(env.mode).query<{subdomain: string, namespace: string}[]>("SELECT DISTINCT subdomain, namespace FROM `route` LIMIT ? OFFSET ?", [limit, start])
     .reduce((result: any, route) => {
@@ -61,8 +62,7 @@ publicize_queue.promise("setup", resolve => {
     .then(routes => new Response.json(200, "any", routes))
     .catch(err => err instanceof Response.json ? err : new Response.json(500, "any", err))
     .then(res => response.status(res.code).json(res));
-  });
-  resolve();
-});
+  }))
+);
 
 type Middleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void

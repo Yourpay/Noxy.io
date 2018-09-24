@@ -6,12 +6,13 @@ export const codes: {[status: number]: {[type: string]: string}} = {
     "any": "Request performed successfully"
   },
   400: {
-    "any":       "Bad request received",
-    "get":       "Could not retrieve data due to missing or errorful data.",
-    "post":      "Could not create or change resource due to missing or errorful data.",
-    "update":    "Could not update resource due to missing or errorful data.",
-    "duplicate": "Resource already exists and no duplicates are allowed.",
-    "cache":     "No keys or value given to cache function."
+    "any":          "Bad request received",
+    "get":          "Could not retrieve data due to missing or errorful data.",
+    "post":         "Could not create or change resource due to missing or errorful data.",
+    "update":       "Could not update resource due to missing or errorful data.",
+    "duplicate":    "Resource already exists and no duplicates are allowed.",
+    "cache":        "No keys or value given to cache function.",
+    "promise-pipe": "Promise pipe is not in the right state to perform this action."
   },
   401: {
     "any": "Unauthorized",
@@ -29,14 +30,17 @@ export const codes: {[status: number]: {[type: string]: string}} = {
     "external": "External resource could not be found."
   },
   409: {
-    "cache":       "Transactional error occurred while writing to cache.",
-    "pool_add":    "Trying to add pool to cluster or master which already exists on pool or master.",
-    "pool_update": "Trying to update pool to cluster or master which already exists on pool or master.",
-    "pool_delete": "Trying to delete pool to cluster or master which already exists on pool or master."
+    "cache":        "Transactional error occurred while writing to cache.",
+    "promise-pipe": "Promise pipe is being resolved and cannot be modified.",
+    "pool_add":     "Trying to add pool to cluster or master which already exists on pool or master.",
+    "pool_update":  "Trying to update pool to cluster or master which already exists on pool or master.",
+    "pool_delete":  "Trying to delete pool to cluster or master which already exists on pool or master."
   },
   500: {
-    "any":   "Unexpected server error occurred",
-    "cache": "Unexpected server error occurred while attempting to read from/write to the cache."
+    "any":          "Unexpected server error occurred",
+    "cache":        "Unexpected server error occurred while attempting to read from/write to the cache.",
+    "promise-pipe": "Unexpected server error occured while attempting to resolve a promise pipe.",
+    "publicize":    "Unexpected server error occursed while attempting to publicize server through Application service."
   }
 };
 

@@ -1,7 +1,7 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as mysql from "mysql";
-import {database_queue} from "../init/database";
+import {database_pipe, ePromisePipeStagesInitDatabase} from "../init/database";
 import {iDatabase, iDatabaseConfig, iDatabasePool, iDatabaseQueryConfig} from "../interfaces/iDatabase";
 import * as Response from "./Response";
 
@@ -55,7 +55,7 @@ function databaseParse(sql: string, replacers: any | any[]) {
     const regex = new RegExp("(\\\s+|^|\\\()\\\?{" + length + "}(\\\s+|$|\\\))");
     if (length === 3) {
       if (r.type === "where")
-      if (r.type === "in" && r.key && r.values) { return result.replace(regex, "$1`" + r.key + "` IN (" + mysql.escape(r.values) + ")$2"); }
+        if (r.type === "in" && r.key && r.values) { return result.replace(regex, "$1`" + r.key + "` IN (" + mysql.escape(r.values) + ")$2"); }
       return result.replace(regex, "$1" + mysql.escape(r) + "$2");
     }
     if (length === 2) {
@@ -85,16 +85,12 @@ class DatabasePool implements iDatabasePool {
     _.each(config.slaves, slave => this.add(slave));
     Database.pools[id] = this;
     Database.cluster.add(id, this.__configuration);
-    database_queue.promise("register", (resolve, reject) => {
-      const connector = mysql.createConnection(_.omit(this.__configuration, "database"));
-      connector.query("CREATE DATABASE IF NOT EXISTS `" + this.__configuration.database + "`", err => {
-        if (err) { return reject(err); }
-        connector.end(err => {
-          if (err) { return reject(err); }
-          return resolve(this);
-        });
-      });
-    });
+    database_pipe.add(ePromisePipeStagesInitDatabase.REGISTER, () =>
+      new Promise((resolve, reject) => {
+        const connector = mysql.createConnection(_.omit(this.__configuration, "database"));
+        connector.query("CREATE DATABASE IF NOT EXISTS `" + this.__configuration.database + "`", err => err ? reject(err) : connector.end(err => err ? reject(err) : resolve(this)));
+      })
+    );
   }
   
   public query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T[]>

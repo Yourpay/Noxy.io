@@ -2,8 +2,8 @@ import * as Promise from "bluebird";
 import * as crypto from "crypto";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
-import {env} from "../app";
-import {publicize_queue} from "../init/publicize";
+import {env} from "../globals";
+import {ePromisePipeStagesInitPublicize, publicize_pipe} from "../init/publicize";
 import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
 import {eResourceType} from "../interfaces/iResource";
 import * as Application from "../modules/Application";
@@ -85,7 +85,7 @@ export default class User extends Resource.Constructor {
   
 }
 
-publicize_queue.promise("setup", resolve => {
+publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
   Application.addRoute(env.subdomains.api, User.type, "/login", "POST", (request, response) =>
     User.login(request.body, request.get("Authorization"))
     .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
@@ -94,15 +94,12 @@ publicize_queue.promise("setup", resolve => {
     .catch(err => err instanceof Response.json ? err : new Response.json(500, "any", err))
     .then(res => response.status(res.code).json(res))
   )
-  .finally(() => resolve());
-});
+);
 
-publicize_queue.promise("publish", (resolve, reject) => {
+publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
   Promise.all([
     Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey([env.subdomains.api, "/user/login", "POST"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
   ])
-  .then(res => resolve(res))
-  .catch(err => reject(err));
-});
+);
 
 Resource<eResourceType>(eResourceType.USER, User, definition, options);

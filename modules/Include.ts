@@ -3,7 +3,7 @@ import * as fs from "fs";
 import * as _ from "lodash";
 import * as minimatch from "minimatch";
 import * as path from "path";
-import {base_dir} from "../app";
+import {base_dir} from "../globals";
 import {iIncludeFn, iIncludeOptions, iIncludeService} from "../interfaces/iInclude";
 
 const Service: iIncludeFn = Default;

@@ -1,12 +1,11 @@
 import * as Promise from "bluebird";
 import * as path from "path";
-import {publicize_queue} from "../../init/publicize";
+import {ePromisePipeStagesInitPublicize, publicize_pipe} from "../../init/publicize";
 import * as Application from "../../modules/Application";
 import * as Cache from "../../modules/Cache";
 import Route from "../../resources/Route";
 
-publicize_queue.promise("setup", (resolve, reject) => {
-  
+publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
   Promise.all([
     Application.addStatic(path.resolve(__dirname, "./public"), "admin"),
     // Application.addRoute(env.subdomains.api, "db", "/", "GET", (request, response, next) => {
@@ -16,17 +15,10 @@ publicize_queue.promise("setup", (resolve, reject) => {
       response.sendFile(path.resolve(__dirname, "./public/index.html"));
     })
   ])
-  .then(res => resolve(res))
-  .error(err => reject(err));
-  
-});
+);
 
-publicize_queue.promise("publish", (resolve, reject) => {
-  
+publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
   Promise.all([
     Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey(["admin", "/*", "GET"])).then(route => Application.updateRoute(route))
   ])
-  .then(res => resolve(res))
-  .catch(err => reject(err));
-  
-});
+);

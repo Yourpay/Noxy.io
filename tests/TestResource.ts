@@ -12,8 +12,6 @@ class Test extends Resource.Constructor {
   
 }
 
-Test.select();
-
 new Test({test: "", swag: ""});
 
-Resource<eResourceType>(eResourceType.ROLE, Test, {}, {});
+Resource<eResourceType>(eResourceType.ROLE_USER, Test, {}, {});

@@ -2,7 +2,7 @@ import * as Promise from "bluebird";
 
 export type tEnum<T> = {[K in keyof T]: T[K]} & {[key: number]: string};
 export type tEnumKeys<T> = keyof tEnum<T>;
-export type tEnumValue<T> = T extends T[keyof T] ? T : never;
+export type tEnumValue<T> = {[K in keyof T]: T[K]}[keyof T];
 
 export type Omit<T, K> = Pick<T, Exclude<keyof T, K>>
 

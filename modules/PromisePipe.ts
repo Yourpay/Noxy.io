@@ -1,52 +1,77 @@
 import * as Promise from "bluebird";
+import * as _ from "lodash";
 import * as uuid from "uuid";
 import {tEnum, tEnumKeys, tEnumValue, tPromiseFn} from "../interfaces/iAuxiliary";
-import {iPromisePipe} from "../interfaces/iPromisePipe";
+import {cPromisePipe, ePromisePipeStatus, iPromisePipe, iPromisePipeFn, iPromisePipeService} from "../interfaces/iPromisePipe";
 import * as Response from "../modules/Response";
 
-const pipes = {};
+const Service: iPromisePipeFn = Default;
 
-function Default<T extends tEnum<T>>(stages: T): PromisePipe<T> {
-  return pipes[uuid.v4()] = new PromisePipe(stages);
+function Default<T>(stages: tEnum<T>): iPromisePipe<T> {
+  return new PromisePipe(stages);
 }
 
-class PromisePipe<T extends tEnum<T>> {
+const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implements iPromisePipe<T> {
   
-  public flag_execute: boolean;
-  
+  private status: ePromisePipeStatus;
   public readonly stages: T;
   public readonly promises: { [K in tEnumKeys<T>]?: {[key: string]: tPromiseFn<any>} };
   
   constructor(stages: T) {
-    this.flag_execute = false;
+    this.status = ePromisePipeStatus.READY;
     this.stages = stages;
-    Object.defineProperty(this, "promises", {value: _.reduce(stages, (result, value, key) => Object.defineProperty(result, key, {value: {}}), {})});
+    Object.defineProperty(this, "promises", {
+      enumerable: true,
+      value:      _.reduce(stages, (result, value, key) => Object.defineProperty(result, key, {
+        enumerable: true,
+        writable:   true,
+        value:      {}
+      }), {})
+    });
   }
   
-  public promise<K>(stage: tEnumValue<T>, fn: tPromiseFn<K>): string {
+  public add<K>(stage: { [K in keyof T]: T[K] }[K], fn: tPromiseFn<K>): string {
+    if (this.status !== ePromisePipeStatus.READY) { throw new Response.error(409, "promise-pipe"); }
     const key = uuid.v4();
     this.promises[stage][key] = fn;
     return key;
   }
   
-  public fulfill<K>(stage: tEnumValue<T>, key: string): Promise<K> {
-    if (!this.promises[stage][key]) { return Promise.reject(new Response.error(404, "promise_pipe")); }
-    return Promise.resolve(this.promises[stage][key]());
+  public remove(stage: tEnumValue<T>, key: string): boolean {
+    if (this.status !== ePromisePipeStatus.READY) { throw new Response.error(409, "promise-pipe"); }
+    return delete this.promises[stage][key];
   }
   
-  public execute() {
-    this.flag_execute = true;
-    PromisePipe.execute(this);
+  public fork(): PromisePipe<T> {
+    return _.set(_.clone(this), "status", ePromisePipeStatus.READY);
   }
   
-  private static execute(pipe: PromisePipe<any>, stages?: string[]) {
-    const [stage, remaining] = _.partition(stages || _.values(pipe.stages), v => _.isEqual(v, _.head(v)));
-    console.log(stage, remaining);
+  public unlock(): this {
+    if (this.status !== ePromisePipeStatus.RESOLVED && this.status !== ePromisePipeStatus.REJECTED) { throw new Response.error(400, "promise-pipe"); }
+    this.status = ePromisePipeStatus.READY;
+    return this;
   }
   
-}
+  public resolve(): Promise<any> {
+    this.status = ePromisePipeStatus.RESOLVING;
+    return PromisePipe.resolve(this);
+  }
+  
+  private static resolve<T extends tEnum<T>>(pipe: PromisePipe<any>, promises?: {[key: string]: tPromiseFn<any>}[]): Promise<any> {
+    if (!promises) { promises = _.values(pipe.promises); }
+    const [stage, remaining] = [_.head(promises), _.tail(promises)];
+    return Promise.map(_.values(stage), fn => fn())
+    .then(res => remaining.length > 0 ? PromisePipe.resolve(pipe, remaining) : Promise.resolve(res))
+    .catch(err => Promise.reject(new Response.error(500, "promise-pipe", err)));
+  }
+  
+};
 
-Object.defineProperty(Default, "list", {value: pipes});
+const exported: iPromisePipeService = _.assign(
+  Service,
+  {
+    Constructor: PromisePipe
+  }
+);
 
-const exported = <iPromisePipe<any>>(<any>Default);
 export = exported;

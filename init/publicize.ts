@@ -1,20 +1,26 @@
+import * as Promise from "bluebird";
 import * as _ from "lodash";
-import {env, init_queue} from "../app";
-import PromiseQueue from "../classes/PromiseQueue";
+import {env, init_pipe} from "../globals";
+import {ePromisePipeStagesInit} from "../interfaces/iPromisePipe";
+import * as Application from "../modules/Application";
+import * as PromisePipe from "../modules/PromisePipe";
 import * as Resource from "../modules/Resource";
+import * as Response from "../modules/Response";
 
-export const publicize_queue = new PromiseQueue(["setup", "listen"]);
+export enum ePromisePipeStagesInitPublicize {
+  SETUP  = 0,
+  LISTEN = 1,
+  PUBLISH = 2,
+  PLUGIN = 3
+}
 
-publicize_queue.promise("setup", (resolve, reject) => {
-  const Application = require("../modules/Application");
+export const publicize_pipe = PromisePipe(ePromisePipeStagesInitPublicize);
+
+publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
   Application.addParam(env.subdomains.api, "id", (request, response, next, id) => (request.query.id = id) && next());
-  Promise.all(_.reduce(Resource.list, (result, resource) => _.concat(result, _.flattenDeep(_.map(Application.addResource(resource), r => _.values(r)))), []))
-  .then(res => resolve(res))
-  .catch(err => reject(err));
+  return Promise.all(_.reduce(Resource.list, (result, resource) => _.concat(result, _.flattenDeep(_.map(Application.addResource(resource), r => _.values(r)))), []));
 });
 
-publicize_queue.promise("listen", (resolve, reject) =>
-  require("../modules/Application").publicize() ? resolve() : reject()
-);
+publicize_pipe.add(ePromisePipeStagesInitPublicize.LISTEN, () => Application.publicize() ? Promise.resolve() : Promise.reject(new Response.error(500, "publicize")));
 
-init_queue.promise("publicize", (resolve, reject) => publicize_queue.execute().then(res => resolve(res), err => reject(err)));
+init_pipe.add(ePromisePipeStagesInit.PUBLICIZE, () => publicize_pipe.resolve());

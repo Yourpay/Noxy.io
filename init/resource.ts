@@ -2,16 +2,23 @@ import * as Promise from "bluebird";
 import * as fs from "fs";
 import * as _ from "lodash";
 import * as path from "path";
-import {env, init_queue} from "../app";
-import PromiseQueue from "../classes/PromiseQueue";
-import * as Response from "../modules/Response";
+import {env, init_pipe} from "../globals";
+import {ePromisePipeStagesInit} from "../interfaces/iPromisePipe";
+import * as PromisePipe from "../modules/PromisePipe";
 import Role from "../resources/Role";
 import RoleUser from "../resources/RoleUser";
 import User from "../resources/User";
 
-export const resource_queue = new PromiseQueue(["user", "role", "role/user"]);
+export enum ePromisePipeStagesInitResource {
+  USER      = 0,
+  ROLE      = 1,
+  ROLE_USER = 2,
+  PLUGIN    = 3,
+}
 
-resource_queue.promise("user", (resolve, reject) => {
+export const resource_pipe = PromisePipe(ePromisePipeStagesInitResource);
+
+resource_pipe.add(ePromisePipeStagesInitResource.USER, () =>
   Promise.props(_.mapValues(env.users, (user, key) => {
     return new User(user).validate()
     .then(resource => {
@@ -24,11 +31,9 @@ resource_queue.promise("user", (resolve, reject) => {
     });
   }))
   .tap(() => fs.writeFileSync(path.resolve(process.cwd(), "./env.json"), JSON.stringify(env, null, 2)))
-  .then(res => resolve(res))
-  .catch(err => reject(new Response.error(err.code, err.type, err)));
-});
+);
 
-resource_queue.promise("role", (resolve, reject) =>
+resource_pipe.add(ePromisePipeStagesInitResource.ROLE, () =>
   Promise.all(_.map(env.roles, (role, key) =>
     new Role(role)
     .validate()
@@ -47,19 +52,15 @@ resource_queue.promise("role", (resolve, reject) =>
     })
   ))
   .tap(() => fs.writeFileSync(path.resolve(process.cwd(), "./env.json"), JSON.stringify(env, null, 2)))
-  .then(res => resolve(res))
-  .catch(err => reject(err))
 );
 
-resource_queue.promise("role/user", (resolve, reject) =>
+resource_pipe.add(ePromisePipeStagesInitResource.ROLE_USER, () =>
   Promise.map(_.values(env.roles), role =>
     Promise.map(_.values(env.users), user =>
       new RoleUser({role_id: role.id, user_id: user.id})
       .save({update_protected: true})
     )
   )
-  .then(res => resolve(res))
-  .catch(err => reject(err))
 );
 
-init_queue.promise("resource", (resolve, reject) => resource_queue.execute().then(res => resolve(res), err => reject(err)));
+init_pipe.add(ePromisePipeStagesInit.RESOURCE, () => resource_pipe.resolve());

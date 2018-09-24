@@ -1,15 +1,9 @@
-import * as _ from "lodash";
-import PromiseQueue from "./classes/PromiseQueue";
-import * as environmentals from "./env.json";
+import {init_pipe} from "./globals";
 import * as Include from "./modules/Include";
-
-export const env = _.merge(environmentals, {mode: process.env.NODE_ENV || environmentals.mode});
-export const init_queue = new PromiseQueue(["db", "resource", "publicize"]);
-export const base_dir = __dirname;
 
 Include("./init")
 .then(() => Include("./plugins", {recursive: true, filter: "**/init.js"}))
-.then(() => init_queue.execute())
+.then(() => init_pipe.resolve())
 .tap(() => {
   console.log("Server is up and running.");
 })

@@ -1,3 +1,4 @@
+import * as Promise from "bluebird";
 import {tEnum, tEnumKeys, tEnumValue, tPromiseFn} from "./iAuxiliary";
 
 export interface iPromisePipeService extends iPromisePipeFn {
@@ -13,9 +14,8 @@ export interface cPromisePipe {
 }
 
 export interface iPromisePipe<T> {
-  status: tEnumValue<ePromisePipeStatus>
   stages: T
-  promises: { [key in tEnumKeys<T>]: {[key: string]: tPromiseFn<any>} }
+  promises: { [key in tEnumKeys<T>]?: {[key: string]: tPromiseFn<any>} }
   
   add(stage: tEnumValue<T>, fn: tPromiseFn<any>): string
   
@@ -24,6 +24,8 @@ export interface iPromisePipe<T> {
   resolve(): Promise<any>
   
   fork(): iPromisePipe<T>
+  
+  unlock(): this
 }
 
 export enum ePromisePipeStatus {
@@ -34,7 +36,7 @@ export enum ePromisePipeStatus {
 }
 
 export enum ePromisePipeStagesInit {
-  "DATABASE"  = "databsae",
-  "RESOURCE"  = "resource",
-  "PUBLICIZE" = "publicize",
+  "DATABASE"  = 0,
+  "RESOURCE"  = 1,
+  "PUBLICIZE" = 2,
 }

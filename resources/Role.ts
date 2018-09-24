@@ -1,4 +1,4 @@
-import {env} from "../app";
+import {env} from "../globals";
 import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
 import {eResourceType} from "../interfaces/iResource";
 import * as Resource from "../modules/Resource";
