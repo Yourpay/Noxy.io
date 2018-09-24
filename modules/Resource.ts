@@ -8,15 +8,13 @@ import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
 
-const resources = {};
-
 const Service: iResourceFn = function Default<T extends tEnum<T>, R extends cResource>(type: tEnumValue<T>, constructor: R, definition: iTableDefinition, options?: iTableOptions): R {
   
   const key = _.join([_.get(options, "database", env.databases[env.mode].database), type], "::");
   
-  if (resources[key]) { throw new Response.error(500, "resource", {type: type, constructor: constructor}); }
+  if (exported.list[key]) { throw new Response.error(500, "resource", {type: type, constructor: constructor}); }
   
-  resources[key] = constructor;
+  exported.list[key] = constructor;
   _.set(constructor, "type", type);
   _.set(constructor, "table", new Table(constructor, definition, options));
   return constructor;
@@ -88,7 +86,7 @@ const Resource: cResource = class Resource implements iResource {
                 Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[k])
                 .catch(err => {
                   if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code, err.type, err)); }
-                  return new resources[_.join([$this.table.options.resource.database, _.get(v, "reference.table", v.reference)], "::")].__resource({id: this[k]}).validate();
+                  return new exported.list[_.join([$this.table.options.resource.database, _.get(v, "reference.table", v.reference)], "::")]({id: this[k]}).validate();
                 })
                 .then(res => res.toObject())
                 .then(res => _.set(r, k, res));
@@ -350,7 +348,7 @@ const exported: iResourceService = _.assign(
   {
     Constructor:    Resource,
     Table:          Table,
-    list:           resources,
+    list:           {},
     isUUID:         isUUID,
     bufferFromUUID: bufferFromUUID,
     uuidFromBuffer: uuidFromBuffer
