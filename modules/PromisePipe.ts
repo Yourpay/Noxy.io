@@ -31,7 +31,6 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
   }
   
   public add<K>(stage: { [K in keyof T]: T[K] }[K], fn: tPromiseFn<K>): string {
-    if (this.status !== ePromisePipeStatus.READY) { throw new Response.error(409, "promise-pipe"); }
     const key = uuid.v4();
     this.promises[stage][key] = fn;
     return key;

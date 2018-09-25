@@ -1,5 +1,6 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
+import * as uuid from "uuid";
 import {env} from "../globals";
 import {tEnum, tEnumValue} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
@@ -32,12 +33,21 @@ const Resource: cResource = class Resource implements iResource {
   public validated: boolean;
   
   constructor(initializer: tResourceObject) {
-    let t_id, t_uuid;
-    if (initializer.id) { typeof initializer.id === "string" ? t_id = bufferFromUUID(t_uuid = initializer.id) : t_uuid = uuidFromBuffer(t_id = initializer.id); }
-    else if (initializer.uuid) { t_id = bufferFromUUID(t_uuid = initializer.uuid); }
-    Object.defineProperty(this, "id", {configurable: true, enumerable: true, get: () => t_id, set: v => { if (!_.isEqual(v, t_id)) { this.uuid = uuidFromBuffer(this.id = t_id = v); } }});
-    Object.defineProperty(this, "uuid", {configurable: true, enumerable: true, get: () => t_uuid, set: v => { if (!_.isEqual(v, t_uuid)) { this.id = bufferFromUUID(this.uuid = t_uuid = v); } }});
-    _.assign(this, _.assign({id: t_id}, initializer));
+    if (!(<cResource>this.constructor).table.options.resource.junction) {
+      if (initializer.id) {
+        this.id = typeof initializer.id === "string" ? bufferFromUUID(initializer.id) : initializer.id;
+        this.uuid = typeof initializer.id === "string" ? initializer.id : uuidFromBuffer(initializer.id);
+      }
+      else if (initializer.uuid) {
+        this.id = bufferFromUUID(initializer.uuid);
+        this.uuid = initializer.uuid;
+      }
+      else {
+        this.uuid = uuid.v4();
+        this.id = bufferFromUUID(this.uuid);
+      }
+    }
+    _.assign(this, _.omit(initializer, ["id", "uuid"]));
   }
   
   public validate(options: iResourceActionOptions = {}) {
