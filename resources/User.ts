@@ -25,7 +25,7 @@ const options = {};
 
 export default class User extends Resource.Constructor {
   
-  private static __login_callbacks: ((user: {id: string, username: string, email: string, time_login: number}) => Promise<Object>)[];
+  private static __login_callbacks: ((user: {id: string, username: string, email: string, time_login: number}) => Promise<Object>)[] = [];
   
   public username: string;
   public email: string;

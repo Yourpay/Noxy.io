@@ -180,7 +180,7 @@ const Table: cTable = class Table implements iTable {
     
     return Cache.getAny<tResourceObject>(Cache.types.RESOURCE, this.resource.type, cache_keys)
     .catch(err => {
-      if (err.code !== 404) { return Promise.reject(new Response.error(err.code, err.type, err)); }
+      if (err.code !== 404) { console.log("ERROR FROM VALIDATE", err); return Promise.reject(new Response.error(err.code, err.type, err)); }
       const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
       if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
       return Cache.set<tResourceObject>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {

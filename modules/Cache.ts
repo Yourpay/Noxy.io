@@ -55,7 +55,7 @@ function cacheGetAny<T>(type: string, namespace: string, keys: Key[]): Promise<T
     return Promise.reject(new Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
   }))
   .catch(err => {
-    if (_.every(_.initial(_.values(err)), e => e.code === 404 && e.type === "cache")) { throw new Response.error(404, "cache", _.map(err, "content")); }
+    if (_.every(_.initial(_.values(err)), e => e.code === 404)) { throw new Response.error(404, "cache", _.map(err, "content")); }
     const t_error = _.find(err, e => !e.code && !e.type);
     if (t_error) { throw new Response.error(500, "cache", t_error); }
     throw new Response.error(500, "cache", err);

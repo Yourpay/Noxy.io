@@ -1,5 +1,6 @@
 import * as Promise from "bluebird";
 import * as express from "express";
+import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
 import {env} from "../globals";
 import {ePromisePipeStagesInitPublicize, publicize_pipe} from "../init/publicize";
@@ -8,6 +9,7 @@ import {eResourceType} from "../interfaces/iResource";
 import * as Application from "../modules/Application";
 import * as Resource from "../modules/Resource";
 import * as Response from "../modules/Response";
+import User from "./User";
 import Database = require("../modules/Database");
 
 const definition = {
@@ -51,9 +53,9 @@ export default class Route extends Resource.Constructor {
 Resource<eResourceType>(eResourceType.ROUTE, Route, definition, options);
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
-  Promise.resolve(Application.addRoute(env.subdomains.api, Route.type, "/", "GET", (request, response) => {
+  Application.addRoute(env.subdomains.api, Route.type, "/", "GET", (request, response) => {
     const start = request.query.start > 0 ? +request.query.start : 0, limit = request.query.limit > 0 && request.query.limit < 100 ? +request.query.limit : 100;
-    Database(env.mode).query<{subdomain: string, namespace: string}[]>("SELECT DISTINCT subdomain, namespace FROM `route` LIMIT ? OFFSET ?", [limit, start])
+    return Database(env.mode).query<{subdomain: string, namespace: string}[]>("SELECT DISTINCT subdomain, namespace FROM `route` LIMIT ? OFFSET ?", [limit, start])
     .reduce((result: any, route) => {
       return Database(env.mode).query<tNonFnPropsOptional<Route>>("SELECT * FROM `route` WHERE `subdomain` = ? AND `namespace` = ?", [route.subdomain, route.namespace])
       .map(route => new Route(route).toObject())
@@ -62,7 +64,7 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
     .then(routes => new Response.json(200, "any", routes))
     .catch(err => err instanceof Response.json ? err : new Response.json(500, "any", err))
     .then(res => response.status(res.code).json(res));
-  }))
+  })
 );
 
 type Middleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void
