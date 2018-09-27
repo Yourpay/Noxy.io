@@ -263,4 +263,3 @@ interface iCacheTimer extends NodeJS.Timer {
 
 type Key = number | string;
 type cacheOrObject<T> = {type: string, namespace: string, keys: Key | Key[], promise: () => Promise<T>, options?: iCacheSetOptions};
-
