@@ -10,6 +10,8 @@ export type tNonFnPropNames<T> = { [K in keyof T]: T[K] extends Function ? never
 export type tNonFnProps<T> = Pick<T, tNonFnPropNames<T>>;
 export type tNonFnPropsOptional<T> = Partial<Pick<T, tNonFnPropNames<T>>>;
 export type tPromiseFn<T> = () => Promise<T>
+export type tThis<T> = this;
+
 
 export interface iMYSQLTable {
   TABLE_ID: number
