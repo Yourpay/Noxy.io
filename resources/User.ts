@@ -103,6 +103,3 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
 );
 
 Resource<eResourceType>(eResourceType.USER, User, definition, options);
-
-User.select(0, 100).map(res => res.id);
-User.selectByID("0").then(res => res.id);

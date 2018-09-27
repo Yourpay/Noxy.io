@@ -17,14 +17,14 @@ export interface iResourceFn {
 }
 
 export interface cResource {
-  new(initializer?: tResourceInitializer<any>): iResource
+  new(initializer?: tResourceInitializer<any>): InstanceType<this>
   
   table: iTable
   type: string
   
-  select(start: number, limit: number): Promise<InstanceType<cResource>[]>
+  select<T extends cResource>(this: T & {new(init: any[]): any}, start: number, limit: number): Promise<InstanceType<T>[]>
   
-  selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<cResource>>
+  selectByID<T extends cResource>(this: T & {new(init: any[]): any}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T>>
   
   count(): Promise<number>
 }

@@ -114,13 +114,13 @@ const Resource: cResource = class Resource implements iResource {
     );
   }
   
-  public static select(start: number = 0, limit: number = 100) {
+  public static select<T extends cResource>(this: T & {new(init: any[]): any}, start: number = 0, limit: number = 100): Promise<InstanceType<T>[]> {
     return this.table.select(start, limit)
     .map(resource => new this(resource))
     .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
   }
   
-  public static selectByID(id: string | Buffer | {[key: string]: Buffer | string}) {
+  public static selectByID<T extends cResource>(this: T & {new(init: any[]): any}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T>> {
     return this.table.selectByID(id)
     .then(resource => new this(resource))
     .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
