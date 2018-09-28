@@ -13,7 +13,7 @@ function Default(id: string, config?: DatabaseMasterEnvironmental): iDatabasePoo
   const pool = Database.pools[id];
   if (config) { return pool ? Database.update(id, config) : Database.add(id, config); }
   if (pool) { return pool; }
-  throw new Response.error(404, "pool", id);
+  throw Response.error(404, "pool", {id: id});
 }
 
 Object.defineProperty(Database, "cluster", {value: mysql.createPoolCluster(), writable: false, configurable: false, enumerable: false});
@@ -21,7 +21,7 @@ Object.defineProperty(Database, "pools", {value: {}, writable: false, configurab
 
 function databaseAdd(id: string, config: DatabaseEnvironmental): DatabasePool {
   const pool = Database.pools[id];
-  if (pool) { throw new Response.error(409, "db_add", id); }
+  if (pool) { throw Response.error(409, "db_add", {id: id}); }
   
   return _.get(Object.defineProperty(Database, id, {value: new DatabasePool(id, config), writable: false, configurable: false, enumerable: false}), id);
 }
@@ -30,7 +30,7 @@ Database.add = databaseAdd;
 
 function databaseUpdate(id: string, config: DatabaseEnvironmental): iDatabasePool {
   const pool = Database.pools[id];
-  if (!pool) { throw new Response.error(409, "db_update", id); }
+  if (!pool) { throw Response.error(409, "db_update", {id: id}); }
   Database.remove(id);
   return Database.add(id, config);
 }
@@ -39,7 +39,7 @@ Database.update = databaseUpdate;
 
 function databaseRemove(id: string) {
   const pool = Database.pools[id];
-  if (!pool) { throw new Response.error(409, "db_delete", id); }
+  if (!pool) { throw Response.error(409, "db_delete", {id: id}); }
   Database.cluster.remove(id);
   Database.cluster.remove(id + "::*");
   return delete Database.pools[id];
@@ -103,8 +103,8 @@ class DatabasePool implements iDatabasePool {
       if (options.slave) { return Database.cluster.of(_.isString(options.slave) ? options.slave : (this.id + "::*")).query(query, cb); }
       return Database.cluster.of(this.id).query(query, cb);
     })
-    .catch(err => Promise.reject(new Response.error(err.code || 500, err.type || "query", err)))
-    .then(res => !_.isEmpty(res) && _.every(res, r => !_.isArray(r) || !_.isEmpty(r)) ? Promise.resolve(res) : Promise.reject(new Response.error(404, "query", query)));
+    .catch(err => Promise.reject(Response.error(err.code || 500, err.type || "query", err)))
+    .then(res => !_.isEmpty(res) && _.every(res, r => !_.isArray(r) || !_.isEmpty(r)) ? Promise.resolve(res) : Promise.reject(Response.error(404, "query", {query: query})));
   }
   
   public queryOne<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T> {
@@ -115,13 +115,13 @@ class DatabasePool implements iDatabasePool {
       if (options.slave) { return Database.cluster.of(_.isString(options.slave) ? options.slave : (this.id + "::*")).query(query, cb); }
       return Database.cluster.of(this.id).query(query, cb);
     })
-    .then(res => res[0] ? Promise.resolve(res[0]) : Promise.reject(new Response.error(404, "query", query)));
+    .then(res => res[0] ? Promise.resolve(res[0]) : Promise.reject(Response.error(404, "query", {query: query})));
   }
   
   private add(config: DatabaseEnvironmental) {
     const key = config.socket_path || _.join([config.host, config.user, config.database], "::");
     const slave = this.__slaves[key];
-    if (slave) { throw new Response.error(500, "db_add", config); }
+    if (slave) { throw Response.error(500, "db_add", config); }
     this.__slaves[key] = {__configuration: DatabasePool.generateConfig(config), __pool: mysql.createPool(config)};
     Database.cluster.add(_.join([this.id, key], "::"), this.__slaves[key].__configuration);
   }

@@ -37,7 +37,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
   }
   
   public remove(stage: tEnumValue<T>, key: string): boolean {
-    if (this.status !== ePromisePipeStatus.READY) { throw new Response.error(409, "promise-pipe"); }
+    if (this.status !== ePromisePipeStatus.READY) { throw Response.error(409, "promise-pipe"); }
     return delete this.promises[stage][key];
   }
   
@@ -46,7 +46,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
   }
   
   public unlock(): this {
-    if (this.status !== ePromisePipeStatus.RESOLVED && this.status !== ePromisePipeStatus.REJECTED) { throw new Response.error(400, "promise-pipe"); }
+    if (this.status !== ePromisePipeStatus.RESOLVED && this.status !== ePromisePipeStatus.REJECTED) { throw Response.error(400, "promise-pipe"); }
     this.status = ePromisePipeStatus.READY;
     return this;
   }
@@ -61,7 +61,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
     const [stage, remaining] = [_.head(promises), _.tail(promises)];
     return Promise.map(_.values(stage), fn => fn())
     .then(res => remaining.length > 0 ? PromisePipe.resolve(pipe, remaining) : Promise.resolve(res))
-    .catch(err => console.log(err) || Promise.reject(new Response.error(500, "promise-pipe", err)));
+    .catch(err => console.log(err) || Promise.reject(Response.error(500, "promise-pipe", err)));
   }
   
 };

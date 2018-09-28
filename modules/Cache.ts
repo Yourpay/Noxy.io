@@ -14,14 +14,14 @@ function Default<T>(type: eCacheTypes, namespace: string, key: string[], value: 
 function get<T>(type: eCacheTypes, namespace: string, keys: tCacheKey[]): tCacheReturnPromiseSet<T> {
   return Promise.map<tCacheKey, (T | Error)>(keys, key => {
     const object: iCacheObject = _.get(store, [type, namespace, key]);
-    if (!object) { return Promise.reject(new Response.error(404, "cache", {type: type, namespace: namespace, keys: key})); }
+    if (!object) { return Promise.reject(Response.error(404, "cache", {type: type, namespace: namespace, keys: key})); }
     if (object.promise) { return object.promise; }
     if (object.timeout && object.timeout) { object.timeout.refresh(); }
     if (object.value) { return object.value; }
-    return Promise.reject(new Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
+    return Promise.reject(Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
   })
   .then(values => {
-    if (_.every(values, value => <Response.error>value instanceof Error)) { throw new Response.error(404, "cache", _.map(values, "content")); }
+    if (_.every(values, value => value instanceof Error)) { throw Response.error(404, "cache", _.map(values, "content")); }
     return Promise.resolve(values);
   });
 }
@@ -31,23 +31,23 @@ function getOne<T>(type: eCacheTypes, namespace: string, key: tCacheKey): Promis
   if (object.promise) { return object.promise; }
   if (object.timeout) { object.timeout.refresh(); }
   if (object.value) { return Promise.resolve(object.value); }
-  return Promise.reject(new Response.error(404, "cache", {type: type, namespace: namespace, keys: key}));
+  return Promise.reject(Response.error(404, "cache", {type: type, namespace: namespace, keys: key}));
 }
 
 function getAny<T>(type: eCacheTypes, namespace: string, keys: tCacheKey[]): Promise<T> {
   return Promise.any(_.map(keys, key => {
     const object: iCacheObject = _.get(store, [type, namespace, key]);
-    if (!object) { return Promise.reject(new Response.error(404, "cache", {type: type, namespace: namespace, keys: key})); }
+    if (!object) { return Promise.reject(Response.error(404, "cache", {type: type, namespace: namespace, keys: key})); }
     if (object.promise) { return object.promise; }
     if (object.timeout && object.timeout) { object.timeout.refresh(); }
     if (object.value) { return object.value; }
-    return Promise.reject(new Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
+    return Promise.reject(Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
   }))
   .catch(err => {
-    if (_.every(_.initial(_.values(err)), e => e.code === 404)) { throw new Response.error(404, "cache", _.map(err, "content")); }
+    if (_.every(_.initial(_.values(err)), e => e.code === 404)) { throw Response.error(404, "cache", _.map(err, "content")); }
     const t_error = _.find(err, e => !e.code && !e.type);
-    if (t_error) { throw new Response.error(500, "cache", t_error); }
-    throw new Response.error(500, "cache", err);
+    if (t_error) { throw Response.error(500, "cache", t_error); }
+    throw Response.error(500, "cache", err);
   });
 }
 
@@ -73,7 +73,7 @@ function handleSetPromise<T>(type: eCacheTypes, namespace: string, keys: tCacheK
 function set<T>(type: eCacheTypes, namespace: string, keys: tCacheKey[], value: tCacheValue<T>, options: iCacheOptions = {}): tCacheReturnPromise<T> {
   if (_.some(keys, key => _.get(store, [type, namespace, key, "promise"]))) {
     if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : getAny(type, namespace, keys); }
-    return Promise.reject(new Response.error(409, "cache", _.filter(_.map(keys, k => _.get(store, [type, namespace, k, "promise"]) ? k : null))));
+    return Promise.reject(Response.error(409, "cache", _.filter(_.map(keys, k => _.get(store, [type, namespace, k, "promise"]) ? k : null))));
   }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
   _.each(keys, key => _.set(store, [type, namespace, key, "promise"], promise));
@@ -83,7 +83,7 @@ function set<T>(type: eCacheTypes, namespace: string, keys: tCacheKey[], value: 
 function setOne<T>(type: eCacheTypes, namespace: string, key: tCacheKey, value: tCacheValue<T>, options: iCacheOptions = {}): tCacheReturnPromise<T> {
   if (_.get(store, [type, namespace, key, "promise"])) {
     if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : getOne(type, namespace, key); }
-    return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: key}));
+    return Promise.reject(Response.error(409, "cache", {type: type, namespace: namespace, key: key}));
   }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
   _.set(store, [type, namespace, key, "promise"], promise);
@@ -93,7 +93,7 @@ function setOne<T>(type: eCacheTypes, namespace: string, key: tCacheKey, value: 
 function setAny<T>(type: eCacheTypes, namespace: string, keys: tCacheKey[], value: tCacheValue<T>, options: iCacheOptions = {}): tCacheReturnPromise<T> {
   if (_.every(keys, key => _.get(store, [type, namespace, key, "promise"]))) {
     if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : getAny(type, namespace, keys); }
-    return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: keys}));
+    return Promise.reject(Response.error(409, "cache", {type: type, namespace: namespace, key: keys}));
   }
   const promise = typeof value === "function" ? value() : Promise.resolve(value);
   const sets = _.filter(_.map(keys, key => !_.get(store, [type, namespace, key, "promise"]) ? key : null));
@@ -178,14 +178,14 @@ export = exported;
 // function cacheGet<T>(type: string, namespace: string, keys: Key[]): Promise<(T | Response.error)[]> {
 //   return Promise.map<Key, (T | Response.error)>(keys, key => {
 //     const object = _.get(__store, [type, namespace, key]);
-//     if (!object) { return Promise.reject(new Response.error(404, "cache", {type: type, namespace: namespace, keys: key})); }
+//     if (!object) { return Promise.reject(Response.error(404, "cache", {type: type, namespace: namespace, keys: key})); }
 //     if (object.promise) { return object.promise; }
 //     if (object.timeout && object.timeout) { object.timeout.refresh(); }
 //     if (object.value) { return object.value; }
-//     return Promise.reject(new Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
+//     return Promise.reject(Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
 //   })
 //   .then(values => {
-//     if (_.every(values, value => <Response.error>value instanceof Error)) { throw new Response.error(404, "cache", _.map(values, "content")); }
+//     if (_.every(values, value => <Response.error>value instanceof Error)) { throw Response.error(404, "cache", _.map(values, "content")); }
 //     return Promise.resolve(values);
 //   });
 // }
@@ -197,7 +197,7 @@ export = exported;
 //   if (object.promise) { return object.promise; }
 //   if (object.timeout) { object.timeout.refresh(); }
 //   if (object.value) { return Promise.resolve(object.value); }
-//   return Promise.reject(new Response.error(404, "cache", {type: type, namespace: namespace, keys: key}));
+//   return Promise.reject(Response.error(404, "cache", {type: type, namespace: namespace, keys: key}));
 // }
 //
 // Cache.getOne = cacheGetOne;
@@ -205,17 +205,17 @@ export = exported;
 // function cacheGetAny<T>(type: string, namespace: string, keys: Key[]): Promise<T> {
 //   return Promise.any(_.map(keys, key => {
 //     const object = _.get(__store, [type, namespace, key]);
-//     if (!object) { return Promise.reject(new Response.error(404, "cache", {type: type, namespace: namespace, keys: key})); }
+//     if (!object) { return Promise.reject(Response.error(404, "cache", {type: type, namespace: namespace, keys: key})); }
 //     if (object.promise) { return object.promise; }
 //     if (object.timeout && object.timeout) { object.timeout.refresh(); }
 //     if (object.value) { return object.value; }
-//     return Promise.reject(new Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
+//     return Promise.reject(Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
 //   }))
 //   .catch(err => {
-//     if (_.every(_.initial(_.values(err)), e => e.code === 404)) { throw new Response.error(404, "cache", _.map(err, "content")); }
+//     if (_.every(_.initial(_.values(err)), e => e.code === 404)) { throw Response.error(404, "cache", _.map(err, "content")); }
 //     const t_error = _.find(err, e => !e.code && !e.type);
-//     if (t_error) { throw new Response.error(500, "cache", t_error); }
-//     throw new Response.error(500, "cache", err);
+//     if (t_error) { throw Response.error(500, "cache", t_error); }
+//     throw Response.error(500, "cache", err);
 //   });
 // }
 //
@@ -243,7 +243,7 @@ export = exported;
 // function cacheSet<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options: iCacheSetOptions = {}): Promise<T> {
 //   if (_.some(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
 //     if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getAny(type, namespace, keys); }
-//     return Promise.reject(new Response.error(409, "cache", _.filter(_.map(keys, k => _.get(__store, [type, namespace, k, "promise"]) ? k : null))));
+//     return Promise.reject(Response.error(409, "cache", _.filter(_.map(keys, k => _.get(__store, [type, namespace, k, "promise"]) ? k : null))));
 //   }
 //   const promise = typeof value === "function" ? value() : Promise.resolve(value);
 //   _.each(keys, key => _.set(__store, [type, namespace, key, "promise"], promise));
@@ -255,7 +255,7 @@ export = exported;
 // function cacheSetOne<T>(type: string, namespace: string, key: Key, value: T | (() => Promise<T>), options: iCacheSetOptions = {}): Promise<T> {
 //   if (_.get(__store, [type, namespace, key, "promise"])) {
 //     if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getOne(type, namespace, key); }
-//     return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: key}));
+//     return Promise.reject(Response.error(409, "cache", {type: type, namespace: namespace, key: key}));
 //   }
 //   const promise = typeof value === "function" ? value() : Promise.resolve(value);
 //   _.set(__store, [type, namespace, key, "promise"], promise);
@@ -267,7 +267,7 @@ export = exported;
 // function cacheSetAny<T>(type: string, namespace: string, keys: Key[], value: T | (() => Promise<T>), options: iCacheSetOptions = {}): Promise<T> {
 //   if (_.every(keys, key => _.get(__store, [type, namespace, key, "promise"]))) {
 //     if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : Cache.getAny(type, namespace, keys); }
-//     return Promise.reject(new Response.error(409, "cache", {type: type, namespace: namespace, key: keys}));
+//     return Promise.reject(Response.error(409, "cache", {type: type, namespace: namespace, key: keys}));
 //   }
 //   const promise = typeof value === "function" ? value() : Promise.resolve(value);
 //   const sets = _.filter(_.map(keys, key => !_.get(__store, [type, namespace, key, "promise"]) ? key : null));

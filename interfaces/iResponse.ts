@@ -1,7 +1,7 @@
 export interface iResponseService extends iResponseFn {
   codes: {[code: number]: {[type: string]: string}}
   
-  json(code: number, type: string, content?: tResponseContent): iResponseJSONObject;
+  json(code: number, type: string, content?: tResponseContent, start?: number): iResponseJSONObject;
   
   error(code: number, type: string, content?: tResponseContent | iResponseErrorObject): iResponseErrorObject
 }
@@ -15,7 +15,7 @@ export interface iResponseJSONObject {
   type: string
   message: string
   content: any
-  time_elapsed: number
+  time_elapsed: string
   time_completed: number
 }
 

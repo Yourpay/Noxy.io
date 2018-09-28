@@ -13,7 +13,7 @@ const Service: iResourceFn = function Default<T extends tEnum<T>, R extends cRes
   
   const key = _.join([_.get(options, "database", env.databases[env.mode].database), type], "::");
   
-  if (exported.list[key]) { throw new Response.error(500, "resource", {type: type, constructor: constructor}); }
+  if (exported.list[key]) { throw Response.error(500, "resource", {type: type, constructor: constructor}); }
   
   exported.list[key] = constructor;
   _.set(constructor, "type", type);
@@ -56,7 +56,7 @@ const Resource: cResource = class Resource implements iResource {
     
     return $this.table.validate(this, options)
     .then(res => _.assign(new $this(res), {exists: true}))
-    .catch(err => err.code === 404 ? Promise.resolve({exists: false}) : Promise.reject(new Response.error(err.code, err.type, err)))
+    .catch(err => err.code === 404 ? Promise.resolve({exists: false}) : Promise.reject(Response.error(err.code, err.type, err)))
     .then(resource => {
       return _.assign(
         _.reduce(resource, (target, value, key) => {
@@ -68,7 +68,7 @@ const Resource: cResource = class Resource implements iResource {
         {validated: true}
       );
     })
-    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
+    .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
   public save(options: iResourceActionOptions = {}) {
@@ -76,7 +76,7 @@ const Resource: cResource = class Resource implements iResource {
     
     return this.validate(options)
     .then(res => $this.table.save(res, options))
-    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
+    .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
   public remove() {
@@ -95,7 +95,7 @@ const Resource: cResource = class Resource implements iResource {
               if (deep && v.reference && (_.isString(v.reference) || _.isPlainObject(v.reference) || _.size(v.reference) === 1)) {
                 Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[k])
                 .catch(err => {
-                  if (err.code !== 404 || err.type !== "cache") { return Promise.reject(new Response.error(err.code, err.type, err)); }
+                  if (err.code !== 404 || err.type !== "cache") { return Promise.reject(Response.error(err.code, err.type, err)); }
                   return new exported.list[_.join([$this.table.options.resource.database, _.get(v, "reference.table", v.reference)], "::")]({id: this[k]}).validate();
                 })
                 .then(res => res.toObject())
@@ -117,18 +117,18 @@ const Resource: cResource = class Resource implements iResource {
   public static select<T extends cResource>(this: T & {new(init: any[]): any}, start: number = 0, limit: number = 100): Promise<InstanceType<T>[]> {
     return this.table.select(start, limit)
     .map(resource => new this(resource))
-    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
+    .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
   public static selectByID<T extends cResource>(this: T & {new(init: any[]): any}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T>> {
     return this.table.selectByID(id)
     .then(resource => new this(resource))
-    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
+    .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
   public static count() {
     return this.table.count()
-    .catch(err => Promise.reject(new Response.error(err.code, err.type, err)));
+    .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
 };
@@ -176,13 +176,13 @@ const Table: cTable = class Table implements iTable {
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.keyFromSet(_.values(key)));
     
-    if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
+    if (_.size(keys) === 0) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
     
     return Cache.getAny<tResourceObject>(Cache.types.RESOURCE, this.resource.type, cache_keys)
     .catch(err => {
-      if (err.code !== 404) { console.log("ERROR FROM VALIDATE", err); return Promise.reject(new Response.error(err.code, err.type, err)); }
+      if (err.code !== 404) { console.log("ERROR FROM VALIDATE", err); return Promise.reject(Response.error(err.code, err.type, err)); }
       const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
-      if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
+      if (!where.length) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
       return Cache.set<tResourceObject>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
         return Database(this.options.resource.database).queryOne<tResourceObject>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
       }, {timeout: 0, collision_fallback: true});
@@ -194,12 +194,12 @@ const Table: cTable = class Table implements iTable {
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.keyFromSet(_.values(key)));
     
-    if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
-    if (!resource.validated) { return Promise.reject(new Response.error(400, "resource", this)); }
+    if (_.size(keys) === 0) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
+    if (!resource.validated) { return Promise.reject(Response.error(400, "resource", this)); }
     
     if (resource.exists) {
       where = _.join(_.map(this.indexes.primary, key => Database.parse("?? = ?", [key, resource[key]])), " AND ");
-      if (!where.length) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
+      if (!where.length) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
     }
     
     return Cache.set<iDatabaseActionResult>(Cache.types.SAVE, this.resource.type, cache_keys, () => {
@@ -210,7 +210,7 @@ const Table: cTable = class Table implements iTable {
       return Database(this.options.resource.database).query<iDatabaseActionResult>("INSERT INTO ?? SET ?", _.concat(set));
     }, {timeout: 0, collision_fallback: true})
     .then(res => {
-      if (res.affectedRows === 0) { return Promise.reject(new Response.error(500, "resource", {keys: keys, object: resource})); }
+      if (res.affectedRows === 0) { return Promise.reject(Response.error(500, "resource", {keys: keys, object: resource})); }
       return Cache.set(Cache.types.RESOURCE, this.resource.type, cache_keys, _.set(resource, "exists", true), options);
     });
   }

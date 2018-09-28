@@ -68,11 +68,11 @@ export default class User extends Resource.Constructor {
   private static loginPW(credentials: User | {username: string, password: string}): Promise<User> {
     return (credentials instanceof User ? credentials : new User(credentials)).validate()
     .then(user => {
-      if (!user.exists) { return Promise.reject(new Response.json(400, "any")); }
+      if (!user.exists) { return Promise.reject(Response.json(400, "any")); }
       return Promise.resolve(user);
     })
     .then(user => {
-      if (!_.isEqual(user.hash, User.generateHash(credentials.password, user.salt))) { return Promise.reject(new Response.json(400, "any")); }
+      if (!_.isEqual(user.hash, User.generateHash(credentials.password, user.salt))) { return Promise.reject(Response.json(400, "any")); }
       return _.set(user, "time_login", Date.now()).save({update_protected: true});
     });
   }
@@ -90,8 +90,8 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
     User.login(request.body, request.get("Authorization"))
     .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
     .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
-    .then(user => new Response.json(200, "any", jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})))
-    .catch(err => err instanceof Response.json ? err : new Response.json(500, "any", err))
+    .then(user => Response.json(200, "any", {jwt: jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})}))
+    .catch(err => err instanceof Response.json ? err : Response.json(500, "any", err))
     .then(res => response.status(res.code).json(res))
   )
 );

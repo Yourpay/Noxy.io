@@ -21,6 +21,6 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
   return Promise.all(_.reduce(Resource.list, (result, resource) => _.concat(result, _.flattenDeep(_.map(Application.addResource(resource), r => _.values(r)))), []))
 });
 
-publicize_pipe.add(ePromisePipeStagesInitPublicize.LISTEN, () => require("../modules/Application").publicize() ? Promise.resolve() : Promise.reject(new Response.error(500, "publicize")));
+publicize_pipe.add(ePromisePipeStagesInitPublicize.LISTEN, () => require("../modules/Application").publicize() ? Promise.resolve() : Promise.reject(Response.error(500, "publicize")));
 
 init_pipe.add(ePromisePipeStagesInit.PUBLICIZE, () => publicize_pipe.resolve());

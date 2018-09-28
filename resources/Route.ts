@@ -1,6 +1,4 @@
-import * as Promise from "bluebird";
 import * as express from "express";
-import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
 import {env} from "../globals";
 import {ePromisePipeStagesInitPublicize, publicize_pipe} from "../init/publicize";
@@ -9,7 +7,6 @@ import {eResourceType} from "../interfaces/iResource";
 import * as Application from "../modules/Application";
 import * as Resource from "../modules/Resource";
 import * as Response from "../modules/Response";
-import User from "./User";
 import Database = require("../modules/Database");
 
 const definition = {
@@ -61,8 +58,8 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
       .map(route => new Route(route).toObject())
       .then(routes => _.concat(result, {subdomain: route.subdomain, namespace: route.namespace, routes: routes}));
     }, [])
-    .then(routes => new Response.json(200, "any", routes))
-    .catch(err => err instanceof Response.json ? err : new Response.json(500, "any", err))
+    .then(routes => Response.json(200, "any", routes))
+    .catch(err => err instanceof Response.json ? err : Response.json(500, "any", err))
     .then(res => response.status(res.code).json(res));
   })
 );

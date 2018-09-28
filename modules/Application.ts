@@ -76,16 +76,16 @@ export function addResource(resource: typeof Resource.Constructor): {[key: strin
     "/":      {
       "GET":  (request, response) => {
         resource.select(request.query.start, request.query.limit)
-        .catch(err => err instanceof Response.json ? err : new Response.json(404, "any", {start: request.query.start, limit: request.query.limit}))
-        .then(res => response.status((<Response.json>res).code || 200).json(res));
+        .catch(err => err instanceof Response.json ? err : Response.json(404, "any", {start: request.query.start, limit: request.query.limit}))
+        .then(res => response.status(res.code || 200).json(res));
       },
       "POST": []
     },
     "/:id":   {
       "GET":    (request, response) => {
         resource.selectByID(Resource.bufferFromUUID(request.query.id))
-        .catch(err => err instanceof Response.json ? err : new Response.json(404, "any", {id: request.query.id}))
-        .then(res => response.status((<Response.json>res).code || 200).json(res));
+        .catch(err => err instanceof Response.json ? err : Response.json(404, "any", {id: request.query.id}))
+        .then(res => response.status(res.code || 200).json(res));
       },
       "PUT":    [],
       "DELETE": []
@@ -93,7 +93,7 @@ export function addResource(resource: typeof Resource.Constructor): {[key: strin
     "/count": {
       "GET": (request, response) => {
         resource.count()
-        .catch(err => err instanceof Response.json ? err : new Response.json(404, "any"))
+        .catch(err => err instanceof Response.json ? err : Response.json(404, "any"))
         .then(res => response.status(200).json(res));
       }
     }
@@ -132,7 +132,7 @@ export function publicize(): boolean {
   if (!__routers[env.subdomains.default]) { __subdomains[env.subdomains.default] = express.Router(); }
   _.each(__params, param => _.each(param.namespace ? [__routers[param.subdomain][param.namespace]] : __routers[param.subdomain], n => n.param(param.name, param.middleware)));
   __application.use("/", __subdomains[env.subdomains.default]);
-  __application.all("*", (request, response) => response.status(404).json(new Response.json(404, "any")));
+  __application.all("*", (request, response) => response.status(404).json(Response.json(404, "any")));
   http.createServer(__application).listen(80);
   return __published = true;
 }
@@ -151,20 +151,20 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         .then(user =>
           new User(user).validate()
           .then(user => {
-            if (!user.exists) { return Promise.reject(new Response.json(404, "any")); }
+            if (!user.exists) { return Promise.reject(Response.json(404, "any")); }
             Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [eResourceType.ROLE_USER, user.id])
-            .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(new Response.json(404, "any")) : Promise.reject(new Response.json(err.code, err.type)))
+            .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(Response.json(404, "any")) : Promise.reject(Response.json(err.code, err.type)))
             .then(user_roles => {
               if (_.some(user_roles, role => Resource.uuidFromBuffer(<Buffer>role.role_id) === env.roles.admin.id)) {
                 response.locals.user = user;
                 response.locals.roles = user_roles;
                 return next();
               }
-              throw new Response.json(404, "any");
+              throw Response.json(404, "any");
             });
           })
         )
-        .catch(() => Promise.reject(new Response.json(404, "any")));
+        .catch(() => Promise.reject(Response.json(404, "any")));
       }
       return Database(env.mode).query<RoleRoute[]>("SELECT * FROM ?? WHERE `route_id` = ?", [eResourceType.ROLE_ROUTE, route.id])
       .then(route_roles =>
@@ -172,29 +172,29 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         .then(user =>
           new User(user).validate()
           .then(user => {
-            if (!user.exists) { Promise.reject(new Response.json(401, "jwt", request.get("Authorization"))); }
+            if (!user.exists) { Promise.reject(Response.json(401, "jwt", {token: request.get("Authorization")})); }
             Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [eResourceType.ROLE_USER, user.id])
-            .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(new Response.json(403, "any")) : Promise.reject(new Response.json(err.code, err.type)))
+            .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(Response.json(403, "any")) : Promise.reject(Response.json(err.code, err.type)))
             .then(user_roles => {
               if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) {
                 response.locals.user = user;
                 response.locals.roles = user_roles;
                 return next();
               }
-              throw new Response.json(403, "any");
+              throw Response.json(403, "any");
             });
           })
         )
-        .catch(err => Promise.reject(new Response.json(401, "jwt", err)))
+        .catch(err => Promise.reject(Response.json(401, "jwt", err)))
       )
-      .catch(err => err.code === 404 && err.type === "query" ? Promise.resolve(next()) : Promise.reject(new Response.error(err.code, err.type, err)));
+      .catch(err => err.code === 404 && err.type === "query" ? Promise.resolve(next()) : Promise.reject(Response.error(err.code, err.type, err)));
     }
-    return Promise.reject(new Response.json(404, "any"));
+    return Promise.reject(Response.json(404, "any"));
   })
   .catch(err => {
     if (err instanceof Response.json) { return response.status(err.code).json(err); }
-    if (err.name === "JsonWebTokenError") { return response.status(401).json(new Response.json(401, "jwt")); }
-    return response.status(err.code || 500).json(new Response.json(err.code || 500, err.type || "any", Response.parseError(err)));
+    if (err.name === "JsonWebTokenError") { return response.status(401).json(Response.json(401, "jwt")); }
+    return response.status(err.code).json(Response.json(err.code, err.type, err));
   });
 }
 
