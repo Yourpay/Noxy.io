@@ -23,7 +23,7 @@ export interface iCacheService extends iCacheFn {
   
   unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, milliseconds: number): iCacheTimer
   
-  getNamespace(type: eCacheTypes, namespace: string, options?: iCacheOptions): {[key: string]: iCacheObject};
+  getNamespace(type: eCacheTypes, namespace: string): {[key: string]: iCacheObject};
   
   keyFromSet(keys: tCacheKey[]): string
   

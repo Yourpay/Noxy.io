@@ -21,13 +21,13 @@ function json(code: number, type: string, content: tResponseContent = null, star
 }
 
 function error(code: number, type: string, content: tResponseContent | Error): iResponseErrorObject {
-  const error = content instanceof Error ? content : new Error();
-  return _.assign(error, {
-    code:    (<tResponseContent>error).code || _.isNumber(code) && !_.isNaN(code) ? code : 500,
-    type:    (<tResponseContent>error).type || _.isString(type) && _.trim(type).length > 0 ? type : "any",
-    content: content !== error ? content : null,
+  const error_object = content instanceof Error ? content : Error.prototype.constructor();
+  return _.assign(error_object, {
+    code:    (<tResponseContent>error_object).code || _.isNumber(code) && !_.isNaN(code) ? code : 500,
+    type:    (<tResponseContent>error_object).type || _.isString(type) && _.trim(type).length > 0 ? type : "any",
+    content: content !== error_object ? content : null,
     message: _.get(codes, [code, type], "No message given."),
-    stack:   parseErrorStack(error.stack)
+    stack:   _.isString(error_object.stack) ? parseErrorStack(error_object.stack) : error_object.stack
   });
 }
 

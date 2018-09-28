@@ -124,8 +124,8 @@ function unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, millis
   return milliseconds === null ? null : <iCacheTimer>setTimeout(() => _.unset(store, [type, namespace, key]), milliseconds || config.timeout);
 }
 
-function getNamespace(type: eCacheTypes, namespace: string, options?: iCacheOptions): {[key: string]: iCacheObject} {
-  return _.mapValues(<{[key: string]: iCacheObject}>_.get(store, [type, namespace]), value => _.pickBy(value, (v, key) => options[key]));
+function getNamespace(type: eCacheTypes, namespace: string): {[key: string]: iCacheObject} {
+  return _.mapValues(<{[key: string]: iCacheObject}>_.get(store, [type, namespace]));
 }
 
 function keyFromSet(parts: (string | number)[]): string {
