@@ -49,6 +49,6 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
   Promise.all([
-    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey([subdomain, "/*", "GET"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
+    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.keyFromSet([subdomain, "/*", "GET"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
   ])
 );

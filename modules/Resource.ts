@@ -174,7 +174,7 @@ const Table: cTable = class Table implements iTable {
   
   public validate(resource: iResource, options: iResourceActionOptions = {}): Promise<tResourceObject> {
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
-    const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
+    const cache_keys = options.keys || _.map(keys, key => Cache.keyFromSet(_.values(key)));
     
     if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
     
@@ -192,7 +192,7 @@ const Table: cTable = class Table implements iTable {
   public save(resource: iResource, options: iResourceActionOptions = {}): Promise<iResource> {
     let where = "";
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
-    const cache_keys = options.keys || _.map(keys, key => Cache.toKey(_.values(key)));
+    const cache_keys = options.keys || _.map(keys, key => Cache.keyFromSet(_.values(key)));
     
     if (_.size(keys) === 0) { return Promise.reject(new Response.error(400, "cache", {keys: keys, object: resource})); }
     if (!resource.validated) { return Promise.reject(new Response.error(400, "resource", this)); }
@@ -220,14 +220,14 @@ const Table: cTable = class Table implements iTable {
   }
   
   public select(start: number = 0, limit: number = 100): Promise<tResourceObject[]> {
-    return Cache.setOne<tResourceObject[]>(Cache.types.QUERY, this.resource.type, Cache.toKey([start, limit]), () => {
+    return Cache.setOne<tResourceObject[]>(Cache.types.QUERY, this.resource.type, Cache.keyFromSet([start, limit]), () => {
       return Database(this.options.resource.database).query<tResourceObject[]>("SELECT * FROM ?? LIMIT ? OFFSET ?", [this.resource.type, limit, start]);
     }, {timeout: 0, collision_fallback: true});
   }
   
   public selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<tResourceObject> {
     const keys = typeof id === "string" || id instanceof Buffer ? {id: id instanceof Buffer ? id : bufferFromUUID(id)} : id;
-    return Cache.setOne<tResourceObject>(Cache.types.QUERY, this.resource.type, Cache.toKey(_.values(id)), () => {
+    return Cache.setOne<tResourceObject>(Cache.types.QUERY, this.resource.type, Cache.keyFromSet(_.values(id)), () => {
       const where = _.join(_.map(keys, (v, k) => Database.parse("?? = ?", [k, v])), " AND ");
       return Database(this.options.resource.database).query<tResourceObject>(`SELECT * FROM ?? WHERE ${where}`);
     }, {timeout: 0, collision_fallback: true});

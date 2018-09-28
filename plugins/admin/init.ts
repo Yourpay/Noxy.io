@@ -19,6 +19,6 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
   Promise.all([
-    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.toKey(["admin", "/*", "GET"])).then(route => Application.updateRoute(route))
+    Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.keyFromSet(["admin", "/*", "GET"])).then(route => Application.updateRoute(route))
   ])
 );

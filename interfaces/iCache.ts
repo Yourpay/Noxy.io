@@ -9,11 +9,11 @@ export interface iCacheService extends iCacheFn {
   
   getAny<T>(type: eCacheTypes, namespace: string, key: tCacheKey[]): tCacheReturnPromise<T>
   
-  set<T>(type: eCacheTypes, namespace: string, key: tCacheKey[], value: tCacheValue<T>, options: iCacheOptions): tCacheReturnPromise<T>
+  set<T>(type: eCacheTypes, namespace: string, key: tCacheKey[], value: tCacheValue<T>, options?: iCacheOptions): tCacheReturnPromise<T>
   
-  setOne<T>(type: eCacheTypes, namespace: string, key: tCacheKey, value: tCacheValue<T>, options: iCacheOptions): tCacheReturnPromise<T>
+  setOne<T>(type: eCacheTypes, namespace: string, key: tCacheKey, value: tCacheValue<T>, options?: iCacheOptions): tCacheReturnPromise<T>
   
-  setAny<T>(type: eCacheTypes, namespace: string, key: tCacheKey[], value: tCacheValue<T>, options: iCacheOptions): tCacheReturnPromise<T>
+  setAny<T>(type: eCacheTypes, namespace: string, key: tCacheKey[], value: tCacheValue<T>, options?: iCacheOptions): tCacheReturnPromise<T>
   
   setOr<T>(setter: tCacheArgumentsObject<T>, ...next: tCacheArgumentsObject<T>[]): tCacheReturnPromise<T>
   

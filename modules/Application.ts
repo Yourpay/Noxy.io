@@ -41,13 +41,13 @@ export function addStatic(resource_path: string, subdomain: string, namespace?: 
 
 export function addParam(subdomain: string, param: string, fn: Middleware): Param
 export function addParam(subdomain: string, ns_pm: string, pm_fn: string | Middleware, fn?: Middleware): Param {
-  const key = Cache.toKey(<string[]>_.filter([subdomain, ns_pm, pm_fn], v => typeof v === "string"));
+  const key = Cache.keyFromSet(<string[]>_.filter([subdomain, ns_pm, pm_fn], v => typeof v === "string"));
   
   return __params[key] = {middleware: fn ? fn : <Middleware>pm_fn, subdomain: subdomain, namespace: fn ? ns_pm : null, name: fn ? <string>pm_fn : ns_pm};
 }
 
 export function addRoute(subdomain: string, namespace: string, path: string, method: Method, fn: Middleware | Middleware[]): Promise<Route> {
-  const key = Cache.toKey([subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method]);
+  const key = Cache.keyFromSet([subdomain, ("/" + namespace + path).replace(/\/{2,}/, "/").replace(/\/$/, ""), method]);
   
   return new Route({subdomain: subdomain, namespace: namespace, path: path, method: method, middleware: _.concat(auth, fn)})
   .save({update_protected: true, keys: [key], timeout: null, collision_fallback: true});
@@ -55,7 +55,7 @@ export function addRoute(subdomain: string, namespace: string, path: string, met
 
 export function updateRoute(route: Route, fn?: Middleware | Middleware[]): Promise<Route> {
   // TODO: Implement middleware changer function
-  const key = Cache.toKey([route.subdomain, ("/" + route.namespace + route.path).replace(/\/{2,}/, "/").replace(/\/$/, ""), route.method]);
+  const key = Cache.keyFromSet([route.subdomain, ("/" + route.namespace + route.path).replace(/\/{2,}/, "/").replace(/\/$/, ""), route.method]);
   
   return route.save({update_protected: true, keys: [key], timeout: null, collision_fallback: true});
 }
@@ -140,7 +140,7 @@ export function publicize(): boolean {
 function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction): void {
   const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
   const subdomain = request.vhost ? request.vhost.host.replace(__domain, "").replace(/[.]*$/, "") : env.subdomains.default;
-  const key = Cache.toKey([subdomain, path, request.method]);
+  const key = Cache.keyFromSet([subdomain, path, request.method]);
   
   response.locals.time = Date.now();
   Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, key)

@@ -1,6 +1,6 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
-import * as Cache from "../modules/Cache";
+import * as Cache from "../modules/Cache"
 
 const tests = _.shuffle([
   {
@@ -115,7 +115,7 @@ for (let i = 1; i < 4; i++) {
   setTimeout(() => console.log(i * 100 + "milliseconds passed."), i * 100);
 }
 
-setTimeout(() => print(true, "Namespace All", Cache.getNamespace(Cache.types.QUERY, "test", {value: true})), 1000);
+setTimeout(() => print(true, "Namespace All", Cache.getNamespace(Cache.types.QUERY, "test")), 1000);
 
 function print(success, number, content) {
   console.log("-------------------");

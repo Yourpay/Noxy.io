@@ -1,11 +1,13 @@
 export interface iResponseService extends iResponseFn {
-  json(code: number, type: string, content: any): iResponseJSONObject;
+  codes: {[code: number]: {[type: string]: string}}
   
-  error(code: number, type: string, content): iResponseErrorObject
+  json(code: number, type: string, content?: tResponseContent): iResponseJSONObject;
+  
+  error(code: number, type: string, content?: tResponseContent | iResponseErrorObject): iResponseErrorObject
 }
 
 export interface iResponseFn {
-  (code: number, type: string): iResponseJSONObject;
+  (code: number, type: string, content?: tResponseContent | iResponseErrorObject, start?: number): iResponseErrorObject | iResponseJSONObject;
 }
 
 export interface iResponseJSONObject {
@@ -14,15 +16,16 @@ export interface iResponseJSONObject {
   message: string
   content: any
   time_elapsed: number
-  time_finished: number
+  time_completed: number
 }
 
-export interface iResponseErrorObject extends Error {
+export interface iResponseErrorObject {
   code: number
   type: string
-  name: string
   message: string
-  stack: string
+  stack: string[]
+  content: tResponseContent
 }
 
-
+export type tResponseContent = {[key: string]: any};
+export type tResponseCodes = {[code: number]: {[type: string]: string}};
