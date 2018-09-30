@@ -61,8 +61,8 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
       .map(route => new Route(route).toObject())
       .then(routes => _.concat(result, {subdomain: route.subdomain, namespace: route.namespace, routes: routes}));
     }, [])
-    .then(routes => new Response.json(200, "any", routes))
-    .catch(err => err instanceof Response.json ? err : new Response.json(500, "any", err))
+    .then(routes => Response.json(200, "any", routes))
+    .catch(err => err instanceof Response.error ? err : Response.json(500, "any", err))
     .then(res => response.status(res.code).json(res));
   })
 );

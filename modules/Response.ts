@@ -1,7 +1,40 @@
-import ms = require("ms");
 import * as _ from "lodash";
+import {iResponseErrorObject, iResponseFn, iResponseJSONObject, iResponseService, tResponseCodes, tResponseContent} from "../interfaces/iResponse";
 
-export const codes: {[status: number]: {[type: string]: string}} = {
+const Service: iResponseFn = Default;
+
+function Default(code: number, type: string, content: any = null, start?: number): iResponseErrorObject | iResponseJSONObject {
+  return content instanceof Error && !start ? error(code, type, content) : json(code, type, content, start);
+}
+
+function json(code: number, type: string, content: any = null, start?: number): iResponseJSONObject {
+  const now = Date.now();
+  return {
+    code:           _.isNumber(code) && !_.isNaN(code) ? code : 500,
+    type:           type || "any",
+    content:        content,
+    message:        _.get(codes, [code, type], "No message given."),
+    time_elapsed:   now - start,
+    time_completed: now
+  };
+}
+
+function error(code: number, type: string, content: tResponseContent | Error): iResponseErrorObject {
+  const error = content instanceof Error ? content : new Error();
+  return _.assign(error, {
+    code:    (<tResponseContent>error).code || _.isNumber(code) && !_.isNaN(code) ? code : 500,
+    type:    (<tResponseContent>error).type || _.isString(type) && _.trim(type).length > 0 ? type : "any",
+    content: content !== error ? content : null,
+    message: _.get(codes, [code, type], "No message given."),
+    stack:   _.isArray(error.stack) ? error.stack : _.isString(error.stack) ? parseErrorStack(error.stack) : []
+  });
+}
+
+function parseErrorStack(stack): string[] {
+  return _.map(_.tail((stack || "").split("\n")), _.trim);
+}
+
+const codes: tResponseCodes = {
   200: {
     "any": "Request performed successfully"
   },
@@ -44,64 +77,13 @@ export const codes: {[status: number]: {[type: string]: string}} = {
   }
 };
 
-export function parseError(err) {
-  return _.isError(err) && !(err instanceof error) ? {message: err.message, stack: _.map(_.tail((err.stack || "").split("\n")), _.trim)} : err;
-}
+const exported: iResponseService = _.assign(
+  Service,
+  {
+    codes: codes,
+    json:  json,
+    error: error
+  }
+);
 
-export class error extends Error {
-  public code: number;
-  public type: string;
-  public message: string;
-  public content: any;
-  
-  constructor(code: number, type: string, content?: any) {
-    super(_.get(codes, [code, type], "Unknown error message"));
-    this.code = codes[code] ? code : 500;
-    this.type = codes[this.code][type] ? type : "any";
-    this.message = codes[this.code][this.type];
-    if (content instanceof Error) {
-      if (!(<any>content).content) {
-        this.content = parseError(content);
-        delete this.message;
-        delete this.stack;
-      }
-      else {
-        this.message = content.message;
-        this.stack = content.stack;
-        this.content = (<any>content).content;
-      }
-    }
-    else {
-      this.content = content || {};
-    }
-  }
-  
-}
-
-export class json {
-  
-  public code: number;
-  public type: string;
-  public message: string;
-  public content: any;
-  public time_finished: number;
-  public time_elapsed: string;
-  
-  constructor(code: number, type: string, content?: any, start?: number) {
-    this.code = codes[code] ? code : 500;
-    this.type = codes[code][type] ? type : "any";
-    this.message = codes[code][type];
-    this.time_finished = Date.now();
-    if (start) {
-      this.time_elapsed = ms(this.time_finished - start);
-    }
-    if (content) {
-      this.content = _.isPlainObject(content) || Array.isArray(content) ? json.parseKeys(content) : content;
-    }
-  }
-  
-  private static parseKeys(content) {
-    return _.transform(content, (r, v, k) => _.set(r, `${k}`.replace(/\//g, "__"), _.isPlainObject(v) || Array.isArray(v) ? json.parseKeys(v) : v), <any>(Array.isArray(content) ? [] : {}));
-  }
-  
-}
+export = exported;
