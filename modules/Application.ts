@@ -105,7 +105,7 @@ export function publicize(): boolean {
   
   if (__published) { return __published; }
   
-  _.each(_.orderBy(_.uniqBy(_.map(Cache.getNamespace(Cache.types.RESOURCE, Route.type), "value"), v => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
+  _.each(_.orderBy(_.uniqBy(_.map(Cache.store[Cache.types.RESOURCE][Route.type], "value"), v => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
     if (!(subdomain = __subdomains[route.subdomain])) {
       subdomain = __subdomains[route.subdomain] = express.Router();
       if (route.subdomain !== env.subdomains.default) { __application.use(vhost(route.subdomain + "." + __domain, subdomain)); }
@@ -172,7 +172,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         .then(user =>
           new User(user).validate()
           .then(user => {
-            if (!user.exists) { Promise.reject(Response.json(401, "jwt", {token: request.get("Authorization")})); }
+            if (!user.exists) { Promise.reject(Response.error(401, "jwt", {token: request.get("Authorization")})); }
             Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [eResourceType.ROLE_USER, user.id])
             .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(Response.json(403, "any")) : Promise.reject(Response.json(err.code, err.type)))
             .then(user_roles => {
@@ -194,7 +194,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   .catch(err => {
     if (err instanceof Response.json) { return response.status(err.code).json(err); }
     if (err.name === "JsonWebTokenError") { return response.status(401).json(Response.json(401, "jwt")); }
-    return response.status(err.code).json(Response.json(err.code, err.type, err));
+    return response.status(err.code || 500).json(Response.json(err.code || 500, err.type || "any", err));
   });
 }
 
