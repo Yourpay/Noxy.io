@@ -1,29 +1,30 @@
 import * as express from "express";
 import Route from "../resources/Route";
-import {tEnumKeys, tEnumValue} from "./iAuxiliary";
+import {tEnumKeys} from "./iAuxiliary";
 
 export interface iApplicationService {
+  readonly store: iApplicationStore
   readonly domain: string
-  readonly router: iApplicationRouter
+  readonly published: boolean
   readonly application: express.Application
   
   addStatic(public_directory_path: string, subdomain: string, namespace?: string): boolean;
   
-  addParam(param: string, subdomain: string, mw: Middleware | Middleware[]): boolean
+  addParam(param: string, subdomain: string, mw: tMiddleware | tMiddleware[]): boolean
   
-  addParam(param: string, subdomain: string, namespace: string, mw: Middleware | Middleware[]): boolean
+  addParam(param: string, subdomain: string, namespace: string, mw: tMiddleware | tMiddleware[]): boolean
   
-  addRoute(subdomain: string, namespace: string, path: string, method: tEnumValue<eRequestMethods>, mw: Middleware | Middleware[]): Promise<Route>
+  addRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, mw: tMiddleware | tMiddleware[]): Promise<Route>
   
   updateRoute(): Promise<Route>
   
-  addRoutes(): Promise<{[path: string]: { [key in tEnumKeys<eRequestMethods>]: Route }}>
+  addRoutes(): Promise<{[path: string]: { [key in tEnumKeys<eApplicationMethods>]: Route }}>
   
-  updateRoutes(): Promise<{[path: string]: { [key in tEnumKeys<eRequestMethods>]: Route }}>
+  updateRoutes(): Promise<{[path: string]: { [key in tEnumKeys<eApplicationMethods>]: Route }}>
   
-  addResource(): Promise<{[path: string]: { [key in tEnumKeys<eRequestMethods>]: Route }}>
+  addResource(): Promise<{[path: string]: { [key in tEnumKeys<eApplicationMethods>]: Route }}>
   
-  updateResource(): Promise<{[path: string]: { [key in tEnumKeys<eRequestMethods>]: Route }}>
+  updateResource(): Promise<{[path: string]: { [key in tEnumKeys<eApplicationMethods>]: Route }}>
   
   publicize(): boolean
   
@@ -33,23 +34,29 @@ export interface iApplicationFn {
 
 }
 
-export interface iApplicationRouter {
+export interface iApplicationStore {
   [subdomain: string]: {
     router: express.Application
     static: string
-    params: {[param: string]: Middleware[]}
+    params: {[param: string]: tMiddleware[]}
     namespaces: {
       [namespace: string]: {
         static: string
-        params: {[param: string]: Middleware[]}
+        params: {[param: string]: tMiddleware[]}
         router: express.Application
-        paths: {[path: string]: { [key in tEnumKeys<eRequestMethods>]: Middleware[] }}
+        paths: {[path: string]: { [key in tEnumKeys<eApplicationMethods>]: tMiddleware[] }}
       }
     }
   }
 }
 
-export enum eRequestMethods {
+export interface iApplicationConfiguration {
+  published: boolean
+  domain: string
+  application: express.Application
+}
+
+export enum eApplicationMethods {
   GET    = "GET",
   POST   = "POST",
   PUT    = "PUT",
@@ -57,14 +64,4 @@ export enum eRequestMethods {
   PATCH  = "PATCH",
 }
 
-export type tApplicationRouters = {[subdomain: string]: {[key: string]: express.Router}}
-
-export type tApplicationSubdomains = {[subdomain: string]: express.Router}
-
-export type tApplicationParams = {[key: string]: tApplicationParam}
-export type tApplicationParam = {middleware: Middleware, subdomain: string, namespace: string, name: string}
-
-export type tApplicationStatics = {[key: string]: tApplicationStatic}
-export type tApplicationStatic = {subdomain: string, namespace: string, resource_path: string}
-
-export type Middleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void
+export type tMiddleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void
