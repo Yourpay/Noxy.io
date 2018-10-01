@@ -1,7 +1,7 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as uuid from "uuid";
-import {tEnum, tEnumKeys, tEnumValue, tPromiseFn} from "../interfaces/iAuxiliary";
+import {tEnum, tEnumValue, tPromiseFn} from "../interfaces/iAuxiliary";
 import {cPromisePipe, ePromisePipeStatus, iPromisePipe, iPromisePipeFn, iPromisePipeService} from "../interfaces/iPromisePipe";
 import * as Response from "../modules/Response";
 
@@ -15,7 +15,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
   
   private status: ePromisePipeStatus;
   public readonly stages: T;
-  public readonly promises: { [K in tEnumKeys<T>]?: {[key: string]: tPromiseFn<any>} };
+  public readonly promises: { [K in keyof T]?: {[key: string]: tPromiseFn<any>} };
   
   constructor(stages: T) {
     this.status = ePromisePipeStatus.READY;
@@ -30,15 +30,15 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
     });
   }
   
-  public add<K>(stage: { [K in keyof T]: T[K] }[K], fn: tPromiseFn<K>): string {
+  public add<K>(stage: keyof T | tEnumValue<T>, fn: tPromiseFn<K>): string {
     const key = uuid.v4();
-    this.promises[stage][key] = fn;
+    this.promises[<string>stage][key] = fn;
     return key;
   }
   
-  public remove(stage: tEnumValue<T>, key: string): boolean {
+  public remove(stage: keyof T | tEnumValue<T>, key: string): boolean {
     if (this.status !== ePromisePipeStatus.READY) { throw Response.error(409, "promise-pipe"); }
-    return delete this.promises[stage][key];
+    return delete this.promises[<string>stage][key];
   }
   
   public fork(): PromisePipe<T> {
@@ -61,7 +61,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
     const [stage, remaining] = [_.head(promises), _.tail(promises)];
     return Promise.map(_.values(stage), fn => fn())
     .then(res => remaining.length > 0 ? PromisePipe.resolve(pipe, remaining) : Promise.resolve(res))
-    .catch(err => console.log(err) || Promise.reject(Response.error(500, "promise-pipe", err)));
+    .catch(err => Promise.reject(Response.error(500, "promise-pipe", err)));
   }
   
 };

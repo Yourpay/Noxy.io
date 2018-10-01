@@ -82,7 +82,7 @@ class DatabasePool implements iDatabasePool {
     this.__configuration = DatabasePool.generateConfig(config);
     this.__slaves = {};
     this.__pool = mysql.createPool(this.__configuration);
-    _.each(config.slaves, slave => this.add(slave));
+    _.each(config.slaves, (slave: DatabaseEnvironmental) => this.add(slave));
     Database.pools[id] = this;
     Database.cluster.add(id, this.__configuration);
     database_pipe.add(ePromisePipeStagesInitDatabase.REGISTER, () =>

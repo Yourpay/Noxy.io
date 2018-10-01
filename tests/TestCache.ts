@@ -1,6 +1,6 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
-import * as Cache from "../modules/Cache"
+import * as Cache from "../modules/Cache";
 
 const tests = _.shuffle([
   {
@@ -109,7 +109,7 @@ const tests = _.shuffle([
   }
 ]);
 
-_.each(tests, t => console.log("Calling", t.key) || t.fn());
+// _.each(tests, t => console.log("Calling", t.key) || t.fn());
 
 for (let i = 1; i < 4; i++) {
   setTimeout(() => console.log(i * 100 + "milliseconds passed."), i * 100);

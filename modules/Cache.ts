@@ -75,7 +75,7 @@ function set<T>(type: eCacheTypes, namespace: string, keys: tCacheKey[], value: 
     if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : getAny(type, namespace, keys); }
     return Promise.reject(Response.error(409, "cache", _.filter(_.map(keys, k => _.get(store, [type, namespace, k, "promise"]) ? k : null))));
   }
-  const promise = typeof value === "function" ? value() : Promise.resolve(value);
+  const promise = typeof value === "function" ? (<Function>value)() : Promise.resolve(value);
   _.each(keys, key => _.set(store, [type, namespace, key, "promise"], promise));
   return handleSetPromise(type, namespace, keys, promise, options);
 }
@@ -85,7 +85,7 @@ function setOne<T>(type: eCacheTypes, namespace: string, key: tCacheKey, value: 
     if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : getOne(type, namespace, key); }
     return Promise.reject(Response.error(409, "cache", {type: type, namespace: namespace, key: key}));
   }
-  const promise = typeof value === "function" ? value() : Promise.resolve(value);
+  const promise = typeof value === "function" ? (<Function>value)() : Promise.resolve(value);
   _.set(store, [type, namespace, key, "promise"], promise);
   return handleSetPromise(type, namespace, key, promise, options);
 }
@@ -95,7 +95,7 @@ function setAny<T>(type: eCacheTypes, namespace: string, keys: tCacheKey[], valu
     if (options && options.collision_fallback) { return options.collision_fallback !== true ? options.collision_fallback() : getAny(type, namespace, keys); }
     return Promise.reject(Response.error(409, "cache", {type: type, namespace: namespace, key: keys}));
   }
-  const promise = typeof value === "function" ? value() : Promise.resolve(value);
+  const promise = typeof value === "function" ? (<Function>value)() : Promise.resolve(value);
   const sets = _.filter(_.map(keys, key => !_.get(store, [type, namespace, key, "promise"]) ? key : null));
   _.each(keys, key => _.set(store, [type, namespace, key, "promise"], promise));
   return handleSetPromise(type, namespace, sets, promise, options);

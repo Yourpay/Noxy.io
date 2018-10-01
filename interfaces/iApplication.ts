@@ -6,6 +6,7 @@ import {cResource} from "./iResource";
 export interface iApplicationService {
   readonly store: iApplicationStore
   readonly domain: string
+  readonly methods: typeof eApplicationMethods
   readonly published: boolean
   readonly application: express.Application
   
@@ -35,22 +36,30 @@ export interface iApplicationStore {
 }
 
 export interface iApplicationSubdomain {
-  router?: express.Application
-  static?: string
-  params?: {[param: string]: tApplicationMiddleware[]}
+  weight: number
+  static: string
+  params: {[param: string]: tApplicationMiddleware[]}
+  router: express.Application
   namespaces: {[namespace: string]: iApplicationNamespace}
 }
 
 export interface iApplicationNamespace {
+  weight: number
   static: string
   params: {[param: string]: tApplicationMiddleware[]}
   router: express.Application
-  paths: {[path: string]: { [key in eApplicationMethods]: Route }}
+  paths: {[path: string]: iApplicationPath}
+}
+
+export interface iApplicationPath {
+  weight: number
+  methods: { [key in eApplicationMethods]: Route }
 }
 
 export interface iApplicationConfiguration {
-  published: boolean
   domain: string
+  methods: typeof eApplicationMethods
+  published: boolean
   application: express.Application
 }
 
