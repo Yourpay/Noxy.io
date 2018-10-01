@@ -139,6 +139,7 @@ function keysFromSets(parts: (string | number)[][]): string[] {
 const exported: iCacheService = _.assign(
   Service,
   {
+    get store() { return store; },
     types:        eCacheTypes,
     get:          get,
     getOne:       getOne,

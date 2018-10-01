@@ -22,11 +22,21 @@ export interface cResource {
   table: iTable
   type: string
   
-  select<T extends cResource>(this: T & {new(init: any[]): any}, start: number, limit: number): Promise<InstanceType<T>[]>
+  select<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, start: number, limit: number): Promise<InstanceType<T>[]>
   
-  selectByID<T extends cResource>(this: T & {new(init: any[]): any}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T>>
+  selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T>>
   
   count(): Promise<number>
+  
+  get(start?: number, limit?: number): Promise<Partial<iResource>[]>
+  
+  getByID(id?: string | Buffer): Promise<Partial<iResource>>
+  
+  post(resource: any): Promise<Partial<iResource>>
+  
+  put(resource: any): Promise<Partial<iResource>>
+  
+  delete(id?: string | Buffer): Promise<Partial<iResource>>
 }
 
 export interface iResource {
@@ -41,7 +51,7 @@ export interface iResource {
   
   remove(options?: iResourceActionOptions): Promise<this>
   
-  toObject(deep: boolean): Promise<Partial<this>>
+  toObject(deep?: boolean): Promise<Partial<this>>
 }
 
 export interface cTable {
@@ -58,9 +68,9 @@ export interface iTable {
   readonly indexes: iTableIndexes;
   readonly keys: string[][];
   
-  validate: (resource: iResource, options?: iResourceActionOptions) => Promise<tResourceObject>
-  save: (resource: iResource, options?: iResourceActionOptions) => Promise<iResource>
-  remove: <R>(resource: iResource, options?: iResourceActionOptions) => Promise<iResource>
+  validate: <T extends iResource>(resource: T, options?: iResourceActionOptions) => Promise<T>
+  save: <T extends iResource>(resource: T, options?: iResourceActionOptions) => Promise<T>
+  remove: <T extends iResource>(resource: T, options?: iResourceActionOptions) => Promise<T>
   select: (start?: number, limit?: number) => Promise<tResourceObject[]>
   selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<tResourceObject>
   count: () => Promise<number>

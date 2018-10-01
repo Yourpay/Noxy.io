@@ -17,6 +17,8 @@ export const publicize_pipe = PromisePipe(ePromisePipeStagesInitPublicize);
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
   const Application = require("../modules/Application");
+  Application.addSubdomain(env.subdomains.default);
+  Application.addSubdomain(env.subdomains.api);
   Application.addParam(env.subdomains.api, "id", (request, response, next, id) => (request.query.id = id) && next());
   return Promise.all(_.reduce(Resource.list, (result, resource) => _.concat(result, _.flattenDeep(_.map(Application.addResource(resource), r => _.values(r)))), []))
 });

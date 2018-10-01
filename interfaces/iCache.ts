@@ -1,6 +1,8 @@
 import * as Promise from "bluebird";
 
 export interface iCacheService extends iCacheFn {
+  readonly store: tCacheStore
+  
   types: typeof eCacheTypes
   
   get<T>(type: eCacheTypes, namespace: string, key: tCacheKey[]): tCacheReturnPromiseSet<T>

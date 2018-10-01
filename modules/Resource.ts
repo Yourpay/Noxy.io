@@ -32,7 +32,7 @@ const Resource: cResource = class Resource implements iResource {
   public exists: boolean;
   public validated: boolean;
   
-  constructor(initializer: tResourceObject) {
+  constructor(initializer: tResourceObject = {}) {
     if (!(<cResource>this.constructor).table.options.resource.junction) {
       if (initializer.id) {
         this.id = typeof initializer.id === "string" ? bufferFromUUID(initializer.id) : initializer.id;
@@ -50,7 +50,7 @@ const Resource: cResource = class Resource implements iResource {
     _.assign(this, _.omit(initializer, ["id", "uuid"]));
   }
   
-  public validate(options: iResourceActionOptions = {}) {
+  public validate(options: iResourceActionOptions = {}): Promise<this> {
     const $this = (<typeof Resource>this.constructor);
     const $columns = $this.table.definition;
     
@@ -71,7 +71,7 @@ const Resource: cResource = class Resource implements iResource {
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
-  public save(options: iResourceActionOptions = {}) {
+  public save(options: iResourceActionOptions = {}): Promise<this> {
     const $this = (<typeof Resource>this.constructor);
     
     return this.validate(options)
@@ -83,7 +83,7 @@ const Resource: cResource = class Resource implements iResource {
     return Promise.resolve(this);
   }
   
-  public toObject(deep?: boolean) {
+  public toObject(deep?: boolean): Promise<Partial<this>> {
     const $this = (<typeof Resource>this.constructor);
     
     return <any>Promise.props(
@@ -114,13 +114,13 @@ const Resource: cResource = class Resource implements iResource {
     );
   }
   
-  public static select<T extends cResource>(this: T & {new(init: any[]): any}, start: number = 0, limit: number = 100): Promise<InstanceType<T>[]> {
+  public static select<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, start: number = 0, limit: number = 100): Promise<InstanceType<T>[]> {
     return this.table.select(start, limit)
     .map(resource => new this(resource))
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
-  public static selectByID<T extends cResource>(this: T & {new(init: any[]): any}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T>> {
+  public static selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T>> {
     return this.table.selectByID(id)
     .then(resource => new this(resource))
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
@@ -129,6 +129,32 @@ const Resource: cResource = class Resource implements iResource {
   public static count() {
     return this.table.count()
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
+  }
+  
+  public static get(start: number, limit: number): Promise<Partial<iResource>[]> {
+    return this.select(start, limit).map(res => res.toObject());
+  }
+  
+  public static getByID(id: string | Buffer): Promise<Partial<iResource>> {
+    return this.selectByID(id).then(res => res.toObject());
+  }
+  
+  public static post(resource: any): Promise<Partial<iResource>> {
+    return new this(resource).validate()
+    .then((res: iResource) => !res.exists ? res.save() : Promise.reject(Response.error(409, "resource")))
+    .then(res => res.toObject());
+  }
+  
+  public static put(resource: any): Promise<Partial<iResource>> {
+    return new this(resource).validate()
+    .then((res: iResource) => res.exists ? res.save() : Promise.reject(Response.error(409, "resource")))
+    .then(res => res.toObject());
+  }
+  
+  public static delete(id: string | Buffer): Promise<Partial<iResource>> {
+    return new this({id: id}).validate()
+    .then((res: iResource) => res.exists ? res.remove() : Promise.reject(Response.error(409, "resource")))
+    .then(res => res.toObject());
   }
   
 };
@@ -172,24 +198,27 @@ const Table: cTable = class Table implements iTable {
     }, {}));
   }
   
-  public validate(resource: iResource, options: iResourceActionOptions = {}): Promise<tResourceObject> {
+  public validate<T extends iResource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.keyFromSet(_.values(key)));
     
     if (_.size(keys) === 0) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
     
-    return Cache.getAny<tResourceObject>(Cache.types.RESOURCE, this.resource.type, cache_keys)
+    return Cache.getAny<T>(Cache.types.RESOURCE, this.resource.type, cache_keys)
     .catch(err => {
-      if (err.code !== 404) { console.log("ERROR FROM VALIDATE", err); return Promise.reject(Response.error(err.code, err.type, err)); }
+      if (err.code !== 404) {
+        console.log("ERROR FROM VALIDATE", err);
+        return Promise.reject(Response.error(err.code, err.type, err));
+      }
       const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
       if (!where.length) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
-      return Cache.set<tResourceObject>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
-        return Database(this.options.resource.database).queryOne<tResourceObject>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
+      return Cache.set<T>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
+        return Database(this.options.resource.database).queryOne<T>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
       }, {timeout: 0, collision_fallback: true});
     });
   }
   
-  public save(resource: iResource, options: iResourceActionOptions = {}): Promise<iResource> {
+  public save<T extends iResource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
     let where = "";
     const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.keyFromSet(_.values(key)));
@@ -215,7 +244,7 @@ const Table: cTable = class Table implements iTable {
     });
   }
   
-  public remove(resource: iResource, options: iResourceActionOptions = {}) {
+  public remove<T extends iResource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
     return Promise.resolve(resource);
   }
   
