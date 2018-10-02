@@ -30,15 +30,15 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
     });
   }
   
-  public add<K>(stage: keyof T | tEnumValue<T>, fn: tPromiseFn<K>): string {
+  public add<K>(stage: {[P in keyof T]: T[P]}[keyof T] & (string | number), fn: tPromiseFn<K>): string {
     const key = uuid.v4();
-    this.promises[<string>stage][key] = fn;
+    this.promises[stage][key] = fn;
     return key;
   }
   
-  public remove(stage: keyof T | tEnumValue<T>, key: string): boolean {
+  public remove(stage: {[P in keyof T]: T[P]}[keyof T] & (string | number), key: string): boolean {
     if (this.status !== ePromisePipeStatus.READY) { throw Response.error(409, "promise-pipe"); }
-    return delete this.promises[<string>stage][key];
+    return delete this.promises[stage][key];
   }
   
   public fork(): PromisePipe<T> {

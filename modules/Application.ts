@@ -2,9 +2,10 @@ import * as Promise from "bluebird";
 import * as express from "express";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
+import * as vhost from "vhost";
 import {env} from "../globals";
-import {eApplicationMethods, iApplicationConfiguration, iApplicationService, iApplicationStore, tApplicationMiddleware, tApplicationRouteSet} from "../interfaces/iApplication";
-import {cResource, eResourceType} from "../interfaces/iResource";
+import {eApplicationMethods, iApplicationConfiguration, iApplicationNamespace, iApplicationPath, iApplicationService, iApplicationStore, iApplicationSubdomain, tApplicationMiddleware} from "../interfaces/iApplication";
+import {eResourceType} from "../interfaces/iResource";
 import * as Response from "../modules/Response";
 import RoleRoute from "../resources/RoleRoute";
 import RoleUser from "../resources/RoleUser";
@@ -27,7 +28,7 @@ function Default() {
 
 }
 
-function addSubdomain(subdomain: string) {
+function addSubdomain(subdomain: string): iApplicationSubdomain {
   if (!store[subdomain]) {
     Object.defineProperty(store, subdomain, {
       enumerable: true,
@@ -43,7 +44,7 @@ function addSubdomain(subdomain: string) {
   return store[subdomain];
 }
 
-function addNamespace(subdomain: string, namespace: string) {
+function addNamespace(subdomain: string, namespace: string): iApplicationNamespace {
   if (!store[subdomain]) { addSubdomain(subdomain); }
   if (!store[subdomain].namespaces[namespace]) {
     Object.defineProperty(store[subdomain].namespaces, namespace, {
@@ -60,7 +61,7 @@ function addNamespace(subdomain: string, namespace: string) {
   return store[subdomain].namespaces[namespace];
 }
 
-function addPath(subdomain: string, namespace: string, path: string) {
+function addPath(subdomain: string, namespace: string, path: string): iApplicationPath {
   if (!store[subdomain]) { addSubdomain(subdomain); }
   if (!store[subdomain].namespaces[namespace]) { addNamespace(subdomain, namespace); }
   if (!store[subdomain].namespaces[namespace].paths[path]) {
@@ -89,62 +90,6 @@ function addRoute(subdomain: string, namespace: string, path: string, method: eA
   return new Route({subdomain: subdomain = parseSubdomain(subdomain), namespace: namespace = parsePath(namespace), path: path = parsePath(path), method: method, middleware: _.concat(auth, middlewares, notFound)})
   .save({update_protected: true, collision_fallback: true})
   .tap(res => addPath(subdomain, namespace, path).methods[method] = res);
-}
-
-function addRoutes(subdomain: string, routes: tApplicationRouteSet<tApplicationMiddleware | tApplicationMiddleware[]>): Promise<tApplicationRouteSet<Promise<Route>>> {
-  return Promise.props(_.reduce(routes, (result, paths, namespace) => {
-    _.each(paths, (methods, path) => _.each(methods, (middleware, method) => _.set(result, [namespace, path, method], addRoute(subdomain, namespace, path, <eApplicationMethods>method, middleware))));
-    return result;
-  }, {}));
-}
-
-function addResource(resource: cResource, subdomain?: string): Promise<tApplicationRouteSet<Promise<Route>>> {
-  return Promise.props({
-    [resource.type]: {
-      "/":      {
-        "GET":  addRoute(subdomain || env.subdomains.api, resource.type, "/", eApplicationMethods.GET, (request: express.Request, response: express.Response) => {
-          resource.get(request.query.start, request.query.limit)
-          .then(res => Response.json(200, "any", res, response.locals.time))
-          .catch(err => Response.error(err.code, err.type, err))
-          .then(res => response.json(res));
-        }),
-        "POST": addRoute(subdomain || env.subdomains.api, resource.type, "/", eApplicationMethods.POST, (request: express.Request, response: express.Response) => {
-          resource.post(request.body)
-          .then(res => Response.json(200, "any", res, response.locals.time))
-          .catch(err => Response.error(err.code, err.type, err))
-          .then(res => response.json(res));
-        })
-      },
-      "/:id":   {
-        "GET":    addRoute(subdomain || env.subdomains.api, resource.type, "/:id", eApplicationMethods.GET, (request: express.Request, response: express.Response) => {
-          resource.get(response.locals.id)
-          .then(res => Response.json(200, "any", res, response.locals.time))
-          .catch(err => Response.error(err.code, err.type, err))
-          .then(res => response.json(res));
-        }),
-        "PUT":    addRoute(subdomain || env.subdomains.api, resource.type, "/:id", eApplicationMethods.PUT, (request: express.Request, response: express.Response) => {
-          resource.get(request.body)
-          .then(res => Response.json(200, "any", res, response.locals.time))
-          .catch(err => Response.error(err.code, err.type, err))
-          .then(res => response.json(res));
-        }),
-        "DELETE": addRoute(subdomain || env.subdomains.api, resource.type, "/:id", eApplicationMethods.DELETE, (request: express.Request, response: express.Response) => {
-          resource.get(request.body)
-          .then(res => Response.json(200, "any", res, response.locals.time))
-          .catch(err => Response.error(err.code, err.type, err))
-          .then(res => response.json(res));
-        })
-      },
-      "/count": {
-        "GET": addRoute(subdomain || env.subdomains.api, resource.type, "/count", eApplicationMethods.GET, (request: express.Request, response: express.Response) => {
-          resource.count()
-          .then(res => Response.json(200, "any", {count: res}, response.locals.time))
-          .catch(err => Response.error(err.code, err.type, err))
-          .then(res => response.json(res));
-        })
-      }
-    }
-  });
 }
 
 function updateRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, middlewares: tApplicationMiddleware | tApplicationMiddleware[]): Promise<Route> {
@@ -229,18 +174,22 @@ function publicize() {
   if (configuration.published) { return Promise.reject(Response.error(409, "application")); }
   
   console.log(store);
+  console.log(store.api.namespaces);
+  console.log(store.api.namespaces.route.paths);
   
-  // _.each(store, (subdomain: iApplicationSubdomain, root) => {
-  //   const subdomain_router = express.Router();
-  //   configuration.application.use(vhost(`${root}.${subdomain_router}`, subdomain_router));
-  //   _.each(subdomain.namespaces, (namespace: iApplicationNamespace, base) => {
-  //     _.each(namespace.paths, (path, location) => {
-  //       _.each(namespace.paths, (route, method) => {
-  //
-  //       });
-  //     });
-  //   });
-  // });
+  _.each(_.orderBy(store, "weight", "DESC"), (subdomain: iApplicationSubdomain, root) => {
+    subdomain.router = express.Router();
+    configuration.application.use(vhost(`${root}.${configuration.domain}`, subdomain.router));
+    
+    _.each(_.orderBy(subdomain.namespaces, "weight", "DESC"), (namespace: iApplicationNamespace, base) => {
+      
+      _.each(namespace.paths, (path, location) => {
+        _.each(namespace.paths, (route, method) => {
+        
+        });
+      });
+    });
+  });
   
   // let subdomain: express.Router, router: express.Router;
   //
@@ -280,10 +229,6 @@ function publicize() {
   return Promise.resolve(configuration.published = true);
 }
 
-function attach() {
-
-}
-
 const exported: iApplicationService = _.assign(
   Service,
   {
@@ -298,8 +243,6 @@ const exported: iApplicationService = _.assign(
     addParam:     addParam,
     addStatic:    addStatic,
     addRoute:     addRoute,
-    addRoutes:    addRoutes,
-    addResource:  addResource,
     updateRoute:  updateRoute,
     publicize:    publicize
   }

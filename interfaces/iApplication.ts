@@ -1,7 +1,6 @@
 import * as Promise from "bluebird";
 import * as express from "express";
 import Route from "../resources/Route";
-import {cResource} from "./iResource";
 
 export interface iApplicationService {
   readonly store: iApplicationStore
@@ -9,6 +8,12 @@ export interface iApplicationService {
   readonly methods: typeof eApplicationMethods
   readonly published: boolean
   readonly application: express.Application
+  
+  addSubdomain(subdomain: string): iApplicationSubdomain
+  
+  addNamespace(subdomain: string, namespace: string): iApplicationNamespace
+  
+  addPath(subdomain: string, namespace: string, path: string): iApplicationPath
   
   addStatic(public_directory_path: string, subdomain: string, namespace?: string): boolean;
   
@@ -19,10 +24,6 @@ export interface iApplicationService {
   addRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, mw: tApplicationMiddleware | tApplicationMiddleware[]): Promise<Route>
   
   updateRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, mw: tApplicationMiddleware | tApplicationMiddleware[]): Promise<Route>
-  
-  addRoutes(subdomain: string, routes: tApplicationRouteSet<tApplicationMiddleware | tApplicationMiddleware[]>): Promise<tApplicationRouteSet<Promise<Route>>>
-  
-  addResource(resource: cResource, subdomain?: string): Promise<tApplicationRouteSet<Promise<Route>>>
   
   publicize(): Promise<boolean>
 }
@@ -39,7 +40,7 @@ export interface iApplicationSubdomain {
   weight: number
   static: string
   params: {[param: string]: tApplicationMiddleware[]}
-  router: express.Application
+  router: express.Router
   namespaces: {[namespace: string]: iApplicationNamespace}
 }
 
@@ -47,7 +48,7 @@ export interface iApplicationNamespace {
   weight: number
   static: string
   params: {[param: string]: tApplicationMiddleware[]}
-  router: express.Application
+  router: express.Router
   paths: {[path: string]: iApplicationPath}
 }
 

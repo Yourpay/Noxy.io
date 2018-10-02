@@ -1,5 +1,5 @@
 import * as Promise from "bluebird";
-import {tEnum, tEnumValue, tPromiseFn} from "./iAuxiliary";
+import {tEnum, tPromiseFn} from "./iAuxiliary";
 
 export interface iPromisePipeService extends iPromisePipeFn {
   Constructor: cPromisePipe
@@ -15,11 +15,11 @@ export interface cPromisePipe {
 
 export interface iPromisePipe<T> {
   stages: T
-  promises: { [key in keyof T]?: {[key: string]: tPromiseFn<any>} }
+  promises: { [P in keyof T]?: {[key: string]: tPromiseFn<any>} }
   
-  add(stage: keyof T | tEnumValue<T>, fn: tPromiseFn<any>): string
+  add(stage: { [P in keyof T]: T[P] }[keyof T] & (string | number), fn: tPromiseFn<any>): string
   
-  remove(stage: keyof T | tEnumValue<T>, key: string): boolean
+  remove(stage: { [P in keyof T]: T[P] }[keyof T] & (string | number), key: string): boolean
   
   resolve(): Promise<any>
   
