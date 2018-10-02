@@ -1,7 +1,7 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as uuid from "uuid";
-import {tEnum, tEnumValue, tPromiseFn} from "../interfaces/iAuxiliary";
+import {tEnum, tEnumKeys, tPromiseFn} from "../interfaces/iAuxiliary";
 import {cPromisePipe, ePromisePipeStatus, iPromisePipe, iPromisePipeFn, iPromisePipeService} from "../interfaces/iPromisePipe";
 import * as Response from "../modules/Response";
 
@@ -15,7 +15,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
   
   private status: ePromisePipeStatus;
   public readonly stages: T;
-  public readonly promises: { [K in keyof T]?: {[key: string]: tPromiseFn<any>} };
+  public readonly promises: { [K in tEnumKeys<T>]?: {[key: string]: tPromiseFn<any>} };
   
   constructor(stages: T) {
     this.status = ePromisePipeStatus.READY;
@@ -30,13 +30,13 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
     });
   }
   
-  public add<K>(stage: {[P in keyof T]: T[P]}[keyof T] & (string | number), fn: tPromiseFn<K>): string {
+  public add<K>(stage: tEnumKeys<T>, fn: tPromiseFn<K>): string {
     const key = uuid.v4();
     this.promises[stage][key] = fn;
     return key;
   }
   
-  public remove(stage: {[P in keyof T]: T[P]}[keyof T] & (string | number), key: string): boolean {
+  public remove(stage: tEnumKeys<T>, key: string): boolean {
     if (this.status !== ePromisePipeStatus.READY) { throw Response.error(409, "promise-pipe"); }
     return delete this.promises[stage][key];
   }
