@@ -19,6 +19,10 @@ export const publicize_pipe = PromisePipe(ePromisePipeStagesInitPublicize);
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
   Application.addParam("id", env.subdomains.api, (request, response, next, id) => (response.locals.id = id) && next());
+  Application.addRoute(env.subdomains.api, "/", "/", Application.methods.GET, (request: express.Request, response: express.Response) => {
+    console.log("called")
+    response.json(Response.json(200, "any"));
+  });
   return Promise.map(_.values(Resource.list), resource =>
     Promise.all([
       Application.addRoute(env.subdomains.api, resource.type, "/", Application.methods.GET, (request: express.Request, response: express.Response) => {

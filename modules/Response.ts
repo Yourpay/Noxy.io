@@ -8,7 +8,7 @@ function Default(code: number, type: string, content: tResponseContent | iRespon
   return content instanceof Error && !start ? error(code, type, content) : json(code, type, content, start);
 }
 
-function json(code: number, type: string, content: tResponseContent = null, start: number): iResponseJSONObject {
+function json(code: number, type: string, content: tResponseContent = null, start: number = Date.now()): iResponseJSONObject {
   const now = Date.now();
   return {
     code:           _.isNumber(code) && !_.isNaN(code) ? code : 500,

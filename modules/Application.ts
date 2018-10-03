@@ -111,9 +111,12 @@ function updateRoute(subdomain: string, namespace: string, path: string, method:
 }
 
 function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
-  const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
+  const [namespace, path] = _.map((request.baseUrl + request.route.path).split("/"), v => v === "" ? "/" : "");
   const subdomain = request.vhost ? request.vhost.host.replace(configuration.domain, "").replace(/[.]*$/, "") : env.subdomains.default;
   const key = Cache.keyFromSet([subdomain, path, request.method]);
+
+  console.log(store[subdomain].namespaces[namespace].paths[path].methods[_.toLower(request.method)]);
+  
   
   response.locals.time = Date.now();
   Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, key)
@@ -172,13 +175,17 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
 }
 
 function notFound(request: express.Request, response: express.Response) {
+  console.log("Test");
   response.json(Response.json(404, "any"));
 }
 
 function publicize() {
   if (configuration.published) { return Promise.reject(Response.error(409, "application")); }
-  _.each(sortObject(store, "weight", "DESC"), (subdomain: iApplicationSubdomain, root) => {
-    subdomain.router = express.Router();
+  _.each(sortObject(store, "weight", "desc"), (subdomain: iApplicationSubdomain, root) => {
+    subdomain.router = express();
+    if (root !== env.subdomains.default) {
+      configuration.application.use(vhost(`${root}.${configuration.domain}`, subdomain.router));
+    }
     if (subdomain.static) { subdomain.router.use(express.static(subdomain.static)); }
     subdomain.router.use((request, response, next) => {
       response.header("Allow", "PUT, GET, POST, DELETE, OPTIONS");
@@ -190,30 +197,33 @@ function publicize() {
       // }
       next();
     });
-    _.each(sortObject(subdomain.namespaces, "weight", "DESC"), (namespace: iApplicationNamespace, base) => {
-      namespace.router = express.Router();
+    _.each(sortObject(subdomain.namespaces, "weight", "desc"), (namespace: iApplicationNamespace, base) => {
+      namespace.router = express();
+      subdomain.router.use(`/${base}`.replace(/\/{2,}/, "/"), namespace.router);
       if (namespace.static) { namespace.router.use(express.static(namespace.static)); }
-      _.each(_.orderBy(namespace.paths, "weight", "DESC"), (path: iApplicationPath, location) => {
+      _.each(sortObject(namespace.paths, "weight", "desc"), (path: iApplicationPath, location) => {
         _.each(_.reduce(path.methods, (r, v, k) => v ? _.set(r, k, v) : r, {}), (route: Route, method) => {
           namespace.router[method].apply(namespace.router, _.concat<string | tApplicationMiddleware[]>(`/${location}`.replace(/\/{2,}/, "/"), route.middleware));
         });
       });
-      subdomain.router.use(`/${base}`.replace(/\/{2,}/, "/"), namespace.router);
     });
-    if (root !== env.subdomains.default) { configuration.application.use(vhost(`${root}.${configuration.domain}`, subdomain.router)); }
   });
   if (store[env.subdomains.default]) { configuration.application.use("/", store[env.subdomains.default].router); }
-  configuration.application.all("*", (request, response) => response.status(404).json(Response.json(404, "any", {}, Date.now())));
+  configuration.application.use(vhost(`test.${configuration.domain}`, (request, response) => { response.send("test"); }));
+  configuration.application.all("*", (request, response) => {
+    console.log(request.vhost);
+    const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
+    const subdomain = request.vhost ? request.vhost.host.replace(configuration.domain, "").replace(/[.]*$/, "") : env.subdomains.default;
+    const key = Cache.keyFromSet([subdomain, path, request.method]);
+    response.status(404).json(Response.json(404, "any", {}, Date.now()));
+  });
   http.createServer(configuration.application).listen(80);
   // console.log(configuration.application._router.stack);
   return Promise.resolve(configuration.published = true);
 }
 
-function sortObject(object: object, key: string, order: "ASC" | "DESC" | 1 | -1) {
-  const a = Object.keys(object).sort((a, b) => console.log(object[a][key], object[b][key]) || order === "DESC" || -1 ? object[a][key] - object[b][key] : object[b][key] - object[a][key]);
-  const b = _.reduce(a, (result, v) => _.set(result, v, object[v]), {});
-  console.log(a, b);
-  return b;
+function sortObject(object: object, key: string, sort: "asc" | "desc" | 1 | -1): object {
+  return _.reduce(_.keys(object).sort((a, b) => object[a][key] === object[b][key] ? 0 : ((object[a][key] < object[b][key] ? -1 : 1) * ((sort === "asc" || sort > 0) ? 1 : -1))), (r, v) => _.set(r, v, object[v]), {});
 }
 
 const exported: iApplicationService = _.assign(
