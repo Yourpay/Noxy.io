@@ -65,11 +65,11 @@ export interface iApplicationConfiguration {
 }
 
 export enum eApplicationMethods {
-  GET    = "GET",
-  POST   = "POST",
-  PUT    = "PUT",
-  DELETE = "DELETE",
-  PATCH  = "PATCH",
+  GET    = "get",
+  POST   = "post",
+  PUT    = "put",
+  DELETE = "delete",
+  PATCH  = "patch",
 }
 
 export type tApplicationMiddleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void

@@ -1,5 +1,6 @@
 import * as Promise from "bluebird";
 import * as express from "express";
+import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
 import * as vhost from "vhost";
@@ -54,7 +55,7 @@ function addNamespace(subdomain: string, namespace: string): iApplicationNamespa
         static: null,
         params: {},
         paths:  {},
-        weight: _.reduce(_.tail(namespace.split("/")), (r, v) => r + 10000 + (v.match(/:[a-z]+$/) ? 1 : v.length), 0)
+        weight: getWeight(namespace)
       }
     });
   }
@@ -68,12 +69,24 @@ function addPath(subdomain: string, namespace: string, path: string): iApplicati
     Object.defineProperty(store[subdomain].namespaces[namespace].paths, path, {
       enumerable: true,
       value:      {
-        methods: _.reduce(eApplicationMethods, (r, v, k) => _.set(r, k, null), {}),
-        weight:  _.reduce(_.tail(namespace.split("/")), (r, v) => r + 10000 + (v.match(/:[a-z]+$/) ? 1 : v.length), 0)
+        methods: _.reduce(eApplicationMethods, (r, v, k) => _.set(r, v, null), {}),
+        weight:  getWeight(path)
       }
     });
   }
   return store[subdomain].namespaces[namespace].paths[path];
+}
+
+function parseSubdomain(subdomain: string): string {
+  return _.map(_.filter(subdomain.toString().split("."), v => v.length > 0), v => v.substring(0, 62)).join(".").replace(/^[.-]+|[.-]+$|[^a-zA-Z0-9-.]/g, "").substr(0, 253 - configuration.domain.length);
+}
+
+function parsePath(path: string): string {
+  return (path = path.replace(/^[\/]+|[\/]+$/g, "")).length === 0 ? "/" : path.replace(/\*{2,}/g, "*");
+}
+
+function getWeight(path: string): number {
+  return path === "/" ? -1 : _.reduce(path.split("/"), (result, s, i) => result += (i > 0 ? 10000 : 0) + (s.match(/^:.*$/) ? 0 : s.length), 0);
 }
 
 function addParam(param: string, subdomain: string, middlewares: tApplicationMiddleware | tApplicationMiddleware[]): boolean;
@@ -95,14 +108,6 @@ function addRoute(subdomain: string, namespace: string, path: string, method: eA
 function updateRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, middlewares: tApplicationMiddleware | tApplicationMiddleware[]): Promise<Route> {
   if (!store[subdomain].namespaces[namespace].paths[path][method]) { return Promise.reject(Response.error(404, "application")); }
   return Promise.resolve(store[subdomain].namespaces[namespace].paths[path][method]);
-}
-
-function parseSubdomain(subdomain: string): string {
-  return _.map(_.filter(subdomain.toString().split("."), v => v.length > 0), v => v.substring(0, 62)).join(".").replace(/^[.-]+|[.-]+$|[^a-zA-Z0-9-.]/g, "").substr(0, 253 - configuration.domain.length);
-}
-
-function parsePath(path: string): string {
-  return (path = path.replace(/^[\/]+|[\/]+$/g, "")).length === 0 ? "/" : path.replace(/\*{2,}/g, "*");
 }
 
 function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
@@ -172,61 +177,43 @@ function notFound(request: express.Request, response: express.Response) {
 
 function publicize() {
   if (configuration.published) { return Promise.reject(Response.error(409, "application")); }
-  
-  console.log(store);
-  console.log(store.api.namespaces);
-  console.log(store.api.namespaces.route.paths);
-  
-  _.each(_.orderBy(store, "weight", "DESC"), (subdomain: iApplicationSubdomain, root) => {
+  _.each(sortObject(store, "weight", "DESC"), (subdomain: iApplicationSubdomain, root) => {
     subdomain.router = express.Router();
-    configuration.application.use(vhost(`${root}.${configuration.domain}`, subdomain.router));
-    
-    _.each(_.orderBy(subdomain.namespaces, "weight", "DESC"), (namespace: iApplicationNamespace, base) => {
-      
-      _.each(namespace.paths, (path, location) => {
-        _.each(namespace.paths, (route, method) => {
-        
+    if (subdomain.static) { subdomain.router.use(express.static(subdomain.static)); }
+    subdomain.router.use((request, response, next) => {
+      response.header("Allow", "PUT, GET, POST, DELETE, OPTIONS");
+      response.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
+      response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+      response.header("X-Frame-Options", "DENY");
+      // if (request.get("origin") && _.some(_.keys(root), subdomain => `${subdomain}.${configuration.domain}` === request.get("origin").replace(/^\w+:\/\//, ""))) {
+      //   response.header("Access-Control-Allow-Origin", request.get("origin"));
+      // }
+      next();
+    });
+    _.each(sortObject(subdomain.namespaces, "weight", "DESC"), (namespace: iApplicationNamespace, base) => {
+      namespace.router = express.Router();
+      if (namespace.static) { namespace.router.use(express.static(namespace.static)); }
+      _.each(_.orderBy(namespace.paths, "weight", "DESC"), (path: iApplicationPath, location) => {
+        _.each(_.reduce(path.methods, (r, v, k) => v ? _.set(r, k, v) : r, {}), (route: Route, method) => {
+          namespace.router[method].apply(namespace.router, _.concat<string | tApplicationMiddleware[]>(`/${location}`.replace(/\/{2,}/, "/"), route.middleware));
         });
       });
+      subdomain.router.use(`/${base}`.replace(/\/{2,}/, "/"), namespace.router);
     });
+    if (root !== env.subdomains.default) { configuration.application.use(vhost(`${root}.${configuration.domain}`, subdomain.router)); }
   });
-  
-  // let subdomain: express.Router, router: express.Router;
-  //
-  // if (__published) { return __published; }
-  //
-  // _.each(_.orderBy(_.uniqBy(_.map(Cache.store[Cache.types.RESOURCE][Route.type], "value"), v => _.join([v.subdomain, v.namespace, v.path, v.method])), ["weight"], ["desc"]), route => {
-  //   if (!(subdomain = __subdomains[route.subdomain])) {
-  //     subdomain = __subdomains[route.subdomain] = express.Router();
-  //     if (route.subdomain !== env.subdomains.default) { __application.use(vhost(route.subdomain + "." + __domain, subdomain)); }
-  //   }
-  //   if (!(router = _.get(__routers, [route.subdomain, route.namespace]))) {
-  //     _.set(__routers, [route.subdomain, route.namespace], router = express.Router());
-  //     const static_key = _.join(_.filter([route.subdomain, route.namespace]), "::");
-  //     if (__statics[static_key]) { router.use(express.static(__statics[static_key].resource_path)); }
-  //     if (__statics[route.subdomain] && !__statics[route.subdomain].namespace) { subdomain.use(express.static(__statics[route.subdomain].resource_path)); }
-  //     subdomain.use((request, response, next) => {
-  //       response.header("Allow", "PUT, GET, POST, DELETE, OPTIONS");
-  //       response.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
-  //       response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  //       response.header("X-Frame-Options", "DENY");
-  //       if (request.get("origin") && _.some(_.keys(__subdomains), subdomain => `${subdomain}.${__domain}` === request.get("origin").replace(/^\w+:\/\//, ""))) {
-  //         response.header("Access-Control-Allow-Origin", request.get("origin"));
-  //       }
-  //       next();
-  //     });
-  //     subdomain.use(router);
-  //   }
-  //   return router[_.toLower(route.method)].apply(router, _.concat(<any>route.url, route.middleware));
-  // });
-  // if (!__routers[env.subdomains.default]) { __subdomains[env.subdomains.default] = express.Router(); }
-  // _.each(__params, param => _.each(param.namespace ? [__routers[param.subdomain][param.namespace]] : __routers[param.subdomain], n => n.param(param.name, param.middleware)));
-  // __application.use("/", __subdomains[env.subdomains.default]);
-  // __application.all("*", (request, response) => response.status(404).json(Response.json(404, "any")));
-  // http.createServer(__application).listen(80);
-  // return __published = true;
-  
+  if (store[env.subdomains.default]) { configuration.application.use("/", store[env.subdomains.default].router); }
+  configuration.application.all("*", (request, response) => response.status(404).json(Response.json(404, "any", {}, Date.now())));
+  http.createServer(configuration.application).listen(80);
+  // console.log(configuration.application._router.stack);
   return Promise.resolve(configuration.published = true);
+}
+
+function sortObject(object: object, key: string, order: "ASC" | "DESC" | 1 | -1) {
+  const a = Object.keys(object).sort((a, b) => console.log(object[a][key], object[b][key]) || order === "DESC" || -1 ? object[a][key] - object[b][key] : object[b][key] - object[a][key]);
+  const b = _.reduce(a, (result, v) => _.set(result, v, object[v]), {});
+  console.log(a, b);
+  return b;
 }
 
 const exported: iApplicationService = _.assign(

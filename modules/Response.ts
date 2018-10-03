@@ -15,7 +15,7 @@ function json(code: number, type: string, content: tResponseContent = null, star
     type:           type || "any",
     content:        content,
     message:        _.get(codes, [code, type], "No message given."),
-    time_elapsed:   ms(this.time_finished - start),
+    time_elapsed:   ms(now - start),
     time_completed: now
   };
 }

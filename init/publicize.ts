@@ -61,6 +61,6 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
   );
 });
 
-publicize_pipe.add(ePromisePipeStagesInitPublicize.LISTEN, () => Application.publicize() ? Promise.resolve() : Promise.reject(Response.error(500, "publicize")));
+publicize_pipe.add(ePromisePipeStagesInitPublicize.LISTEN, () => Application.publicize());
 
 init_pipe.add(ePromisePipeStagesInit.PUBLICIZE, () => publicize_pipe.resolve());
