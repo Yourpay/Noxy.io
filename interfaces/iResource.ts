@@ -17,20 +17,20 @@ export interface iResourceFn {
 }
 
 export interface cResource {
-  new(initializer?: tResourceInitializer<any>): InstanceType<this>
+  new(initializer?: tResourceInitializer<any>): iResource
   
   table: iTable
   type: string
   
   select<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, start: number, limit: number): Promise<InstanceType<T>[]>
   
-  selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T>>
+  selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T> | InstanceType<T>[]>
   
   count(): Promise<number>
   
   get(start?: number, limit?: number): Promise<Partial<iResource>[]>
   
-  getByID(id?: string | Buffer): Promise<Partial<iResource>>
+  getByID(id?: string | Buffer): Promise<Partial<iResource> | Partial<iResource>[]>
   
   post(resource: any): Promise<Partial<iResource>>
   
@@ -72,7 +72,7 @@ export interface iTable {
   save: <T extends iResource>(resource: T, options?: iResourceActionOptions) => Promise<T>
   remove: <T extends iResource>(resource: T, options?: iResourceActionOptions) => Promise<T>
   select: (start?: number, limit?: number) => Promise<tResourceObject[]>
-  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<tResourceObject>
+  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<tResourceObject |tResourceObject[]>
   count: () => Promise<number>
   toSQL: () => string
 }

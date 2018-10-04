@@ -6,13 +6,12 @@ import * as _ from "lodash";
 import * as vhost from "vhost";
 import {env} from "../globals";
 import {eApplicationMethods, iApplicationConfiguration, iApplicationNamespace, iApplicationPath, iApplicationService, iApplicationStore, iApplicationSubdomain, tApplicationMiddleware} from "../interfaces/iApplication";
-import {eResourceType} from "../interfaces/iResource";
 import * as Response from "../modules/Response";
+import Role from "../resources/Role";
 import RoleRoute from "../resources/RoleRoute";
 import RoleUser from "../resources/RoleUser";
 import Route from "../resources/Route";
 import User from "../resources/User";
-import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Resource from "./Resource";
 
@@ -89,13 +88,14 @@ function getWeight(path: string): number {
   return path === "/" ? -1 : _.reduce(path.split("/"), (result, s, i) => result += (i > 0 ? 10000 : 0) + (s.match(/^:.*$/) ? 0 : s.length), 0);
 }
 
-function addParam(param: string, subdomain: string, middlewares: tApplicationMiddleware | tApplicationMiddleware[]): boolean;
-function addParam(param: string, subdomain: string, namespace: string, middlewares: tApplicationMiddleware | tApplicationMiddleware[]): boolean;
-function addParam(param: string, subdomain: string, namespace: string | tApplicationMiddleware | tApplicationMiddleware[], middlewares?: tApplicationMiddleware | tApplicationMiddleware[]): boolean {
-  return !!(middlewares ? addNamespace(parseSubdomain(subdomain), parsePath(<string>namespace)).params[param] = _.concat(middlewares) : addSubdomain(parseSubdomain(subdomain)).params[param] = _.concat(middlewares));
+function addParam(param: string, subdomain: string, namespace: string | tApplicationMiddleware, middlewares?: tApplicationMiddleware): boolean {
+  if (!_.isString(param) || param.length < 1 || param.replace(/^[^a-z]*$/i, "") !== param || (_.isString(namespace) && !middlewares)) { return false; }
+  if (_.isString(namespace) && !middlewares) { return !!(addNamespace(parseSubdomain(subdomain), parsePath(namespace)).params[param] = middlewares); }
+  return !!(addSubdomain(parseSubdomain(subdomain)).params[param] = <tApplicationMiddleware>namespace);
 }
 
 function addStatic(public_directory_path: string, subdomain: string, namespace?: string) {
+  if (!_.isString(public_directory_path) || public_directory_path.length < 1) { return false; }
   return !!(namespace ? addNamespace(parseSubdomain(subdomain), parsePath(namespace)).static = public_directory_path : addSubdomain(parseSubdomain(subdomain)).static = public_directory_path);
 }
 
@@ -110,83 +110,13 @@ function updateRoute(subdomain: string, namespace: string, path: string, method:
   return Promise.resolve(store[subdomain].namespaces[namespace].paths[path][method]);
 }
 
-function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
-  const [namespace, path] = _.map((request.baseUrl + request.route.path).split("/"), v => v === "" ? "/" : "");
-  const subdomain = request.vhost ? request.vhost.host.replace(configuration.domain, "").replace(/[.]*$/, "") : env.subdomains.default;
-  const key = Cache.keyFromSet([subdomain, path, request.method]);
-
-  console.log(store[subdomain].namespaces[namespace].paths[path].methods[_.toLower(request.method)]);
-  
-  
-  response.locals.time = Date.now();
-  Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, key)
-  .then(route => {
-    if (route && route.exists) {
-      if (!route.flag_active) {
-        return new Promise(resolve => resolve(jwt.verify(request.get("Authorization"), env.tokens.jwt)))
-        .then(user =>
-          new User(user).validate()
-          .then(user => {
-            if (!user.exists) { return Promise.reject(Response.json(404, "any")); }
-            Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [eResourceType.ROLE_USER, user.id])
-            .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(Response.json(404, "any")) : Promise.reject(Response.json(err.code, err.type)))
-            .then(user_roles => {
-              if (_.some(user_roles, role => Resource.uuidFromBuffer(<Buffer>role.role_id) === env.roles.admin.id)) {
-                response.locals.user = user;
-                response.locals.roles = user_roles;
-                return next();
-              }
-              throw Response.json(404, "any");
-            });
-          })
-        )
-        .catch(() => Promise.reject(Response.json(404, "any")));
-      }
-      return Database(env.mode).query<RoleRoute[]>("SELECT * FROM ?? WHERE `route_id` = ?", [eResourceType.ROLE_ROUTE, route.id])
-      .then(route_roles =>
-        !route_roles.length ? next() : new Promise(resolve => resolve(jwt.verify(request.get("Authorization"), env.tokens.jwt)))
-        .then(user =>
-          new User(user).validate()
-          .then(user => {
-            if (!user.exists) { Promise.reject(Response.error(401, "jwt", {token: request.get("Authorization")})); }
-            Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [eResourceType.ROLE_USER, user.id])
-            .catch(err => err.code === 404 && err.type === "query" ? Promise.reject(Response.json(403, "any")) : Promise.reject(Response.json(err.code, err.type)))
-            .then(user_roles => {
-              if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) {
-                response.locals.user = user;
-                response.locals.roles = user_roles;
-                return next();
-              }
-              throw Response.json(403, "any");
-            });
-          })
-        )
-        .catch(err => Promise.reject(Response.json(401, "jwt", err)))
-      )
-      .catch(err => err.code === 404 && err.type === "query" ? Promise.resolve(next()) : Promise.reject(Response.error(err.code, err.type, err)));
-    }
-    return Promise.reject(Response.json(404, "any"));
-  })
-  .catch(err => {
-    if (err instanceof Response.json) { return response.status(err.code).json(err); }
-    if (err.name === "JsonWebTokenError") { return response.status(401).json(Response.json(401, "jwt")); }
-    return response.status(err.code || 500).json(Response.json(err.code || 500, err.type || "any", err));
-  });
-}
-
-function notFound(request: express.Request, response: express.Response) {
-  console.log("Test");
-  response.json(Response.json(404, "any"));
-}
-
 function publicize() {
   if (configuration.published) { return Promise.reject(Response.error(409, "application")); }
   _.each(sortObject(store, "weight", "desc"), (subdomain: iApplicationSubdomain, root) => {
     subdomain.router = express();
-    if (root !== env.subdomains.default) {
-      configuration.application.use(vhost(`${root}.${configuration.domain}`, subdomain.router));
-    }
+    if (root !== env.subdomains.default) { configuration.application.use(vhost(`${root}.${configuration.domain}`, subdomain.router)); }
     if (subdomain.static) { subdomain.router.use(express.static(subdomain.static)); }
+    if (_.size(subdomain.params) > 0) { _.each(subdomain.params, (middleware, param) => subdomain.router.param(param, middleware)); }
     subdomain.router.use((request, response, next) => {
       response.header("Allow", "PUT, GET, POST, DELETE, OPTIONS");
       response.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
@@ -201,6 +131,8 @@ function publicize() {
       namespace.router = express();
       subdomain.router.use(`/${base}`.replace(/\/{2,}/, "/"), namespace.router);
       if (namespace.static) { namespace.router.use(express.static(namespace.static)); }
+      if (_.size(subdomain.params) > 0) { _.each(subdomain.params, (middleware, param) => namespace.router.param(param, middleware)); }
+      if (_.size(namespace.params) > 0) { _.each(namespace.params, (middleware, param) => namespace.router.param(param, middleware)); }
       _.each(sortObject(namespace.paths, "weight", "desc"), (path: iApplicationPath, location) => {
         _.each(_.reduce(path.methods, (r, v, k) => v ? _.set(r, k, v) : r, {}), (route: Route, method) => {
           namespace.router[method].apply(namespace.router, _.concat<string | tApplicationMiddleware[]>(`/${location}`.replace(/\/{2,}/, "/"), route.middleware));
@@ -210,20 +142,81 @@ function publicize() {
   });
   if (store[env.subdomains.default]) { configuration.application.use("/", store[env.subdomains.default].router); }
   configuration.application.use(vhost(`test.${configuration.domain}`, (request, response) => { response.send("test"); }));
-  configuration.application.all("*", (request, response) => {
-    console.log(request.vhost);
-    const path = (request.baseUrl + request.route.path).replace(/\/$/, "");
-    const subdomain = request.vhost ? request.vhost.host.replace(configuration.domain, "").replace(/[.]*$/, "") : env.subdomains.default;
-    const key = Cache.keyFromSet([subdomain, path, request.method]);
-    response.status(404).json(Response.json(404, "any", {}, Date.now()));
-  });
+  configuration.application.all("*", (request, response) => response.status(404).json(Response.json(404, "any", {}, Date.now())));
   http.createServer(configuration.application).listen(80);
-  // console.log(configuration.application._router.stack);
   return Promise.resolve(configuration.published = true);
 }
 
 function sortObject(object: object, key: string, sort: "asc" | "desc" | 1 | -1): object {
   return _.reduce(_.keys(object).sort((a, b) => object[a][key] === object[b][key] ? 0 : ((object[a][key] < object[b][key] ? -1 : 1) * ((sort === "asc" || sort > 0) ? 1 : -1))), (r, v) => _.set(r, v, object[v]), {});
+}
+
+function isAdmin(roles: RoleUser[]): boolean {
+  return roles && _.some(roles, role => {
+    if (_.isString(role.role_id)) { return role.role_id === env.roles.admin.id; }
+    if (role.role_id instanceof Role) { return role.role_id.uuid === env.roles.admin.id; }
+    if (role.role_id instanceof Buffer) { return Resource.uuidFromBuffer(role.role_id) === env.roles.admin.id; }
+    return false;
+  });
+}
+
+function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
+  return new Promise((resolve, reject) => {
+    const subdomain = request.vhost ? request.vhost.host.substring(0, request.vhost.host.length - configuration.domain.length - 1) : env.subdomains.default;
+    const namespace = request.baseUrl.replace(/^\/*/, "");
+    const path = request.route.path.replace(/^\/*/, "");
+    const method = _.toLower(request.method);
+    
+    response.locals.time = Date.now();
+    
+    if (response.locals.route = _.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) {
+      if (response.locals.route.flag_active) {
+        return Promise.promisify(jwt.verify)(request.get("Authorization"), env.tokens.jwt)
+        .then(jwt_user => new User(jwt_user).validate())
+        .then(user => {
+          if (!user.exists) { return reject(Response.error(404, "any")); }
+          Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [RoleUser.type, user.id])
+          .then(user_roles => {
+            if (isAdmin(user_roles)) {
+              response.locals.user = user;
+              response.locals.roles = user_roles;
+              return resolve();
+            }
+            return reject(Response.error(404, "any"));
+          });
+        })
+        .catch(err => reject(Response.error(404, "any", err)));
+      }
+      return Database(env.mode).query<RoleRoute[]>("SELECT * FROM ?? WHERE `route_id` = ?", [RoleRoute.type, response.locals.route.id])
+      .then(route_roles => {
+        if (!route_roles.length) { return next(); }
+        Promise.promisify(jwt.verify)(request.get("Authorization"), env.tokens.jwt)
+        .then(user => new User(user).validate())
+        .then(user => {
+          if (!user.exists) { reject(Response.error(401, "jwt", {token: request.get("Authorization")})); }
+          Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [RoleUser.type, user.id])
+          .then(user_roles => {
+            if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) {
+              response.locals.user = user;
+              response.locals.roles = user_roles;
+              return resolve();
+            }
+            return reject(Response.error(403, "any"));
+          })
+          .catch(err => reject(err.code === 404 ? Response.error(403, "any", err) : Response.error(err.code, err.type, err)));
+        })
+        .catch(() => reject(Response.error(401, "jwt", {token: request.get("Authorization")})));
+      })
+      .catch(err => err.code === 404 ? resolve() : reject(Response.error(err.code, err.type, err)));
+    }
+    return reject(Response.error(404, "any"));
+  })
+  .then(() => next())
+  .catch(err => response.status(err.code).json(isAdmin(response.locals.roles) ? err : _.omit(err, ["name", "stack"])));
+}
+
+function notFound(request: express.Request, response: express.Response) {
+  response.json(Response.json(404, "any"));
 }
 
 const exported: iApplicationService = _.assign(
@@ -234,6 +227,7 @@ const exported: iApplicationService = _.assign(
     get methods() { return configuration.methods; },
     get published() { return configuration.published; },
     get application() { return configuration.application; },
+    isAdmin:      isAdmin,
     addSubdomain: addSubdomain,
     addNamespace: addNamespace,
     addPath:      addPath,

@@ -1,5 +1,6 @@
 import * as Promise from "bluebird";
 import * as express from "express";
+import RoleUser from "../resources/RoleUser";
 import Route from "../resources/Route";
 
 export interface iApplicationService {
@@ -9,6 +10,8 @@ export interface iApplicationService {
   readonly published: boolean
   readonly application: express.Application
   
+  isAdmin(roles: RoleUser[]): boolean
+  
   addSubdomain(subdomain: string): iApplicationSubdomain
   
   addNamespace(subdomain: string, namespace: string): iApplicationNamespace
@@ -17,7 +20,7 @@ export interface iApplicationService {
   
   addStatic(public_directory_path: string, subdomain: string, namespace?: string): boolean;
   
-  addParam(param: string, subdomain: string, mw: tApplicationMiddleware | tApplicationMiddleware[]): boolean
+  addParam(param: string, subdomain: string, mw: tApplicationMiddleware): boolean
   
   addParam(param: string, subdomain: string, namespace: string, mw: tApplicationMiddleware | tApplicationMiddleware[]): boolean
   
@@ -39,7 +42,7 @@ export interface iApplicationStore {
 export interface iApplicationSubdomain {
   weight: number
   static: string
-  params: {[param: string]: tApplicationMiddleware[]}
+  params: {[param: string]: tApplicationMiddleware}
   router: express.Router
   namespaces: {[namespace: string]: iApplicationNamespace}
 }
@@ -47,7 +50,7 @@ export interface iApplicationSubdomain {
 export interface iApplicationNamespace {
   weight: number
   static: string
-  params: {[param: string]: tApplicationMiddleware[]}
+  params: {[param: string]: tApplicationMiddleware}
   router: express.Router
   paths: {[path: string]: iApplicationPath}
 }
@@ -72,5 +75,5 @@ export enum eApplicationMethods {
   PATCH  = "patch",
 }
 
-export type tApplicationMiddleware = (request: express.Request, response: express.Response, next?: express.NextFunction, id?: express.NextFunction) => void
+export type tApplicationMiddleware = (request: express.Request, response: express.Response, next?: express.NextFunction, value?: string, name?: string) => void
 export type tApplicationRouteSet<T> = {[namespace: string]: {[path: string]: { [key in eApplicationMethods]?: T }}}

@@ -8,27 +8,30 @@ function Default(code: number, type: string, content: tResponseContent | iRespon
   return content instanceof Error && !start ? error(code, type, content) : json(code, type, content, start);
 }
 
-function json(code: number, type: string, content: tResponseContent = null, start: number = Date.now()): iResponseJSONObject {
+function json(code: number, type: string, content?: tResponseContent, start?: number): iResponseJSONObject {
   const now = Date.now();
-  return {
+  const object: iResponseJSONObject = {
     code:           _.isNumber(code) && !_.isNaN(code) ? code : 500,
     type:           type || "any",
-    content:        content,
-    message:        _.get(codes, [code, type], "No message given."),
-    time_elapsed:   ms(now - start),
+    message:        _.get(codes, [code || 500, type || "any"], "No message given."),
     time_completed: now
   };
+  if (start) { object.time_elapsed = ms(now - start); }
+  if (!_.isUndefined(content)) { object.content = content; }
+  return object;
 }
 
 function error(code: number, type: string, content: tResponseContent | Error): iResponseErrorObject {
+  // console.log(code, type, content, _.get(codes, [code, type], "No message given."));
   const error_object = content instanceof Error ? content : Error.prototype.constructor();
-  return _.assign(error_object, {
+  const object = _.assign(_.omit(error_object, ["stack"]), {
     code:    (<tResponseContent>error_object).code || _.isNumber(code) && !_.isNaN(code) ? code : 500,
     type:    (<tResponseContent>error_object).type || _.isString(type) && _.trim(type).length > 0 ? type : "any",
-    content: content !== error_object ? content : null,
-    message: _.get(codes, [code, type], "No message given."),
-    stack:   _.isString(error_object.stack) ? parseErrorStack(error_object.stack) : error_object.stack
+    message: error_object.message || _.get(codes, [code || 500, type || "any"], "No message given."),
+    log:   _.isString(error_object.stack) ? parseErrorStack(error_object.stack) : error_object.stack
   });
+  if (content !== error_object && !_.isUndefined(content)) { object.content = content; }
+  return object;
 }
 
 function parseErrorStack(stack): string[] {

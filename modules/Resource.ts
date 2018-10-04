@@ -114,15 +114,15 @@ const Resource: cResource = class Resource implements iResource {
     );
   }
   
-  public static select<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, start: number = 0, limit: number = 100): Promise<InstanceType<T>[]> {
+  public static select<T extends cResource>(this: T & {new(init: tResourceObject): iResource}, start: number = 0, limit: number = 100): Promise<InstanceType<T>[]> {
     return this.table.select(start, limit)
-    .map(resource => new this(resource))
+    .map(resource => <any>(new this(resource)))
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
-  public static selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T>> {
+  public static selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T> | InstanceType<T>[]> {
     return this.table.selectByID(id)
-    .then(resource => new this(resource))
+    .then(resource => _.isArray(resource) ? Promise.map(resource, r => <any>(new this(r))) : Promise.resolve(<any>(new this(resource))))
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
@@ -135,8 +135,13 @@ const Resource: cResource = class Resource implements iResource {
     return this.select(start, limit).map(res => res.toObject());
   }
   
-  public static getByID(id: string | Buffer): Promise<Partial<iResource>> {
-    return this.selectByID(id).then(res => res.toObject());
+  public static getByID(id: string | Buffer): Promise<Partial<iResource> | Partial<iResource>[]> {
+    return this.selectByID(id)
+    .then(res => {
+      
+      return Promise.reduce(_.concat(res), (result, value) => { return value.toObject().then(v => _.concat(result, v)); }, [])
+      .then(res => this.table.indexes.primary.length === 1 ? res[0] : res);
+    });
   }
   
   public static post(resource: any): Promise<Partial<iResource>> {
@@ -206,10 +211,7 @@ const Table: cTable = class Table implements iTable {
     
     return Cache.getAny<T>(Cache.types.RESOURCE, this.resource.type, cache_keys)
     .catch(err => {
-      if (err.code !== 404) {
-        console.log("ERROR FROM VALIDATE", err);
-        return Promise.reject(Response.error(err.code, err.type, err));
-      }
+      if (err.code !== 404) { return Promise.reject(Response.error(err.code, err.type, err)); }
       const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
       if (!where.length) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
       return Cache.set<T>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
@@ -254,11 +256,12 @@ const Table: cTable = class Table implements iTable {
     }, {timeout: 0, collision_fallback: true});
   }
   
-  public selectByID(id: string | Buffer | {[key: string]: Buffer | string}): Promise<tResourceObject> {
-    const keys = typeof id === "string" || id instanceof Buffer ? {id: id instanceof Buffer ? id : bufferFromUUID(id)} : id;
-    return Cache.setOne<tResourceObject>(Cache.types.QUERY, this.resource.type, Cache.keyFromSet(_.values(id)), () => {
-      const where = _.join(_.map(keys, (v, k) => Database.parse("?? = ?", [k, v])), " AND ");
-      return Database(this.options.resource.database).query<tResourceObject>(`SELECT * FROM ?? WHERE ${where}`);
+  public selectByID(id: string | Buffer): Promise<tResourceObject[]> {
+    const value = _.isString(id) ? bufferFromUUID(id) : id;
+    const key = _.isString(id) ? id : uuidFromBuffer(id);
+    return Cache.setOne<tResourceObject[]>(Cache.types.QUERY, this.resource.type, key, () => {
+      const where = _.join(_.map(this.indexes.primary, k => Database.parse("?? = ?", [k, value])), " OR ");
+      return Database(this.options.resource.database).query<tResourceObject[]>(`SELECT * FROM ?? WHERE ${where}`, this.resource.type);
     }, {timeout: 0, collision_fallback: true});
   }
   

@@ -14,8 +14,8 @@ export interface iResponseJSONObject {
   code: number
   type: string
   message: string
-  content: any
-  time_elapsed: string
+  content?: any
+  time_elapsed?: string
   time_completed: number
 }
 
