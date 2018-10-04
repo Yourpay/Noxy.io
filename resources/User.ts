@@ -81,21 +81,4 @@ export default class User extends Resource.Constructor {
   
 }
 
-// publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
-//   Application.addRoute(env.subdomains.api, User.type, "/login", Application.methods.POST, (request, response) =>
-//     User.login(request.body, request.get("Authorization"))
-//     .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
-//     .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
-//     .then(user => Response.json(200, "any", {jwt: jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})}))
-//     .catch(err => err instanceof Response.json ? err : Response.json(500, "any", err))
-//     .then(res => response.status(res.code).json(res))
-//   )
-// );
-//
-// publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
-//   Promise.all([
-//     // Cache.getOne<Route>(Cache.types.RESOURCE, Route.type, Cache.keyFromSet([env.subdomains.api, "/user/login", "POST"])).then(route => Application.updateRoute(_.set(route, "flag_active", 1)))
-//   ])
-// );
-
 Resource<eResourceType>(eResourceType.USER, User, definition, options);

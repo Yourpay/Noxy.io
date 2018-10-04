@@ -105,9 +105,14 @@ function addRoute(subdomain: string, namespace: string, path: string, method: eA
   .tap(res => addPath(subdomain, namespace, path).methods[method] = res);
 }
 
-function updateRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, middlewares: tApplicationMiddleware | tApplicationMiddleware[]): Promise<Route> {
-  if (!store[subdomain].namespaces[namespace].paths[path][method]) { return Promise.reject(Response.error(404, "application")); }
+function getRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods): Promise<Route> {
+  if (!_.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) { return Promise.reject(Response.error(404, "application")); }
   return Promise.resolve(store[subdomain].namespaces[namespace].paths[path][method]);
+}
+
+function updateRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, route: Route): Promise<Route> {
+  if (!_.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) { return Promise.reject(Response.error(404, "application")); }
+  return Promise.resolve(store[subdomain].namespaces[namespace].paths[path][method] = route);
 }
 
 function publicize() {
@@ -234,6 +239,7 @@ const exported: iApplicationService = _.assign(
     addParam:     addParam,
     addStatic:    addStatic,
     addRoute:     addRoute,
+    getRoute:     getRoute,
     updateRoute:  updateRoute,
     publicize:    publicize
   }
