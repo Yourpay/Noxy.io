@@ -12,8 +12,6 @@ class Test extends Resource.Constructor {
   
 }
 
-new Test({test: "", swag: ""});
-
 Resource<eResourceType>(eResourceType.ROLE_USER, Test, {}, {});
 
 interface cResource {

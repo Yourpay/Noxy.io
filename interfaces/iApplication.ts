@@ -20,9 +20,7 @@ export interface iApplicationService {
   
   addStatic(public_directory_path: string, subdomain: string, namespace?: string): boolean;
   
-  addParam(param: string, subdomain: string, mw: tApplicationMiddleware): boolean
-  
-  addParam(param: string, subdomain: string, namespace: string, mw: tApplicationMiddleware | tApplicationMiddleware[]): boolean
+  addParam(param: string, subdomain: string, namespace: string | tApplicationMiddleware, mw?: tApplicationMiddleware): boolean
   
   addRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, mw: tApplicationMiddleware | tApplicationMiddleware[]): Promise<Route>
   

@@ -100,7 +100,13 @@ function addStatic(public_directory_path: string, subdomain: string, namespace?:
 }
 
 function addRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, middlewares: tApplicationMiddleware | tApplicationMiddleware[]): Promise<Route> {
-  return new Route({subdomain: subdomain = parseSubdomain(subdomain), namespace: namespace = parsePath(namespace), path: path = parsePath(path), method: method, middleware: _.concat(auth, middlewares, notFound)})
+  return new Route({
+    subdomain:  subdomain = parseSubdomain(subdomain),
+    namespace:  namespace = parsePath(namespace),
+    path:       path = parsePath(path),
+    method:     method,
+    middleware: _.concat(auth, middlewares, notFound)
+  })
   .save({update_protected: true, collision_fallback: true})
   .tap(res => addPath(subdomain, namespace, path).methods[method] = res);
 }
