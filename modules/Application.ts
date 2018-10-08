@@ -178,7 +178,7 @@ function sortObject(object: object, key: string, sort: "asc" | "desc" | 1 | -1):
 }
 
 function isAdmin(roles: RoleUser[]): boolean {
-  return roles && _.some(roles, role => {
+  return roles && _.size(roles) && _.some(roles, role => {
     if (_.isString(role.role_id)) { return role.role_id === env.roles.admin.id; }
     if (role.role_id instanceof Role) { return role.role_id.uuid === env.roles.admin.id; }
     if (role.role_id instanceof Buffer) { return Resource.uuidFromBuffer(role.role_id) === env.roles.admin.id; }
