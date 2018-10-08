@@ -8,6 +8,7 @@ export interface iResourceService extends iResourceFn {
   
   list: {[key: string]: cResource}
   
+  toKey: (string: string) => string
   uuidFromBuffer: (buffer: Buffer) => string
   bufferFromUUID: (uuid: string) => Buffer
 }

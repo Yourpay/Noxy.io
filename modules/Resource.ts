@@ -398,12 +398,17 @@ function uuidFromBuffer(buffer: Buffer): string {
   return hex.slice(0, 8) + "-" + hex.slice(8, 12) + "-" + hex.slice(12, 16) + "-" + hex.slice(16, 20) + "-" + hex.slice(20);
 }
 
+function toKey(string: string): string {
+  return _.snakeCase(_.deburr(string));
+}
+
 const exported: iResourceService = _.assign(
   Service,
   {
     Constructor:    Resource,
     Table:          Table,
     list:           {},
+    toKey:          toKey,
     isUUID:         isUUID,
     bufferFromUUID: bufferFromUUID,
     uuidFromBuffer: uuidFromBuffer

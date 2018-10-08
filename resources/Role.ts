@@ -15,7 +15,7 @@ const options = {};
 
 export default class Role extends Resource.Constructor {
   
-  public name?: string;
+  public name: string;
   public key: string;
   public user_created: User | Buffer | string;
   public time_created: number;
@@ -24,14 +24,8 @@ export default class Role extends Resource.Constructor {
   constructor(initializer: tNonFnPropsOptional<Role> = {}) {
     super(initializer);
     this.time_created = initializer.time_created ? initializer.time_created : Date.now();
-    if (initializer.user_created) {
-      if (typeof initializer.user_created === "string") { this.user_created = Resource.bufferFromUUID(initializer.user_created); }
-      else if (initializer.user_created instanceof Buffer) { this.user_created = initializer.user_created; }
-      else { this.user_created = initializer.user_created.id; }
-    }
-    else {
-      this.user_created = Resource.bufferFromUUID(env.users.server.id);
-    }
+    if (!initializer.key) { this.key = Resource.toKey(initializer.name); }
+    if (!initializer.user_created) { this.user_created = Resource.bufferFromUUID(env.users.server.id); }
   }
   
 }
