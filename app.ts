@@ -10,8 +10,11 @@ Include("./init")
 .catch(err => {
   console.log("Server could not start due to the following error:");
   console.log("--------------------------------------------------");
-  console.log(err.code, err.type, err.message);
-  console.log(err.stack);
+  console.log("Error code:", err.code);
+  console.log("Error type:", err.type);
+  console.log("Error message:", err.message);
+  console.log("Error content:", err.content);
+  console.log(err.log);
   process.exitCode = 1;
 });
 

@@ -61,7 +61,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
     const [stage, remaining] = [_.head(promises), _.tail(promises)];
     return Promise.map(_.values(stage), fn => fn())
     .then(res => remaining.length > 0 ? PromisePipe.resolve(pipe, remaining) : Promise.resolve(res))
-    .catch(err => Promise.reject(Response.error(500, "promise-pipe", err)));
+    .catch(err => Promise.reject(err.code && err.type ? err : Response.error(err.code, err.type || "promise-pipe", err)));
   }
   
 };

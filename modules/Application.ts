@@ -112,13 +112,18 @@ function addRoute(subdomain: string, namespace: string, path: string, method: eA
 }
 
 function getRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods): Promise<Route> {
-  if (!_.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) { return Promise.reject(Response.error(404, "application")); }
-  return Promise.resolve(store[subdomain].namespaces[namespace].paths[path][method]);
+  if (!_.get(store, [subdomain = parseSubdomain(subdomain), "namespaces", namespace = parsePath(namespace), "paths", path = parsePath(path), "methods", method])) {
+    return Promise.reject(Response.error(404, "application", {subdomain: subdomain, namespace: namespace, path: path, method: method}));
+  }
+  return Promise.resolve(store[subdomain].namespaces[namespace].paths[path].methods[method]);
 }
 
 function updateRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, route: Route): Promise<Route> {
-  if (!_.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) { return Promise.reject(Response.error(404, "application")); }
-  return Promise.resolve(store[subdomain].namespaces[namespace].paths[path][method] = route);
+  if (!_.get(store, [subdomain = parseSubdomain(subdomain), "namespaces", namespace = parsePath(namespace), "paths", path = parsePath(path), "methods", method])) {
+    return Promise.reject(Response.error(404, "application", {subdomain: subdomain, namespace: namespace, path: path, method: method}));
+  }
+  if (!(route instanceof Route)) { return Promise.reject(Response.error(400, "application")); }
+  return Promise.resolve(store[subdomain].namespaces[namespace].paths[path].methods[method] = route);
 }
 
 function publicize() {
@@ -133,9 +138,9 @@ function publicize() {
       response.header("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
       response.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
       response.header("X-Frame-Options", "DENY");
-      // if (request.get("origin") && _.some(_.keys(root), subdomain => `${subdomain}.${configuration.domain}` === request.get("origin").replace(/^\w+:\/\//, ""))) {
-      //   response.header("Access-Control-Allow-Origin", request.get("origin"));
-      // }
+      if (request.get("origin") && _.some(_.keys(store), root => `${root}.${configuration.domain}` === request.get("origin").replace(/^\w+:\/\//, ""))) {
+        response.header("Access-Control-Allow-Origin", request.get("origin"));
+      }
       next();
     });
     _.each(sortObject(subdomain.namespaces, "weight", "desc"), (namespace: iApplicationNamespace, base) => {
@@ -181,7 +186,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
     response.locals.time = Date.now();
     
     if (response.locals.route = _.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) {
-      if (response.locals.route.flag_active) {
+      if (!response.locals.route.flag_active) {
         return Promise.promisify(jwt.verify)(request.get("Authorization"), env.tokens.jwt)
         .then(jwt_user => new User(jwt_user).validate())
         .then(user => {
@@ -196,7 +201,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
             return reject(Response.error(404, "any"));
           });
         })
-        .catch(err => reject(Response.error(404, "any", err)));
+        .catch(() => reject(Response.error(404, "any")));
       }
       return Database(env.mode).query<RoleRoute[]>("SELECT * FROM ?? WHERE `route_id` = ?", [RoleRoute.type, response.locals.route.id])
       .then(route_roles => {
@@ -223,7 +228,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
     return reject(Response.error(404, "any"));
   })
   .then(() => next())
-  .catch(err => response.status(err.code).json(isAdmin(response.locals.roles) ? err : _.omit(err, ["name", "stack"])));
+  .catch(err => response.status(err.code).json(isAdmin(response.locals.roles) ? err : _.omit(err, ["name", "log"])));
 }
 
 function notFound(request: express.Request, response: express.Response) {

@@ -72,7 +72,7 @@ export interface iTable {
   save: <T extends iResource>(resource: T, options?: iResourceActionOptions) => Promise<T>
   remove: <T extends iResource>(resource: T, options?: iResourceActionOptions) => Promise<T>
   select: (start?: number, limit?: number) => Promise<tResourceObject[]>
-  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<tResourceObject |tResourceObject[]>
+  selectByID: (id: string | Buffer | {[key: string]: string | Buffer}) => Promise<tResourceObject | tResourceObject[]>
   count: () => Promise<number>
   toSQL: () => string
 }

@@ -1,4 +1,4 @@
-export default class Test{
+export default class Test {
   
   private static auto_increment = 0;
   

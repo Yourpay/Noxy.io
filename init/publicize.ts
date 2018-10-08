@@ -20,7 +20,7 @@ export enum ePromisePipeStagesInitPublicize {
 export const publicize_pipe = PromisePipe(ePromisePipeStagesInitPublicize);
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
-  Application.addRoute(env.subdomains.api, User.type, "/login", Application.methods.POST, (request, response) =>
+  Application.addRoute(env.subdomains.api, User.type, "login", Application.methods.POST, (request, response) =>
     User.login(request.body, request.get("Authorization"))
     .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
     .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
@@ -32,7 +32,7 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
   Promise.all([
-    Application.getRoute(env.subdomains.api, User.type, "/login", Application.methods.POST).then(r => Application.updateRoute(r.subdomain, r.namespace, r.path, r.method, _.set(r, "flag_active", 1)))
+    Application.getRoute(env.subdomains.api, User.type, "login", Application.methods.POST).then(r => Application.updateRoute(r.subdomain, r.namespace, r.path, r.method, _.set(r, "flag_active", 1)))
   ])
 );
 

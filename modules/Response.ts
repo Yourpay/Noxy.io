@@ -24,11 +24,12 @@ function json(code: number, type: string, content?: tResponseContent, start?: nu
 function error(code: number, type: string, content: tResponseContent | Error): iResponseErrorObject {
   // console.log(code, type, content, _.get(codes, [code, type], "No message given."));
   const error_object = content instanceof Error ? content : Error.prototype.constructor();
+  const stack = error_object.log || error_object.stack;
   const object = _.assign(_.omit(error_object, ["stack"]), {
     code:    (<tResponseContent>error_object).code || _.isNumber(code) && !_.isNaN(code) ? code : 500,
     type:    (<tResponseContent>error_object).type || _.isString(type) && _.trim(type).length > 0 ? type : "any",
     message: error_object.message || _.get(codes, [code || 500, type || "any"], "No message given."),
-    log:   _.isString(error_object.stack) ? parseErrorStack(error_object.stack) : error_object.stack
+    log:     _.isString(stack) ? parseErrorStack(stack) : stack
   });
   if (content !== error_object && !_.isUndefined(content)) { object.content = content; }
   return object;

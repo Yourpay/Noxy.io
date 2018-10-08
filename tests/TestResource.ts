@@ -45,7 +45,7 @@ const Class: cResource = class Parent {
     return new this();
   }
   
-}
+};
 
 class Child extends Class {
   
@@ -69,4 +69,4 @@ class Child extends Class {
 
 Class.select().id;
 Child.select();
-Child.select().swag
+Child.select().swag;

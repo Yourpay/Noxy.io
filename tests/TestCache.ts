@@ -9,98 +9,98 @@ const tests = _.shuffle([
     .then(res => print(true, 0, res))
     .catch(err => print(false, 0, err))
   },
-
+  
   {
     key: 1,
     fn:  () => Cache.set(Cache.types.QUERY, "test", [0, 1], () => new Promise(resolve => setTimeout(() => resolve({test: 1}), 300)))
     .then(res => print(true, 1, res))
     .catch(err => print(false, 1, err))
   },
-
+  
   {
     key: 2,
     fn:  () => Cache.setOne(Cache.types.QUERY, "test", 1, () => new Promise(resolve => setTimeout(() => resolve({test: 2}), 300)))
     .then(res => print(true, 2, res))
     .catch(err => print(false, 2, err))
   },
-
+  
   // {
   //   key: 3,
   //   fn:  () => Cache.try(Cache.types.QUERY, "test", [0], () => new Promise(resolve => setTimeout(() => resolve({test: 3}), 300)))
   //   .then(res => print(true, 3, res))
   //   .catch(err => print(false, 3, err))
   // },
-
+  
   // {
   //   key: 4,
   //   fn:  () => Cache.try(Cache.types.QUERY, "test", [1], () => new Promise(resolve => setTimeout(() => resolve({test: 4}), 300)))
   //   .then(res => print(true, 4, res))
   //   .catch(err => print(false, 4, err))
   // },
-
+  
   // {
   //   key: 5,
   //   fn:  () => Cache.try(Cache.types.QUERY, "test", [[0], [1]], () => new Promise(resolve => setTimeout(() => resolve({test: 5}), 300)))
   //   .then(res => print(true, 5, res))
   //   .catch(err => print(false, 5, err))
   // },
-
+  
   // {
   //   key: 6,
   //   fn:  () => Cache.try(Cache.types.QUERY, "test", [2], () => new Promise(resolve => setTimeout(() => resolve({test: 6}), 300)))
   //   .then(res => print(true, 6, res))
   //   .catch(err => print(false, 6, err))
   // },
-
+  
   {
     key: 7,
     fn:  () => Cache.set(Cache.types.QUERY, "test", [3, 3], () => new Promise(resolve => setTimeout(() => resolve({test: 7}), 300)))
     .then(res => print(true, 7, res))
     .catch(err => print(false, 7, err))
   },
-
+  
   {
     key: 8,
     fn:  () => Cache.set(Cache.types.QUERY, "test", [4, 5], () => new Promise(resolve => setTimeout(() => resolve({test: 8}), 300)))
     .then(res => print(true, 8, res))
     .catch(err => print(false, 8, err))
   },
-
+  
   // {
   //   key: 9,
   //   fn:  () => Cache.try(Cache.types.QUERY, "test", [[6], [7]], () => new Promise(resolve => setTimeout(() => resolve({test: 9}), 300)))
   //   .then(res => print(true, 9, res))
   //   .catch(err => print(false, 9, err))
   // },
-
+  
   {
     key: 10,
     fn:  () => Cache.set(Cache.types.QUERY, "test", [5, 6], () => new Promise(resolve => setTimeout(() => resolve({test: 10}), 300)))
     .then(res => print(true, 10, res))
     .catch(err => print(false, 10, err))
   },
-
+  
   {
     key: 11,
     fn:  () => Cache.set(Cache.types.QUERY, "test", [5, 6], () => new Promise(resolve => setTimeout(() => resolve({test: 11}), 300)))
     .then(res => print(true, 11, res))
     .catch(err => print(false, 11, err))
   },
-
+  
   // {
   //   key: 12,
   //   fn:  () => Cache.get(Cache.types.QUERY, "test", [8, 9], () => new Promise(resolve => setTimeout(() => resolve({test: 12}), 300)))
   //   .then(res => print(true, 12, res))
   //   .catch(err => print(false, 12, err))
   // },
-
+  
   // {
   //   key: 13,
   //   fn:  () => Cache.get(Cache.types.QUERY, "test", [8, 9], () => new Promise(resolve => setTimeout(() => resolve({test: 13}), 300)))
   //   .then(res => print(true, 13, res))
   //   .catch(err => print(false, 13, err))
   // },
-
+  
   {
     key: -1,
     fn:  () => Cache.get(Cache.types.QUERY, "test", [0])
