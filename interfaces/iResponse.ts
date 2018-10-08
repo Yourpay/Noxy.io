@@ -4,8 +4,6 @@ export interface iResponseService extends iResponseFn {
   json(code: number, type: string, content?: tResponseContent, start?: number): iResponseJSONObject;
   
   error(code: number, type: string, content?: tResponseContent | iResponseErrorObject): iResponseErrorObject
-  
-  clean(error: iResponseErrorObject): iResponseErrorObject
 }
 
 export interface iResponseFn {
@@ -21,11 +19,11 @@ export interface iResponseJSONObject {
   time_completed: number
 }
 
-export interface iResponseErrorObject {
+export interface iResponseErrorObject extends Error {
   code: number
   type: string
   message: string
-  stack: string[]
+  log: string[]
   content: tResponseContent
 }
 

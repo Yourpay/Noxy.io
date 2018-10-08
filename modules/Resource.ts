@@ -85,9 +85,13 @@ const Resource: cResource = class Resource implements iResource {
     return Promise.resolve(this);
   }
   
+  public getKeys(): (string | number)[][] {
+    const $this = (<typeof Resource>this.constructor);
+    return _.map($this.table.keys, sets => _.map(sets, (key) => this[key] instanceof Buffer ? uuidFromBuffer(this[key]) : this[key]));
+  }
+  
   public toObject(deep?: boolean): Promise<Partial<this>> {
     const $this = (<typeof Resource>this.constructor);
-    
     return <any>Promise.props(
       _.transform(_.omitBy($this.table.definition, v => v.hidden),
         (r, v, k) => {

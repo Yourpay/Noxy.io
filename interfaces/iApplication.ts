@@ -2,6 +2,7 @@ import * as Promise from "bluebird";
 import * as express from "express";
 import RoleUser from "../resources/RoleUser";
 import Route from "../resources/Route";
+import {iResponseErrorObject, iResponseJSONObject} from "./iResponse";
 
 export interface iApplicationService {
   readonly store: iApplicationStore
@@ -29,6 +30,8 @@ export interface iApplicationService {
   updateRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, route: Route): Promise<Route>
   
   publicize(): Promise<boolean>
+  
+  respond(response: express.Response, content: iResponseJSONObject | iResponseErrorObject): express.Response
 }
 
 export interface iApplicationFn {

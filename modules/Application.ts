@@ -10,6 +10,7 @@ import * as favicon from "serve-favicon";
 import * as vhost from "vhost";
 import {env} from "../globals";
 import {eApplicationMethods, iApplicationConfiguration, iApplicationNamespace, iApplicationPath, iApplicationService, iApplicationStore, iApplicationSubdomain, tApplicationMiddleware} from "../interfaces/iApplication";
+import {iResponseErrorObject, iResponseJSONObject} from "../interfaces/iResponse";
 import * as Response from "../modules/Response";
 import Role from "../resources/Role";
 import RoleRoute from "../resources/RoleRoute";
@@ -185,6 +186,13 @@ function isAdmin(roles: RoleUser[]): boolean {
   });
 }
 
+function respond(response: express.Response, content: iResponseJSONObject | iResponseErrorObject): express.Response {
+  if (content instanceof Error) {
+    return response.status(content.code).json(isAdmin(response.locals.roles) ? content : _.omit(content, ["log", "stack", "message"]));
+  }
+  return response.json(content);
+}
+
 function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
   return new Promise((resolve, reject) => {
     const subdomain = request.vhost ? request.vhost.host.substring(0, request.vhost.host.length - configuration.domain.length - 1) : env.subdomains.default;
@@ -237,7 +245,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
     return reject(Response.error(404, "any"));
   })
   .tap(() => next())
-  .catch(err => response.status(err.code).json(isAdmin(response.locals.roles) ? err : Response.clean(err)));
+  .catch(err => respond(response, err));
 }
 
 function notFound(request: express.Request, response: express.Response) {
@@ -261,7 +269,8 @@ const exported: iApplicationService = _.assign(
     addRoute:     addRoute,
     getRoute:     getRoute,
     updateRoute:  updateRoute,
-    publicize:    publicize
+    publicize:    publicize,
+    respond:      respond
   }
 );
 

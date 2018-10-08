@@ -39,8 +39,9 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
   
   return Application.addRoute(env.subdomains.api, User.type, "login", Application.methods.POST, (request, response) =>
     User.login(request, response)
-    .then(res => response.json(res))
-    .catch(err => response.status(err.code).json(Application.isAdmin(response.locals.roles) ? err : Response.clean(err)))
+    .then(res => Response.json(200, "any", res, response.locals.time))
+    .catch(err => Response.error(err.code, err.type, err))
+    .then(res => Application.respond(response, res))
   );
 });
 
@@ -59,38 +60,38 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
       Application.addRoute(env.subdomains.api, resource.type, "/", Application.methods.GET, (request: express.Request, response: express.Response) => {
         resource.get(request.query.start, request.query.limit)
         .then(res => Response.json(200, "any", res, response.locals.time))
-        .catch(err => Application.isAdmin(response.locals.roles) ? Response.error(err.code, err.type, err) : Response.json(err.code, err.type))
-        .then(res => response.json(res));
+        .catch(err => Response.error(err.code, err.type, err))
+        .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/", Application.methods.POST, (request: express.Request, response: express.Response) => {
         resource.post(request.body)
         .then(res => Response.json(200, "any", res, response.locals.time))
-        .catch(err => Application.isAdmin(response.locals.roles) ? Response.error(err.code, err.type, err) : Response.json(err.code, err.type))
-        .then(res => response.json(res));
+        .catch(err => Response.error(err.code, err.type, err))
+        .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/:id", Application.methods.GET, (request: express.Request, response: express.Response) => {
         resource.getByID(response.locals.id)
         .then(res => Response.json(200, "any", res, response.locals.time))
-        .catch(err => !Application.isAdmin(response.locals.roles) ? Response.error(err.code, err.type, err) : Response.json(err.code, err.type))
-        .then(res => response.json(res));
+        .catch(err => Response.error(err.code, err.type, err))
+        .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/:id", Application.methods.PUT, (request: express.Request, response: express.Response) => {
         resource.put(request.body)
         .then(res => Response.json(200, "any", res, response.locals.time))
-        .catch(err => Application.isAdmin(response.locals.roles) ? Response.error(err.code, err.type, err) : Response.json(err.code, err.type))
-        .then(res => response.json(res));
+        .catch(err => Response.error(err.code, err.type, err))
+        .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/count", Application.methods.GET, (request: express.Request, response: express.Response) => {
         resource.count()
         .then(res => Response.json(200, "any", {count: res}, response.locals.time))
-        .catch(err => Application.isAdmin(response.locals.roles) ? Response.error(err.code, err.type, err) : Response.json(err.code, err.type))
-        .then(res => response.json(res));
+        .catch(err => Response.error(err.code, err.type, err))
+        .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/:id", Application.methods.DELETE, (request: express.Request, response: express.Response) => {
         resource.delete(request.body)
         .then(res => Response.json(200, "any", res, response.locals.time))
-        .catch(err => Application.isAdmin(response.locals.roles) ? Response.error(err.code, err.type, err) : Response.json(err.code, err.type))
-        .then(res => response.json(res));
+        .catch(err => Response.error(err.code, err.type, err))
+        .then(res => Application.respond(response, res));
       })
     ])
   );

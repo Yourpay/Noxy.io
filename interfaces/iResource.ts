@@ -51,6 +51,8 @@ export interface iResource {
   
   remove(options?: iResourceActionOptions): Promise<this>
   
+  getKeys(): (string | number)[][]
+  
   toObject(deep?: boolean): Promise<Partial<this>>
 }
 

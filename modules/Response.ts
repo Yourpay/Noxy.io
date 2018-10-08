@@ -21,7 +21,7 @@ function json(code: number, type: string, content?: tResponseContent, start?: nu
   return object;
 }
 
-function error(code: number, type: string, content: tResponseContent | Error): iResponseErrorObject {
+function error(code: number, type: string, content: tResponseContent | iResponseErrorObject | Error): iResponseErrorObject {
   const error_object = content instanceof Error ? content : Error.prototype.constructor();
   const stack = error_object.log || error_object.stack;
   const object = _.assign(_.omit(error_object, ["stack"]), {
@@ -32,10 +32,6 @@ function error(code: number, type: string, content: tResponseContent | Error): i
   });
   if (content !== error_object && !_.isUndefined(content)) { object.content = content; }
   return object;
-}
-
-function clean(err) {
-  return _.omit(err, ["name", "log"]);
 }
 
 function parseErrorStack(stack): string[] {
@@ -89,10 +85,9 @@ const codes: tResponseCodes = {
 const exported: iResponseService = _.assign(
   Service,
   {
-    codes: codes,
-    json:  json,
-    error: error,
-    clean: clean
+    codes:      codes,
+    json:       json,
+    error:      error,
   }
 );
 

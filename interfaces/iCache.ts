@@ -65,6 +65,6 @@ export type tCacheValue<T> = T | (() => Promise<T>);
 export type tCacheReturnPromise<T> = Promise<T>
 export type tCacheReturnPromiseSet<T> = Promise<(T | Error)[]>
 export type tCacheReturnPromiseMix<T> = Promise<T | (T | Error)[]>
-export type tCacheArgumentsObject<T> = {type: string, namespace: string, keys: tCacheKey | tCacheKey[], promise: () => Promise<T>, options?: iCacheOptions};
+export type tCacheArgumentsObject<T> = {type: eCacheTypes, namespace: string, keys: tCacheKey | tCacheKey[], promise: () => Promise<T>, options?: iCacheOptions};
 export type tCacheStore = { [key in keyof typeof eCacheTypes]?: {[namespace: string]: {[key: string]: iCacheObject}} };
 export type tCacheConfig = {timeout: 30000};
