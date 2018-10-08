@@ -1,10 +1,12 @@
 import * as Promise from "bluebird";
 import * as crypto from "crypto";
+import * as express from "express";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
 import {env} from "../globals";
-import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
+import {tNonFnPropsOptional, tObject} from "../interfaces/iAuxiliary";
 import {eResourceType} from "../interfaces/iResource";
+import {iResponseJSONObject} from "../interfaces/iResponse";
 import * as Resource from "../modules/Resource";
 import * as Response from "../modules/Response";
 
@@ -21,7 +23,7 @@ const options = {};
 
 export default class User extends Resource.Constructor {
   
-  private static __login_callbacks: ((user: {id: string, username: string, email: string, time_login: number}) => Promise<Object>)[] = [];
+  private static __login_callbacks: ((request: express.Request, response: express.Response, user: tObject | User) => Promise<tObject | User>)[] = [];
   
   public username: string;
   public email: string;
@@ -53,30 +55,15 @@ export default class User extends Resource.Constructor {
     return crypto.pbkdf2Sync(password, salt.toString("base64"), 10000, 64, "sha512");
   }
   
-  public static addLoginCallback(callback: (user: {id: string, username: string, email: string, time_login: number}) => Promise<Object>): void {
+  public static addLoginCallback(callback: (request: express.Request, response: express.Response, user: tObject | User) => Promise<tObject | User>): void {
     User.__login_callbacks.push(callback);
   }
   
-  public static login(credentials: User | {username: string, password: string}, jwt?: string): Promise<User> {
-    return User.loginPW(credentials).catch(err => jwt ? User.loginJWT(jwt) : Promise.reject(err));
-  }
-  
-  private static loginPW(credentials: User | {username: string, password: string}): Promise<User> {
-    return (credentials instanceof User ? credentials : new User(credentials)).validate()
-    .then(user => {
-      if (!user.exists) { return Promise.reject(Response.json(400, "any")); }
-      return Promise.resolve(user);
-    })
-    .then(user => {
-      if (!_.isEqual(user.hash, User.generateHash(credentials.password, user.salt))) { return Promise.reject(Response.json(400, "any")); }
-      return _.set(user, "time_login", Date.now()).save({update_protected: true});
-    });
-  }
-  
-  private static loginJWT(token?: string): Promise<User> {
-    return (<any>Promise.promisify(jwt.verify))(token, env.tokens.jwt)
-    .then(decoded => new User(decoded).validate())
-    .then(user => _.set(user, "time_login", Date.now()).save());
+  public static login(request: express.Request, response: express.Response): Promise<iResponseJSONObject> {
+    return Promise.reduce(User.login_callbacks, (user, fn) => fn(request, response, user).then(res => _.assign(user, res)), new User())
+    .then(user => user instanceof User && user.exists ? user.toObject() : Promise.reject(Response.error(400, "login")))
+    .then(user => Response.json(200, "any", {jwt: jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"}), object: user}))
+    .catch(err => Promise.reject(err.code && err.type ? err : Response.error(500, "any", err)));
   }
   
 }

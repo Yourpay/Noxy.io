@@ -48,6 +48,8 @@ const Resource: cResource = class Resource implements iResource {
       }
     }
     _.assign(this, _.omit(initializer, ["id", "uuid"]));
+    this.validated = false;
+    this.exists = false;
   }
   
   public validate(options: iResourceActionOptions = {}): Promise<this> {

@@ -1,8 +1,12 @@
 import * as Promise from "bluebird";
+import * as bodyParser from "body-parser";
 import * as express from "express";
 import * as http from "http";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
+import * as methodOverride from "method-override";
+import * as path from "path";
+import * as favicon from "serve-favicon";
 import * as vhost from "vhost";
 import {env} from "../globals";
 import {eApplicationMethods, iApplicationConfiguration, iApplicationNamespace, iApplicationPath, iApplicationService, iApplicationStore, iApplicationSubdomain, tApplicationMiddleware} from "../interfaces/iApplication";
@@ -23,6 +27,11 @@ const configuration: iApplicationConfiguration = {
   published:   false,
   application: express()
 };
+
+configuration.application.use(bodyParser.json());
+configuration.application.use(bodyParser.urlencoded({extended: false}));
+configuration.application.use(methodOverride("X-HTTP-Method-Override"));
+configuration.application.use(favicon(path.join(__dirname, "../favicon.ico")));
 
 function Default() {
 
@@ -227,8 +236,8 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
     }
     return reject(Response.error(404, "any"));
   })
-  .then(() => next())
-  .catch(err => response.status(err.code).json(isAdmin(response.locals.roles) ? err : _.omit(err, ["name", "log"])));
+  .tap(() => next())
+  .catch(err => response.status(err.code).json(isAdmin(response.locals.roles) ? err : Response.clean(err)));
 }
 
 function notFound(request: express.Request, response: express.Response) {

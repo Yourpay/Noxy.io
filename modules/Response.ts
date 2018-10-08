@@ -22,7 +22,6 @@ function json(code: number, type: string, content?: tResponseContent, start?: nu
 }
 
 function error(code: number, type: string, content: tResponseContent | Error): iResponseErrorObject {
-  // console.log(code, type, content, _.get(codes, [code, type], "No message given."));
   const error_object = content instanceof Error ? content : Error.prototype.constructor();
   const stack = error_object.log || error_object.stack;
   const object = _.assign(_.omit(error_object, ["stack"]), {
@@ -33,6 +32,10 @@ function error(code: number, type: string, content: tResponseContent | Error): i
   });
   if (content !== error_object && !_.isUndefined(content)) { object.content = content; }
   return object;
+}
+
+function clean(err) {
+  return _.omit(err, ["name", "log"]);
 }
 
 function parseErrorStack(stack): string[] {
@@ -50,6 +53,7 @@ const codes: tResponseCodes = {
     "update":       "Could not update resource due to missing or errorful data.",
     "duplicate":    "Resource already exists and no duplicates are allowed.",
     "cache":        "No keys or value given to cache function.",
+    "login":        "Incorrect username or password.",
     "promise-pipe": "Promise pipe is not in the right state to perform this action."
   },
   401: {
@@ -87,7 +91,8 @@ const exported: iResponseService = _.assign(
   {
     codes: codes,
     json:  json,
-    error: error
+    error: error,
+    clean: clean
   }
 );
 

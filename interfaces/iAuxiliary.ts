@@ -4,6 +4,8 @@ export type tEnum<T> = { [K in keyof T]: T[K] } & {[key: number]: string};
 export type tEnumKeys<T> = keyof tEnum<T>;
 export type tEnumValue<T> = { [K in keyof T]: T[K] }[keyof T];
 
+export type tObject = {[key: string]: any};
+
 export type Omit<T, K> = Pick<T, Exclude<keyof T, K>>
 
 export type tNonFnPropNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];

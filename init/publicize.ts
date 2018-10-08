@@ -19,16 +19,30 @@ export enum ePromisePipeStagesInitPublicize {
 
 export const publicize_pipe = PromisePipe(ePromisePipeStagesInitPublicize);
 
-publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () =>
-  Application.addRoute(env.subdomains.api, User.type, "login", Application.methods.POST, (request, response) =>
-    User.login(request.body, request.get("Authorization"))
-    .then(user => _.merge({id: user.uuid}, _.pick(user, ["username", "email", "time_login"])))
-    .then(user => Promise.map(User.login_callbacks, fn => fn(user)).reduce((result, value) => _.merge(result, value), user))
-    .then(user => Response.json(200, "any", {jwt: jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"})}))
-    .catch(err => err instanceof Response.json ? err : Response.json(500, "any", err))
-    .then(res => response.status(res.code).json(res))
-  )
-);
+publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
+  User.addLoginCallback((request, response, user) => {
+    if (!request.body.email || !request.body.password) { return Promise.resolve(user); }
+    return new User(request.body).validate()
+    .then(user => {
+      if (!user.exists || !_.isEqual(user.hash, User.generateHash(request.body.password, user.salt))) { return user; }
+      return _.set(user, "time_login", response.locals.time).save({update_protected: true});
+    });
+  });
+  
+  User.addLoginCallback((request, response, user) => {
+    if (user instanceof User && user.exists) { return Promise.resolve(user); }
+    return Promise.promisify(jwt.verify)(request.get("Authorization"), env.tokens.jwt)
+    .then(decoded => new User(decoded).validate())
+    .then(user => _.set(user, "time_login", Date.now()).save())
+    .catch(() => user);
+  });
+  
+  return Application.addRoute(env.subdomains.api, User.type, "login", Application.methods.POST, (request, response) =>
+    User.login(request, response)
+    .then(res => response.json(res))
+    .catch(err => response.status(err.code).json(Application.isAdmin(response.locals.roles) ? err : Response.clean(err)))
+  );
+});
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
   Promise.all([
