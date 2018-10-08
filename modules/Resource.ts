@@ -33,6 +33,7 @@ const Resource: cResource = class Resource implements iResource {
   public validated: boolean;
   
   constructor(initializer: tResourceObject = {}) {
+    const $this = (<typeof Resource>this.constructor);
     if (!(<cResource>this.constructor).table.options.resource.junction) {
       if (initializer.id) {
         this.id = typeof initializer.id === "string" ? bufferFromUUID(initializer.id) : initializer.id;
@@ -48,6 +49,12 @@ const Resource: cResource = class Resource implements iResource {
       }
     }
     _.assign(this, _.omit(initializer, ["id", "uuid"]));
+    _.each(this, (value, key) => {
+      if ($this.table.definition[key] && $this.table.definition[key].reference && $this.table.definition[key].type.match(/^\s*binary\s*\(16\)/i)) {
+        if (typeof this[key] === "string") { this[key] = bufferFromUUID(this[key]); }
+        else if (this[key] instanceof $this) { this[key] = this[key].id; }
+      }
+    });
     this.validated = false;
     this.exists = false;
   }

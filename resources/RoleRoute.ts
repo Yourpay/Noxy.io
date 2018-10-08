@@ -16,16 +16,6 @@ export default class RoleRoute extends Resource.Constructor {
   
   constructor(initializer: tNonFnPropsOptional<RoleRoute> = {}) {
     super(initializer);
-    if (initializer.role_id) {
-      if (typeof initializer.role_id === "string") { this.role_id = Resource.bufferFromUUID(initializer.role_id); }
-      else if (initializer.role_id instanceof Buffer) { this.role_id = initializer.role_id; }
-      else { this.role_id = initializer.role_id.id; }
-    }
-    if (initializer.route_id) {
-      if (typeof initializer.route_id === "string") { this.route_id = Resource.bufferFromUUID(initializer.route_id); }
-      else if (initializer.route_id instanceof Buffer) { this.route_id = initializer.route_id; }
-      else { this.route_id = initializer.route_id.id; }
-    }
   }
   
 }
