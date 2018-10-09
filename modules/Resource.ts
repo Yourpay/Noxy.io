@@ -4,7 +4,7 @@ import * as uuid from "uuid";
 import {env} from "../globals";
 import {tEnum, tEnumValue} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, tTableColumn, tTableColumnTypes, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions, tResourceObject} from "../interfaces/iResource";
+import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions, tResourceObject, tTableColumn, tTableColumnTypes} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
@@ -50,7 +50,7 @@ const Resource: cResource = class Resource implements iResource {
     }
     _.assign(this, _.omit(initializer, ["id", "uuid"]));
     _.each(this, (value, key) => {
-      if ($this.table.definition[key] && $this.table.definition[key].reference && $this.table.definition[key].type.match(/^\s*binary\s*\(16\)/i)) {
+      if ($this.table.definition[key] && $this.table.definition[key].reference && $this.table.definition[key].type) {
         if (typeof this[key] === "string") { this[key] = bufferFromUUID(this[key]); }
         else if (this[key] instanceof $this) { this[key] = this[key].id; }
       }
@@ -299,7 +299,7 @@ const Table: cTable = class Table implements iTable {
       columns:     _.join(_.map(table.definition, (column, key) =>
         _.template("`${name}` ${data_type} ${is_null} ${default_value} ${ai} ${comment} ${format}")({
           name:          key,
-          data_type:     _.toUpper(column.type),
+          data_type:     this.sqlFromDataType(column),
           is_null:       column.null || column.default === null ? "NULL" : "NOT NULL",
           default_value: column.default !== undefined ? "DEFAULT " + (column.default !== null ? (column.default.toString() === "" ? "''" : column.default.toString()) : "NULL") : "",
           ai:            column.auto_increment ? "AUTO_INCREMENT" : "",
@@ -372,8 +372,20 @@ const Table: cTable = class Table implements iTable {
     return "";
   }
   
-  public static toReferenceColumn(table: string, hidden: boolean = false): tTableColumn<tTableColumnTypes> {
-    return {type: "binary", length: 16, required: true, protected: true, default: null, index: table, hidden: hidden, reference: table};
+  private static sqlFromDataType(column) {
+    if (column.length) { return `${_.toUpper(column.type)} (${column.length})`; }
+    if (column.precision && !column.scale) { return `${_.toUpper(column.type)} (${column.precision})`; }
+    if (column.precision && column.scale) { return `${_.toUpper(column.type)} (${column.precision}, ${column.scale})`; }
+    if (column.values) { return `${_.toUpper(column.type)} ('${_.join(column.values, "','")}')`; }
+    return _.toUpper(column.type);
+  }
+  
+  public static toPrimaryColumn<T extends tEnum<T>>(reference?: tEnumValue<T> & string, hidden?: boolean): tTableColumn<tTableColumnTypes> {
+    return {type: "binary", length: 16, required: true, protected: true, default: null, primary_key: true, index: reference ? reference : null, hidden: hidden};
+  }
+  
+  public static toReferenceColumn<T extends tEnum<T>>(reference: tEnumValue<T> & string, hidden: boolean = false): tTableColumn<tTableColumnTypes> {
+    return {type: "binary", length: 16, required: true, protected: true, default: null, index: reference, hidden: hidden, reference: reference};
   }
   
   public static toTimeColumn(index?: string, hidden: boolean = false): tTableColumn<tTableColumnTypes> {

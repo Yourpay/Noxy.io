@@ -4,8 +4,8 @@ import * as Resource from "../modules/Resource";
 import Role from "./Role";
 
 const definition: iTableDefinition = {
-  role_id:  {type: "binary", length: 16, protected: true, required: true, primary_key: true, index: "role_id", reference: eResourceType.ROLE},
-  route_id: {type: "binary", length: 16, protected: true, required: true, primary_key: true, index: "route_id", reference: eResourceType.ROUTE}
+  role_id:  Resource.Table.toPrimaryColumn<eResourceType>(eResourceType.ROLE),
+  route_id: Resource.Table.toPrimaryColumn<eResourceType>(eResourceType.ROUTE)
 };
 const options = {resource: {junction: true}};
 

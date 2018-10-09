@@ -60,6 +60,7 @@ export interface iResource {
 export interface cTable {
   new(resource: cResource, definition: iTableDefinition, options?: iTableOptions)
   
+  toPrimaryColumn: <T extends tEnum<T>>(reference?: tEnumValue<T> & string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
   toReferenceColumn: <T extends tEnum<T>>(table: tEnumValue<T> & string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
   toTimeColumn: (index?: string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
   toFlagColumn: (hidden?: boolean) => tTableColumn<tTableColumnTypes>

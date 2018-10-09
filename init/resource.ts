@@ -19,8 +19,8 @@ export enum ePromisePipeStagesInitResource {
 export const resource_pipe = PromisePipe(ePromisePipeStagesInitResource);
 
 resource_pipe.add(ePromisePipeStagesInitResource.USER, () =>
-  Promise.props(_.mapValues(env.users, (user, key) => {
-    return new User(user).validate()
+  Promise.props(_.mapValues(env.users, (user, key) =>
+    new User(user).validate()
     .then(resource => {
       if (!user.password && _.isEqual(_.assign({}, resource, user), resource)) { return resource; }
       return resource.save({update_protected: true})
@@ -28,8 +28,8 @@ resource_pipe.add(ePromisePipeStagesInitResource.USER, () =>
         delete env.users[key].password;
         env.users[key].id = resource.uuid;
       });
-    });
-  }))
+    }))
+  )
   .tap(() => fs.writeFileSync(path.resolve(process.cwd(), "./env.json"), JSON.stringify(env, null, 2)))
 );
 

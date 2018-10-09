@@ -5,8 +5,8 @@ import Role from "./Role";
 import User from "./User";
 
 const definition: iTableDefinition = {
-  role_id: {type: "binary", length: 16, protected: true, required: true, primary_key: true, index: "role_id", reference: eResourceType.ROLE},
-  user_id: {type: "binary", length: 16, protected: true, required: true, primary_key: true, index: "user_id", reference: eResourceType.USER}
+  role_id: Resource.Table.toPrimaryColumn<eResourceType>(eResourceType.ROLE),
+  user_id: Resource.Table.toPrimaryColumn<eResourceType>(eResourceType.USER)
 };
 const options = {resource: {junction: true}};
 

@@ -7,7 +7,7 @@ const definition: iTableDefinition = {
   subdomain:    {type: "varchar", length: 64, protected: true, required: true, unique_index: "route"},
   path:         {type: "varchar", length: 64, protected: true, required: true, unique_index: "route"},
   namespace:    {type: "varchar", length: 64, protected: true, required: true, unique_index: "route"},
-  method:       {type: "enum", values: ['GET','POST','PUT','DELETE', 'PATCH'], protected: true, required: true, unique_index: "route"},
+  method:       {type: "enum", values: ["GET", "POST", "PUT", "DELETE", "PATCH"], protected: true, required: true, unique_index: "route"},
   flag_active:  {type: "tinyint", length: 1, default: "0"},
   time_created: Resource.Table.toTimeColumn("time_created"),
   time_updated: Resource.Table.toTimeColumn(null, true)
