@@ -4,7 +4,7 @@ import * as uuid from "uuid";
 import {env} from "../globals";
 import {tEnum, tEnumValue} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions, tResourceObject, tTableColumn, tTableColumnTypes} from "../interfaces/iResource";
+import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, iTableColumnLength, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions, tResourceObject, tTableColumn, tTableColumnTypes} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
@@ -50,7 +50,7 @@ const Resource: cResource = class Resource implements iResource {
     }
     _.assign(this, _.omit(initializer, ["id", "uuid"]));
     _.each(this, (value, key) => {
-      if ($this.table.definition[key] && $this.table.definition[key].reference && $this.table.definition[key].type) {
+      if ($this.table.definition[key] && $this.table.definition[key].reference && $this.table.definition[key].type === "binary" && (<iTableColumnLength<"binary">>$this.table.definition[key]).length === 16) {
         if (typeof this[key] === "string") { this[key] = bufferFromUUID(this[key]); }
         else if (this[key] instanceof $this) { this[key] = this[key].id; }
       }
@@ -381,7 +381,7 @@ const Table: cTable = class Table implements iTable {
   }
   
   public static toPrimaryColumn<T extends tEnum<T>>(reference?: tEnumValue<T> & string, hidden?: boolean): tTableColumn<tTableColumnTypes> {
-    return {type: "binary", length: 16, required: true, protected: true, default: null, primary_key: true, index: reference ? reference : null, hidden: hidden};
+    return {type: "binary", length: 16, required: true, protected: true, primary_key: true, index: reference ? reference : null, hidden: hidden, reference: reference};
   }
   
   public static toReferenceColumn<T extends tEnum<T>>(reference: tEnumValue<T> & string, hidden: boolean = false): tTableColumn<tTableColumnTypes> {
