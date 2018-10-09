@@ -188,7 +188,7 @@ function isAdmin(roles: RoleUser[]): boolean {
 
 function respond(response: express.Response, content: iResponseJSONObject | iResponseErrorObject): express.Response {
   if (content instanceof Error) {
-    return response.status(content.code).json(isAdmin(response.locals.roles) ? content : _.omit(content, ["log", "stack", "message"]));
+    return response.status(content.code).json(isAdmin(response.locals.roles) ? content : _.omit(content, ["log", "stack"]));
   }
   return response.json(content);
 }

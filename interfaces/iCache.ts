@@ -52,12 +52,12 @@ export interface iCacheOptions {
 }
 
 export enum eCacheTypes {
-  VALIDATE = 0,
-  SAVE     = 1,
-  QUERY    = 2,
-  RESOURCE = 3,
-  EXTERNAL = 4,
-  REQUEST  = 5
+  VALIDATE = "validate",
+  SAVE     = "save",
+  QUERY    = "query",
+  RESOURCE = "resource",
+  EXTERNAL = "external",
+  REQUEST  = "request"
 }
 
 export type tCacheKey = number | string | symbol;

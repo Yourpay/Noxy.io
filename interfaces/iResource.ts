@@ -60,8 +60,9 @@ export interface iResource {
 export interface cTable {
   new(resource: cResource, definition: iTableDefinition, options?: iTableOptions)
   
-  toReferenceColumn: <T extends tEnum<T>>(table: tEnumValue<T> & string, hidden?: boolean) => iTableColumn
-  toTimeColumn: (index?: string, hidden?: boolean) => iTableColumn
+  toReferenceColumn: <T extends tEnum<T>>(table: tEnumValue<T> & string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
+  toTimeColumn: (index?: string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
+  toFlagColumn: (hidden?: boolean) => tTableColumn<tTableColumnTypes>
 }
 
 export interface iTable {
@@ -143,43 +144,103 @@ export interface iTablePartitionOptions {
 }
 
 export interface iTableDefinition {
-  [key: string]: iTableColumn
+  [key: string]: tTableColumn<tTableColumnTypes>
 }
 
-//
-export interface iTableColumn {
-  /* The MySQL denoted type */
-  type: string
+interface iTableColumnBase {
   /* Can this field be a NULL value */
   null?: boolean
+  
   /* What should this field's default value be (Note: NULL as default set the NULL flag to true) */
   default?: string | number
+  
   /* Must the field contain a value */
   required?: boolean
+  
   /* Should the value be modifiable from outside the server */
   protected?: boolean
+  
   /* Should this column appear in result sets after being parsed? */
   hidden?: boolean
+  
   /* Which "key" indexes should this column be part of */
   index?: string | string[]
+  
   /* Which "unique" indexes should this column be part of */
   unique_index?: string | string[]
+  
   /* Which "fulltext" indexes should this column be part of */
   fulltext_index?: string | string[]
+  
   /* Which "spatial" indexes should this column be part of */
   spatial_index?: string | string[]
+  
   /* Is this part of the primary key? */
   primary_key?: boolean
+  
   /* Defines the foreign key relations this column has to another */
   reference?: string | iReferenceDefinition
+  
   /* The default collation to use with the column */
   collation?: "utf8mb4_unicode_ci" | string
+  
   /* Add a comment to the column in the database */
   comment?: string
+  
   /* Should the column be an auto_increment column */
-  auto_increment?: boolean,
+  auto_increment?: boolean
+  
   /* The kind of format the columns should follow */
   column_format?: "FIXED" | "DYNAMIC" | "DEFAULT"
+  
+  /* Should this column be converted to a boolean when converting it to an object? */
+  flag?: boolean
+}
+
+/* The MySQL denoted type */
+export type tTableColumnTypes =
+  "tinyint" | "smallint" | "mediumint" | "int" | "bigint" | "bit" |
+  "float" | "double" | "decimal" | "numeric" |
+  "char" | "varchar" | "tinytext" | "text" | "mediumtext" | "longtext" | "json" |
+  "binary" | "varbinary" | "tinyblob" | "blob" | "mediumblob" | "longblob" |
+  "date" | "time" | "year" | "datetime" | "timestamp" |
+  "point" | "linestring" | "polygon" | "geometry" | "multipoint" | "multilinestring" | "multipolygon" | "geometrycollection" |
+  "enum" | "set";
+
+export type tTableColumnLengthTypes = "tinyint" | "smallint" | "mediumint" | "int" | "bigint" | "bit" | "char" | "varchar" | "binary" | "varbinary";
+export type tTableColumnDecimalTypes = "float" | "double" | "decimal" | "numeric";
+export type tTableColumnPrecisionTypes = "time" | "datetime" | "timestamp";
+export type tTableColumnSetTypes = "enum" | "set";
+
+export type tTableColumn<T> = T extends tTableColumnTypes & tTableColumnLengthTypes ? iTableColumnLength<T> :
+                              T extends tTableColumnTypes & tTableColumnDecimalTypes ? iTableColumnDecimal<T> :
+                              T extends tTableColumnTypes & tTableColumnPrecisionTypes ? iTableColumnPrecision<T> :
+                              T extends tTableColumnTypes & tTableColumnSetTypes ? iTableColumnSet<T> :
+                              iTableColumnAny<T>
+
+export interface iTableColumnLength<T> extends iTableColumnBase {
+  type: T
+  length: number;
+}
+
+export interface iTableColumnDecimal<T> extends iTableColumnBase {
+  type: T
+  precision: number;
+  scale: number;
+}
+
+export interface iTableColumnPrecision<T> extends iTableColumnBase {
+  type: T
+  precision: number;
+}
+
+export interface iTableColumnSet<T> extends iTableColumnBase {
+  type: T
+  values: string[];
+}
+
+export interface iTableColumnAny<T> extends iTableColumnBase {
+  type: T
 }
 
 export interface iTableIndexes {

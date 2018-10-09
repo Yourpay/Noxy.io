@@ -1,12 +1,12 @@
 import {env} from "../globals";
 import {tNonFnPropsOptional} from "../interfaces/iAuxiliary";
-import {eResourceType} from "../interfaces/iResource";
+import {eResourceType, iTableDefinition} from "../interfaces/iResource";
 import * as Resource from "../modules/Resource";
 import User from "./User";
 
-const definition = {
-  name:         {type: "varchar(32)", required: true},
-  key:          {type: "varchar(32)", required: true, protected: true, unique_index: "key"},
+const definition: iTableDefinition = {
+  name:         {type: "varchar", length: 32, required: true},
+  key:          {type: "varchar", length: 32, required: true, protected: true, unique_index: "key"},
   user_created: Resource.Table.toReferenceColumn<eResourceType>(eResourceType.USER),
   time_created: Resource.Table.toTimeColumn("time_created"),
   time_updated: Resource.Table.toTimeColumn(null, true)
@@ -25,6 +25,7 @@ export default class Role extends Resource.Constructor {
     super(initializer);
     this.time_created = initializer.time_created ? initializer.time_created : Date.now();
     if (!initializer.key) { this.key = Resource.toKey(initializer.name); }
+    if (!initializer.name) { this.name = this.key; }
     if (!initializer.user_created) { this.user_created = Resource.bufferFromUUID(env.users.server.id); }
   }
   

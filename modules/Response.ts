@@ -24,14 +24,19 @@ function json(code: number, type: string, content?: tResponseContent, start?: nu
 function error(code: number, type: string, content: tResponseContent | iResponseErrorObject | Error): iResponseErrorObject {
   const error_object = content instanceof Error ? content : Error.prototype.constructor();
   const stack = error_object.log || error_object.stack;
-  const object = _.assign(_.omit(error_object, ["stack"]), {
+  const object = _.assign(error_object, {
     code:    (<tResponseContent>error_object).code || _.isNumber(code) && !_.isNaN(code) ? code : 500,
     type:    (<tResponseContent>error_object).type || _.isString(type) && _.trim(type).length > 0 ? type : "any",
     message: error_object.message || _.get(codes, [code || 500, type || "any"], "No message given."),
     log:     _.isString(stack) ? parseErrorStack(stack) : stack
   });
   if (content !== error_object && !_.isUndefined(content)) { object.content = content; }
+  delete object.stack;
   return object;
+}
+
+function isError(err: iResponseErrorObject): boolean {
+  return !!(err instanceof Error && err.code && err.type && err.message && err.log);
 }
 
 function parseErrorStack(stack): string[] {
@@ -85,9 +90,10 @@ const codes: tResponseCodes = {
 const exported: iResponseService = _.assign(
   Service,
   {
-    codes:      codes,
-    json:       json,
-    error:      error,
+    codes:   codes,
+    json:    json,
+    error:   error,
+    isError: isError
   }
 );
 

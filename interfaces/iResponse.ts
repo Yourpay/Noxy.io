@@ -4,6 +4,8 @@ export interface iResponseService extends iResponseFn {
   json(code: number, type: string, content?: tResponseContent, start?: number): iResponseJSONObject;
   
   error(code: number, type: string, content?: tResponseContent | iResponseErrorObject): iResponseErrorObject
+  
+  isError(error: iResponseErrorObject): boolean
 }
 
 export interface iResponseFn {

@@ -15,6 +15,7 @@ Include("./init")
   console.log("Error message:", err.message);
   console.log("Error content:", err.content);
   console.log(err.log);
+  console.log(err.stack);
   process.exitCode = 1;
 });
 

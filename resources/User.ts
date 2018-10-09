@@ -5,16 +5,16 @@ import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
 import {env} from "../globals";
 import {tNonFnPropsOptional, tObject} from "../interfaces/iAuxiliary";
-import {eResourceType} from "../interfaces/iResource";
+import {eResourceType, iTableDefinition} from "../interfaces/iResource";
 import {iResponseJSONObject} from "../interfaces/iResponse";
 import * as Resource from "../modules/Resource";
 import * as Response from "../modules/Response";
 
-const definition = {
-  username:     {type: "varchar(64)", required: true, protected: true},
-  email:        {type: "varchar(128)", required: true, protected: true, unique_index: "email"},
-  salt:         {type: "binary(64)", required: true, protected: true, hidden: true},
-  hash:         {type: "binary(64)", required: true, protected: true, hidden: true},
+const definition: iTableDefinition = {
+  username:     {type: "varchar", length: 64, required: true, protected: true},
+  email:        {type: "varchar", length: 128, required: true, protected: true, unique_index: "email"},
+  salt:         {type: "binary", length: 64, required: true, protected: true, hidden: true},
+  hash:         {type: "binary", length: 64, required: true, protected: true, hidden: true},
   time_login:   Resource.Table.toTimeColumn("time_login"),
   time_created: Resource.Table.toTimeColumn("time_created"),
   time_updated: Resource.Table.toTimeColumn(null, true)

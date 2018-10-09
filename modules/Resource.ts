@@ -4,7 +4,7 @@ import * as uuid from "uuid";
 import {env} from "../globals";
 import {tEnum, tEnumValue} from "../interfaces/iAuxiliary";
 import {iDatabaseActionResult} from "../interfaces/iDatabase";
-import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, iTableColumn, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions, tResourceObject} from "../interfaces/iResource";
+import {cResource, cTable, iResource, iResourceActionOptions, iResourceFn, iResourceService, iTable, tTableColumn, tTableColumnTypes, iTableDefaultOptions, iTableDefinition, iTableIndexes, iTableOptions, iTablePartitionOptions, tResourceObject} from "../interfaces/iResource";
 import * as Cache from "./Cache";
 import * as Database from "./Database";
 import * as Response from "./Response";
@@ -13,7 +13,7 @@ const Service: iResourceFn = function Default<T extends tEnum<T>, R extends cRes
   
   const key = _.join([_.get(options, "database", env.databases[env.mode].database), type], "::");
   
-  if (exported.list[key]) { throw Response.error(500, "resource", {type: type, constructor: constructor}); }
+  if (exported.list[key]) { throw Response.error(409, "resource", {type: type, constructor: constructor}); }
   
   exported.list[key] = constructor;
   _.set(constructor, "type", type);
@@ -120,6 +120,7 @@ const Resource: cResource = class Resource implements iResource {
           }
           if (type === "varbinary") { return _.set(r, k, (<Buffer>this[k]).toString("utf8")); }
           if (type === "blob") { return _.set(r, k, (<Buffer>this[k]).toString("base64")); }
+          if (type === "tinyint" && value === "1") { return _.set(r, k, !!this[k]); }
           return _.set(r, k, this[k]);
         },
         {}
@@ -188,7 +189,7 @@ const Table: cTable = class Table implements iTable {
   constructor(resource: typeof Resource, definition: iTableDefinition, options?: iTableOptions) {
     this.resource = resource;
     this.options = _.merge({resource: {database: env.mode, exists_check: true}, table: {}, partition: {}}, options);
-    this.definition = this.options.resource.junction ? definition : {id: {type: "binary(16)", primary_key: true, required: true, protected: true}, ...definition};
+    this.definition = this.options.resource.junction ? definition : {id: {type: "binary", length: 16, primary_key: true, required: true, protected: true}, ...definition};
     this.indexes = _.reduce(this.definition, (result, col, key) => {
       if (col.primary_key) { result.primary.push(key); }
       if (col.index) {
@@ -217,7 +218,7 @@ const Table: cTable = class Table implements iTable {
   }
   
   public validate<T extends iResource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
-    const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
+    const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => !_.isUndefined(resource[key])) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
     const cache_keys = options.keys || _.map(keys, key => Cache.keyFromSet(_.values(key)));
     
     if (_.size(keys) === 0) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
@@ -246,17 +247,14 @@ const Table: cTable = class Table implements iTable {
       if (!where.length) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
     }
     
-    return Cache.set<iDatabaseActionResult>(Cache.types.SAVE, this.resource.type, cache_keys, () => {
+    return Cache.set<T>(Cache.types.RESOURCE, this.resource.type, cache_keys, () => {
       const set = [this.resource.type, _.pick(resource, _.keys(this.definition))];
-      if (resource.exists) {
-        return Database(this.options.resource.database).query<iDatabaseActionResult>(`UPDATE ?? SET ? WHERE ${where}`, _.concat(set));
-      }
-      return Database(this.options.resource.database).query<iDatabaseActionResult>("INSERT INTO ?? SET ?", _.concat(set));
-    }, {timeout: 0, collision_fallback: true})
-    .then(res => {
-      if (res.affectedRows === 0) { return Promise.reject(Response.error(500, "resource", {keys: keys, object: resource})); }
-      return Cache.set(Cache.types.RESOURCE, this.resource.type, cache_keys, _.set(resource, "exists", true), options);
-    });
+      return Database(this.options.resource.database).query<iDatabaseActionResult>(resource.exists ? `UPDATE ?? SET ? WHERE ${where}` : "INSERT INTO ?? SET ?", _.concat(set))
+      .then(res => {
+        if (res.affectedRows === 0) { return Promise.reject(Response.error(500, "resource", {keys: keys, object: resource})); }
+        return Promise.resolve(_.set(resource, "exists", true));
+      });
+    }, {timeout: 0, collision_fallback: true});
   }
   
   public remove<T extends iResource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
@@ -303,7 +301,7 @@ const Table: cTable = class Table implements iTable {
           name:          key,
           data_type:     _.toUpper(column.type),
           is_null:       column.null || column.default === null ? "NULL" : "NOT NULL",
-          default_value: column.default !== undefined ? "DEFAULT " + (column.default !== null ? column.default.toString() : "NULL") : "",
+          default_value: column.default !== undefined ? "DEFAULT " + (column.default !== null ? (column.default.toString() === "" ? "''" : column.default.toString()) : "NULL") : "",
           ai:            column.auto_increment ? "AUTO_INCREMENT" : "",
           collate:       column.collation ? "COLLATE " + column.collation : "",
           comment:       column.comment ? "COMMENT " + column.comment : "",
@@ -374,12 +372,16 @@ const Table: cTable = class Table implements iTable {
     return "";
   }
   
-  public static toReferenceColumn(table: string, hidden: boolean = false): iTableColumn {
-    return {type: "binary(16)", required: true, protected: true, default: null, index: table, hidden: hidden, reference: table};
+  public static toReferenceColumn(table: string, hidden: boolean = false): tTableColumn<tTableColumnTypes> {
+    return {type: "binary", length: 16, required: true, protected: true, default: null, index: table, hidden: hidden, reference: table};
   }
   
-  public static toTimeColumn(index?: string, hidden: boolean = false): iTableColumn {
-    return {type: "bigint(13)", required: true, protected: true, default: null, index: index ? index : null, hidden: hidden};
+  public static toTimeColumn(index?: string, hidden: boolean = false): tTableColumn<tTableColumnTypes> {
+    return {type: "bigint", length: 13, required: true, protected: true, default: null, index: index ? index : null, hidden: hidden};
+  }
+  
+  public static toFlagColumn(hidden: boolean = false): tTableColumn<tTableColumnTypes> {
+    return {type: "tinyint", length: 1, required: true, protected: true, default: null, hidden: hidden};
   }
   
 };
@@ -399,7 +401,7 @@ function uuidFromBuffer(buffer: Buffer): string {
 }
 
 function toKey(string: string): string {
-  return _.snakeCase(_.deburr(string));
+  return string || string.replace(/\s/g, "") === "" ? _.snakeCase(_.deburr(string)) : undefined;
 }
 
 const exported: iResourceService = _.assign(
