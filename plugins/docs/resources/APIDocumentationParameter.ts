@@ -1,11 +1,11 @@
-import * as _ from "lodash";
 import {tNonFnPropsOptional} from "../../../interfaces/iAuxiliary";
+import {iTableDefinition} from "../../../interfaces/iResource";
 import * as Resource from "../../../modules/Resource";
 import {eAPIDocumentationType} from "../init";
 
-const definition = {
-  name:         {type: "varchar(32)", required: true},
-  key:          {type: "varchar(32)", required: true, protected: true, unique_index: "key"},
+const definition: iTableDefinition = {
+  name:         {type: "varchar", length: 32, required: true},
+  key:          {type: "varchar", length: 32, required: true, protected: true, unique_index: "key"},
   description:  {type: "text", default: ""},
   time_created: Resource.Table.toTimeColumn("time_created"),
   time_updated: Resource.Table.toTimeColumn(null, true)
@@ -22,7 +22,8 @@ export default class APIDocumentationParameter extends Resource.Constructor {
   
   constructor(initializer: tNonFnPropsOptional<APIDocumentationParameter> = {}) {
     super(initializer);
-    if (!initializer.key) { this.key = _.snakeCase(_.deburr(initializer.name)); }
+    if (!initializer.key) { this.key = Resource.toKey(initializer.name); }
+    if (!initializer.name) { this.name = initializer.key; }
     this.time_created = initializer.time_created ? initializer.time_created : Date.now();
   }
   

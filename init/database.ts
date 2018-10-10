@@ -44,7 +44,8 @@ database_pipe.add(ePromisePipeStagesInitDatabase.ALTER, () => {
       }, {})
       .then(definition => _.set(result, _.values(table)[0], definition));
     }, {});
-  });
+  })
+  // .then(res => console.log(res))
 });
 
 init_pipe.add(ePromisePipeStagesInit.DATABASE, () => database_pipe.resolve());

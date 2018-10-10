@@ -115,8 +115,6 @@ for (let i = 1; i < 4; i++) {
   setTimeout(() => console.log(i * 100 + "milliseconds passed."), i * 100);
 }
 
-setTimeout(() => print(true, "Namespace All", Cache.getNamespace(Cache.types.QUERY, "test")), 1000);
-
 function print(success, number, content) {
   console.log("-------------------");
   console.log((success ? "Result" : "Error") + " of Test #" + number);
