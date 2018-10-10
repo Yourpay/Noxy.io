@@ -2,7 +2,7 @@ import * as Promise from "bluebird";
 
 export interface iCacheService extends iCacheFn {
   readonly store: tCacheStore
-  
+  readonly config: tCacheConfig
   types: typeof eCacheTypes
   
   get<T>(type: eCacheTypes, namespace: string, key: tCacheKey[]): tCacheReturnPromiseSet<T>
@@ -24,8 +24,6 @@ export interface iCacheService extends iCacheFn {
   unsetOne(type: eCacheTypes, namespace: string, key: tCacheKey): void
   
   unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, milliseconds: number): iCacheTimer
-  
-  getNamespace(type: eCacheTypes, namespace: string): {[key: string]: iCacheObject};
   
   keyFromSet(keys: tCacheKey[]): string
   

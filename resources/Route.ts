@@ -37,19 +37,3 @@ export default class Route extends Resource.Constructor {
 }
 
 Resource<eResourceType>(eResourceType.ROUTE, Route, definition, options);
-
-// publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
-//   const Application = require("../modules/Application");
-//   return Application.addRoute(env.subdomains.api, Route.type, "/", Application.methods.GET, (request, response) => {
-//     const start = request.query.start > 0 ? +request.query.start : 0, limit = request.query.limit > 0 && request.query.limit < 100 ? +request.query.limit : 100;
-//     return Database(env.mode).query<{subdomain: string, namespace: string}[]>("SELECT DISTINCT subdomain, namespace FROM `route` LIMIT ? OFFSET ?", [limit, start])
-//     .reduce((result: any, route) => {
-//       return Database(env.mode).query<tNonFnPropsOptional<Route>>("SELECT * FROM `route` WHERE `subdomain` = ? AND `namespace` = ?", [route.subdomain, route.namespace])
-//       .map(route => new Route(route).toObject())
-//       .then(routes => _.concat(result, {subdomain: route.subdomain, namespace: route.namespace, routes: routes}));
-//     }, [])
-//     .then(routes => Response.json(200, "any", routes))
-//     .catch(err => err instanceof Response.json ? err : Response.json(500, "any", err))
-//     .then(res => response.status(res.code).json(res));
-//   })
-// });
