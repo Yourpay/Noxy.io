@@ -2,52 +2,42 @@ import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as mysql from "mysql";
 import {database_pipe, ePromisePipeStagesInitDatabase} from "../init/database";
-import {iDatabase, iDatabaseConfig, iDatabasePool, iDatabaseQueryConfig} from "../interfaces/iDatabase";
+import {iDatabase, iDatabaseConfig, iDatabasePool, iDatabaseQueryConfig, iDatabaseService} from "../interfaces/iDatabase";
 import * as Response from "./Response";
 
-const Database: iDatabase = Default;
+const Service = Default;
+const store: {[key: string]: iDatabasePool} = {};
+const cluster: mysql.PoolCluster = mysql.createPoolCluster();
 
-function Default(id: string): iDatabasePool
-function Default(id: string, config: DatabaseMasterEnvironmental): iDatabasePool
 function Default(id: string, config?: DatabaseMasterEnvironmental): iDatabasePool {
-  const pool = Database.pools[id];
-  if (config) { return pool ? Database.update(id, config) : Database.add(id, config); }
+  const pool = store[id];
+  if (config) { return pool ? update(id, config) : add(id, config); }
   if (pool) { return pool; }
   throw Response.error(404, "pool", {id: id});
 }
 
-Object.defineProperty(Database, "cluster", {value: mysql.createPoolCluster(), writable: false, configurable: false, enumerable: false});
-Object.defineProperty(Database, "pools", {value: {}, writable: false, configurable: false, enumerable: true});
-
-function databaseAdd(id: string, config: DatabaseEnvironmental): DatabasePool {
-  const pool = Database.pools[id];
+function add(id: string, config: DatabaseEnvironmental): DatabasePool {
+  const pool = store[id];
   if (pool) { throw Response.error(409, "db_add", {id: id}); }
-  
-  return _.get(Object.defineProperty(Database, id, {value: new DatabasePool(id, config), writable: false, configurable: false, enumerable: false}), id);
+  return _.get(Object.defineProperty(store, id, {value: new DatabasePool(id, config), writable: false, configurable: false, enumerable: false}), id);
 }
 
-Database.add = databaseAdd;
-
-function databaseUpdate(id: string, config: DatabaseEnvironmental): iDatabasePool {
-  const pool = Database.pools[id];
+function update(id: string, config: DatabaseEnvironmental): iDatabasePool {
+  const pool = store[id];
   if (!pool) { throw Response.error(409, "db_update", {id: id}); }
-  Database.remove(id);
-  return Database.add(id, config);
+  remove(id);
+  return add(id, config);
 }
 
-Database.update = databaseUpdate;
-
-function databaseRemove(id: string) {
-  const pool = Database.pools[id];
+function remove(id: string): boolean {
+  const pool = store[id];
   if (!pool) { throw Response.error(409, "db_delete", {id: id}); }
-  Database.cluster.remove(id);
-  Database.cluster.remove(id + "::*");
-  return delete Database.pools[id];
+  cluster.remove(id);
+  cluster.remove(id + "::*");
+  return delete store[id];
 }
 
-Database.remove = databaseRemove;
-
-function databaseParse(sql: string, replacers: any | any[]) {
+function parse(sql: string, replacers: any | any[]) {
   return _.reduce(sql.match(/(\s+|^|\()\?{1,3}(\s+|$|\))/g), (result, match, i) => {
     if (_.isUndefined(replacers)) { return result; }
     const r = _.concat(replacers)[i];
@@ -66,9 +56,19 @@ function databaseParse(sql: string, replacers: any | any[]) {
   }, sql);
 }
 
-Database.parse = databaseParse;
+const exported: iDatabaseService = _.assign(
+  Service,
+  {
+    get store() { return store; },
+    get cluster() { return cluster; },
+    add:    add,
+    update: update,
+    remove: remove,
+    parse:  parse
+  }
+);
 
-export = Database;
+export = exported;
 
 class DatabasePool implements iDatabasePool {
   

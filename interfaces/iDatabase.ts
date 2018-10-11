@@ -1,6 +1,23 @@
 import * as Promise from "bluebird";
 import * as mysql from "mysql";
 
+export interface iDatabaseService extends iDatabaseFn {
+  readonly cluster: mysql.PoolCluster
+  readonly pools: {[key: string]: iDatabasePool}
+  
+  add(id: string, config: DatabaseEnvironmental): iDatabasePool
+  
+  update(id: string, config: DatabaseEnvironmental): iDatabasePool
+  
+  remove(id: string): boolean
+  
+  parse(sql: string, replacers: any | any[]): string
+}
+
+export interface iDatabaseFn {
+  (id: string, config?: DatabaseMasterEnvironmental): iDatabasePool
+}
+
 export interface cDatabasePool {
   new(id: string, config: DatabaseMasterEnvironmental): iDatabasePool;
 }
@@ -11,20 +28,6 @@ export interface iDatabasePool extends Object {
   query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T>
   
   queryOne<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T>
-}
-
-export interface iDatabase extends Object {
-  cluster?: mysql.PoolCluster
-  pools?: {[key: string]: iDatabasePool}
-  
-  add?: (id: string, config: DatabaseEnvironmental) => iDatabasePool
-  update?: (id: string, config: DatabaseEnvironmental) => iDatabasePool
-  remove?: (id: string) => boolean
-  parse?: (sql: string, replacers: any | any[]) => string
-  
-  (pool: string): iDatabasePool
-  
-  (pool: string, options: DatabaseMasterEnvironmental): iDatabasePool
 }
 
 export interface iDatabaseConfig {
