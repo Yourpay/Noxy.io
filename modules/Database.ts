@@ -49,7 +49,7 @@ Database.remove = databaseRemove;
 
 function databaseParse(sql: string, replacers: any | any[]) {
   return _.reduce(sql.match(/(\s+|^|\()\?{1,3}(\s+|$|\))/g), (result, match, i) => {
-    if (!replacers) { return result; }
+    if (_.isUndefined(replacers)) { return result; }
     const r = _.concat(replacers)[i];
     const length = (match.match(/\?/g) || []).length;
     const regex = new RegExp("(\\\s+|^|\\\()\\\?{" + length + "}(\\\s+|$|\\\))");

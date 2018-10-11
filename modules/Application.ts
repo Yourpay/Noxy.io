@@ -167,8 +167,7 @@ function publicize() {
     });
   });
   if (store[env.subdomains.default]) { configuration.application.use("/", store[env.subdomains.default].router); }
-  configuration.application.use(vhost(`test.${configuration.domain}`, (request, response) => { response.send("test"); }));
-  configuration.application.all("*", (request, response) => response.status(404).json(Response.json(404, "any", {}, Date.now())));
+  configuration.application.all("*", (request, response) => respond(response, Response.error(404, "any")));
   http.createServer(configuration.application).listen(80);
   return Promise.resolve(configuration.published = true);
 }
@@ -201,6 +200,7 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
     const method = _.toLower(request.method);
     
     response.locals.time = Date.now();
+    console.log(subdomain, namespace, path, method);
     
     if (response.locals.route = _.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) {
       if (!response.locals.route.flag_active) {

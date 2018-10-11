@@ -134,7 +134,7 @@ const Resource: cResource = class Resource implements iResource {
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
-  public static selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | {[key: string]: Buffer | string}): Promise<InstanceType<T> | InstanceType<T>[]> {
+  public static selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | Resource): Promise<InstanceType<T> | InstanceType<T>[]> {
     return this.table.selectByID(id)
     .then(resource => _.isArray(resource) ? Promise.map(resource, r => <any>(new this(r))) : Promise.resolve(<any>(new this(resource))))
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
@@ -149,7 +149,7 @@ const Resource: cResource = class Resource implements iResource {
     return this.select(start, limit).map(res => res.toObject());
   }
   
-  public static getByID(id: string | Buffer): Promise<Partial<iResource> | Partial<iResource>[]> {
+  public static getByID(id: string | Buffer | Resource): Promise<Partial<iResource> | Partial<iResource>[]> {
     return this.selectByID(id)
     .then(res => {
       
@@ -267,11 +267,23 @@ const Table: cTable = class Table implements iTable {
     }, {timeout: 0, collision_fallback: true});
   }
   
-  public selectByID(id: string | Buffer): Promise<tResourceObject[]> {
-    const value = _.isString(id) ? bufferFromUUID(id) : id;
-    const key = _.isString(id) ? id : uuidFromBuffer(id);
-    return Cache.setOne<tResourceObject[]>(Cache.types.QUERY, this.resource.type, key, () => {
-      const where = _.join(_.map(this.indexes.primary, k => Database.parse("?? = ?", [k, value])), " OR ");
+  public selectByID(id: string | Buffer | iResource): Promise<tResourceObject[]> {
+    let value: Buffer[], keys: string[];
+    if (typeof id === "string") {
+      keys = [id];
+      value = [bufferFromUUID(id)];
+    }
+    else if (id instanceof Buffer) {
+      keys = [uuidFromBuffer(id)];
+      value = [id];
+    }
+    else {
+      const $this = (<typeof Resource>id.constructor);
+      keys = _.map($this.table.indexes.primary, i => id[i]);
+      value = _.map($this.table.indexes.primary, i => id[i]);
+    }
+    return Cache.setOne<tResourceObject[]>(Cache.types.QUERY, this.resource.type, Cache.keyFromSet(keys), () => {
+      const where = _.join(_.map(this.indexes.primary, k => Database.parse("?? IN (?)", [k, value])), " OR ");
       return Database(this.options.resource.database).query<tResourceObject[]>(`SELECT * FROM ?? WHERE ${where}`, this.resource.type);
     }, {timeout: 0, collision_fallback: true});
   }
