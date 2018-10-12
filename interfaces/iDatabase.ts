@@ -3,7 +3,7 @@ import * as mysql from "mysql";
 
 export interface iDatabaseService extends iDatabaseFn {
   readonly cluster: mysql.PoolCluster
-  readonly pools: {[key: string]: iDatabasePool}
+  readonly store: {[key: string]: iDatabasePool}
   
   add(id: string, config: DatabaseEnvironmental): iDatabasePool
   

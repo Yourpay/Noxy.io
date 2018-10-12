@@ -2,7 +2,7 @@ import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as mysql from "mysql";
 import {database_pipe, ePromisePipeStagesInitDatabase} from "../init/database";
-import {iDatabase, iDatabaseConfig, iDatabasePool, iDatabaseQueryConfig, iDatabaseService} from "../interfaces/iDatabase";
+import {iDatabaseConfig, iDatabasePool, iDatabaseQueryConfig, iDatabaseService} from "../interfaces/iDatabase";
 import * as Response from "./Response";
 
 const Service = Default;
@@ -56,20 +56,6 @@ function parse(sql: string, replacers: any | any[]) {
   }, sql);
 }
 
-const exported: iDatabaseService = _.assign(
-  Service,
-  {
-    get store() { return store; },
-    get cluster() { return cluster; },
-    add:    add,
-    update: update,
-    remove: remove,
-    parse:  parse
-  }
-);
-
-export = exported;
-
 class DatabasePool implements iDatabasePool {
   
   public id: string;
@@ -83,8 +69,8 @@ class DatabasePool implements iDatabasePool {
     this.__slaves = {};
     this.__pool = mysql.createPool(this.__configuration);
     _.each(config.slaves, (slave: DatabaseEnvironmental) => this.add(slave));
-    Database.pools[id] = this;
-    Database.cluster.add(id, this.__configuration);
+    store[id] = this;
+    cluster.add(id, this.__configuration);
     database_pipe.add(ePromisePipeStagesInitDatabase.REGISTER, () =>
       new Promise((resolve, reject) => {
         const connector = mysql.createConnection(_.omit(this.__configuration, "database"));
@@ -96,24 +82,24 @@ class DatabasePool implements iDatabasePool {
   public query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T[]>
   public query<T>(sql: string, replacers?: any | any[], options?: iDatabaseQueryConfig): Promise<T[][]>
   public query<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T[] | T[][]> {
-    const query = Database.parse(sql, replacers);
+    const query = parse(sql, replacers);
     return new Promise<T[] | T[][]>((resolve, reject) => {
       const cb = (err, res) => err ? reject(err) : resolve(res);
-      if (options.slave && options.master) { return Database.cluster.of(this.id).query(query, cb); }
-      if (options.slave) { return Database.cluster.of(_.isString(options.slave) ? options.slave : (this.id + "::*")).query(query, cb); }
-      return Database.cluster.of(this.id).query(query, cb);
+      if (options.slave && options.master) { return cluster.of(this.id).query(query, cb); }
+      if (options.slave) { return cluster.of(_.isString(options.slave) ? options.slave : (this.id + "::*")).query(query, cb); }
+      return cluster.of(this.id).query(query, cb);
     })
     .catch(err => Promise.reject(Response.error(err.code || 500, err.type || "query", err)))
     .then(res => !_.isEmpty(res) && _.every(res, r => !_.isArray(r) || !_.isEmpty(r)) ? Promise.resolve(res) : Promise.reject(Response.error(404, "query", {query: query})));
   }
   
   public queryOne<T>(sql: string, replacers?: any | any[], options: iDatabaseQueryConfig = {}): Promise<T> {
-    const query = Database.parse(sql, replacers);
+    const query = parse(sql, replacers);
     return new Promise((resolve, reject) => {
       const cb = (err, res) => err ? reject(err) : resolve(res);
-      if (options.slave && options.master) { return Database.cluster.of(this.id).query(query, cb); }
-      if (options.slave) { return Database.cluster.of(_.isString(options.slave) ? options.slave : (this.id + "::*")).query(query, cb); }
-      return Database.cluster.of(this.id).query(query, cb);
+      if (options.slave && options.master) { return cluster.of(this.id).query(query, cb); }
+      if (options.slave) { return cluster.of(_.isString(options.slave) ? options.slave : (this.id + "::*")).query(query, cb); }
+      return cluster.of(this.id).query(query, cb);
     })
     .then(res => res[0] ? Promise.resolve(res[0]) : Promise.reject(Response.error(404, "query", {query: query})));
   }
@@ -123,7 +109,7 @@ class DatabasePool implements iDatabasePool {
     const slave = this.__slaves[key];
     if (slave) { throw Response.error(500, "db_add", config); }
     this.__slaves[key] = {__configuration: DatabasePool.generateConfig(config), __pool: mysql.createPool(config)};
-    Database.cluster.add(_.join([this.id, key], "::"), this.__slaves[key].__configuration);
+    cluster.add(_.join([this.id, key], "::"), this.__slaves[key].__configuration);
   }
   
   private static generateConfig(config: DatabaseEnvironmental): iDatabaseConfig {
@@ -143,3 +129,17 @@ class DatabasePool implements iDatabasePool {
   }
   
 }
+
+const exported: iDatabaseService = _.assign(
+  Service,
+  {
+    get store() { return store; },
+    get cluster() { return cluster; },
+    add:    add,
+    update: update,
+    remove: remove,
+    parse:  parse
+  }
+);
+
+export = exported;
