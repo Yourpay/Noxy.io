@@ -121,11 +121,11 @@ function addRoute(subdomain: string, namespace: string, path: string, method: eA
   .tap(res => addPath(subdomain, namespace, path).methods[method] = res);
 }
 
-function getRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods): Promise<Route> {
+function getRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods): Route {
   if (!_.get(store, [subdomain = parseSubdomain(subdomain), "namespaces", namespace = parsePath(namespace), "paths", path = parsePath(path), "methods", method])) {
-    return Promise.reject(Response.error(404, "application", {subdomain: subdomain, namespace: namespace, path: path, method: method}));
+    throw Response.error(404, "application", {subdomain: subdomain, namespace: namespace, path: path, method: method});
   }
-  return Promise.resolve(store[subdomain].namespaces[namespace].paths[path].methods[method]);
+  return store[subdomain].namespaces[namespace].paths[path].methods[method];
 }
 
 function updateRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, route: Route): Promise<Route> {
@@ -133,7 +133,21 @@ function updateRoute(subdomain: string, namespace: string, path: string, method:
     return Promise.reject(Response.error(404, "application", {subdomain: subdomain, namespace: namespace, path: path, method: method}));
   }
   if (!(route instanceof Route)) { return Promise.reject(Response.error(400, "application")); }
-  return Promise.resolve(store[subdomain].namespaces[namespace].paths[path].methods[method] = route);
+  return (store[subdomain].namespaces[namespace].paths[path].methods[method] = route).save();
+}
+
+function activate(route: Route): Promise<Route>
+function activate(subdomain: string, namespace?: string, path?: string, method?: eApplicationMethods): Promise<Route>
+function activate(s_or_r: string | Route, namespace?: string, path?: string, method?: eApplicationMethods): Promise<Route> {
+  const route = s_or_r instanceof Route ? s_or_r : getRoute(s_or_r, namespace, path, method);
+  return updateRoute(route.subdomain, route.namespace, route.path, route.method, _.set(route, "flag_active", 1));
+}
+
+function deactivate(route: Route): Promise<Route>
+function deactivate(subdomain: string, namespace?: string, path?: string, method?: eApplicationMethods): Promise<Route>
+function deactivate(s_or_r: string | Route, namespace?: string, path?: string, method?: eApplicationMethods): Promise<Route> {
+  const route = s_or_r instanceof Route ? s_or_r : getRoute(s_or_r, namespace, path, method);
+  return updateRoute(route.subdomain, route.namespace, route.path, route.method, _.set(route, "flag_active", 0));
 }
 
 function publicize() {
@@ -200,7 +214,6 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
     const method = _.toLower(request.method);
     
     response.locals.time = Date.now();
-    console.log(subdomain, namespace, path, method);
     
     if (response.locals.route = _.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) {
       if (!response.locals.route.flag_active) {
@@ -269,6 +282,8 @@ const exported: iApplicationService = _.assign(
     addRoute:     addRoute,
     getRoute:     getRoute,
     updateRoute:  updateRoute,
+    activate:     activate,
+    deactivate:   deactivate,
     publicize:    publicize,
     respond:      respond
   }

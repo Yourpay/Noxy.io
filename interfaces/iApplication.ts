@@ -25,9 +25,17 @@ export interface iApplicationService {
   
   addRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, mw: tApplicationMiddleware | tApplicationMiddleware[]): Promise<Route>
   
-  getRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods): Promise<Route>
+  getRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods): Route
   
   updateRoute(subdomain: string, namespace: string, path: string, method: eApplicationMethods, route: Route): Promise<Route>
+  
+  activate(route: Route): Promise<Route>
+  
+  activate(subdomain: string, namespace: string, path: string, method: eApplicationMethods): Promise<Route>
+  
+  deactivate(route: Route): Promise<Route>
+  
+  deactivate(subdomain: string, namespace: string, path: string, method: eApplicationMethods): Promise<Route>
   
   publicize(): Promise<boolean>
   

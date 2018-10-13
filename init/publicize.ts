@@ -47,7 +47,7 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
   Promise.all([
-    Application.getRoute(env.subdomains.api, User.type, "login", Application.methods.POST).then(r => Application.updateRoute(r.subdomain, r.namespace, r.path, r.method, _.set(r, "flag_active", 1)))
+    Application.activate(env.subdomains.api, User.type, "login", Application.methods.POST)
   ])
 );
 
