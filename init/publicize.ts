@@ -53,10 +53,12 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.PUBLISH, () =>
 
 publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
   Application.addParam("id", env.subdomains.api, (request, response, next, id) => (response.locals.id = id) && next());
-  Application.addRoute(env.subdomains.api, "/", "/", Application.methods.GET, (request: express.Request, response: express.Response) => response.json(Response.json(200, "any")));
   
   return Promise.map(_.values(Resource.list), resource =>
     Promise.all([
+      Application.addRoute(env.subdomains.api, "/", "/", Application.methods.GET, (request: express.Request, response: express.Response) =>
+        response.json(Response.json(200, "any"))
+      ),
       Application.addRoute(env.subdomains.api, resource.type, "/", Application.methods.GET, (request: express.Request, response: express.Response) => {
         resource.get(request.query.start, request.query.limit)
         .then(res => Response.json(200, "any", res, response.locals.time))
