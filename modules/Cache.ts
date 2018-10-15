@@ -1,6 +1,6 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
-import {eCacheTypes, iCacheFn, iCacheObject, iCacheOptions, iCacheService, iCacheTimer, tCacheArgumentsObject, tCacheConfig, tCacheKey, tCacheReturnPromise, tCacheReturnPromiseMix, tCacheReturnPromiseSet, tCacheStore, tCacheValue} from "../interfaces/iCache";
+import {eCacheTypes, iCacheFn, iCacheObject, iCacheOptions, iCacheService, tCacheArgumentsObject, tCacheConfig, tCacheKey, tCacheReturnPromise, tCacheReturnPromiseMix, tCacheReturnPromiseSet, tCacheStore, tCacheValue} from "../interfaces/iCache";
 import * as Response from "./Response";
 
 const Service: iCacheFn = Default;
@@ -126,8 +126,8 @@ function unsetOne(type: eCacheTypes, namespace: string, key: tCacheKey): void {
   _.unset(store, [type, namespace, key]);
 }
 
-function unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, milliseconds: number): iCacheTimer {
-  return milliseconds === null ? null : <iCacheTimer>setTimeout(() => _.unset(store, [type, namespace, key]), milliseconds || config.timeout);
+function unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, milliseconds: number): NodeJS.Timer {
+  return milliseconds === null ? null : setTimeout(() => _.unset(store, [type, namespace, key]), milliseconds || config.timeout);
 }
 
 /**
