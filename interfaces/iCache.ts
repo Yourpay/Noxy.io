@@ -23,7 +23,7 @@ export interface iCacheService extends iCacheFn {
   
   unsetOne(type: eCacheTypes, namespace: string, key: tCacheKey): void
   
-  unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, milliseconds: number): iCacheTimer
+  unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, milliseconds: number): NodeJS.Timer
   
   keyFromSet(keys: tCacheKey[]): string
   
@@ -37,11 +37,7 @@ export interface iCacheFn {
 export interface iCacheObject {
   value?: any
   promise?: Promise<any>
-  timeout?: iCacheTimer
-}
-
-export interface iCacheTimer extends NodeJS.Timer {
-  refresh(): any
+  timeout?: NodeJS.Timer
 }
 
 export interface iCacheOptions {
