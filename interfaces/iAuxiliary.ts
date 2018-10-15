@@ -40,7 +40,7 @@ export interface iMYSQLColumnDescription {
   Field: string
   Type: string
   Null: string
-  Keu: "" | "PRI" | "UNI" | "MUL"
+  Key: "" | "PRI" | "UNI" | "MUL"
   Default: string | null
   Extra: string
 }

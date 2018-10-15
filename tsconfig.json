@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es6",
+    "target": "es2018",
     "newLine": "lf",
     "outDir": "./build",
     "watch": true,
-    "jsx": "React",
+    "jsx": "react",
     "experimentalDecorators": true
   },
   "exclude": [

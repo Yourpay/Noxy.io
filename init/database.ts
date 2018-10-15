@@ -34,18 +34,13 @@ database_pipe.add(ePromisePipeStagesInitDatabase.ALTER, () => {
   return Promise.map(databases, database => {
     return Database(database).query<{[key: string]: string}[]>("SHOW TABLES;")
     .reduce((result, table) => {
-      return Database(database).query<iMYSQLColumnDescription[]>("DESCRIBE ??", _.values(table)[0])
-      .reduce((result, column) => {
-        return _.set(result, column.Field, {
-          type:    column.Type,
-          null:    column.Null !== "NO",
-          default: column.Default
-        });
-      }, {})
+      /* TODO: THIS */
+      return Database(database).query<iMYSQLColumnDescription[]>("SHOW CREATE TABLE ??.??;", [env.databases[database].database, _.values(table)[0]])
+      .reduce((result, rs) => _.values(rs)[1], {})
       .then(definition => _.set(result, _.values(table)[0], definition));
     }, {});
   })
-  // .then(res => console.log(res))
+  .then(res => console.log(res));
 });
 
 init_pipe.add(ePromisePipeStagesInit.DATABASE, () => database_pipe.resolve());

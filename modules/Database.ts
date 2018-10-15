@@ -38,11 +38,14 @@ function remove(id: string): boolean {
 }
 
 function parse(sql: string, replacers: any | any[]) {
-  return _.reduce(sql.match(/(\s+|^|\()\?{1,3}(\s+|$|\))/g), (result, match, i) => {
+  
+  //TODO: Implement using (?<=\s+|^|[(.])\?{1,3}(?=\s+|$|[);.]) with lookbehinds.
+  
+  return _.reduce(sql.match(/(\s+|^|[(.])\?{1,3}(?=\s+|$|[);.])/g), (result, match, i) => {
     if (_.isUndefined(replacers)) { return result; }
     const r = _.concat(replacers)[i];
     const length = (match.match(/\?/g) || []).length;
-    const regex = new RegExp("(\\\s+|^|\\\()\\\?{" + length + "}(\\\s+|$|\\\))");
+    const regex = new RegExp("(\\\s+|^|[(.])\\\?{" + length + "}(\\\s+|$|[);.])");
     if (length === 3) {
       if (r.type === "where")
         if (r.type === "in" && r.key && r.values) { return result.replace(regex, "$1`" + r.key + "` IN (" + mysql.escape(r.values) + ")$2"); }
