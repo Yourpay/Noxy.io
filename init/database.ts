@@ -33,14 +33,34 @@ database_pipe.add(ePromisePipeStagesInitDatabase.ALTER, () => {
   const databases = _.reduce(_.values(Resource.list), (result, resource) => _.includes(result, resource.table.options.resource.database) ? result : _.concat(result, resource.table.options.resource.database), []);
   return Promise.map(databases, database => {
     return Database(database).query<{[key: string]: string}[]>("SHOW TABLES;")
-    .reduce((result, table) => {
+    .reduce((result, table_result) => {
       /* TODO: THIS */
-      return Database(database).query<iMYSQLColumnDescription[]>("SHOW CREATE TABLE ??.??;", [env.databases[database].database, _.values(table)[0]])
-      .reduce((result, rs) => _.values(rs)[1], {})
-      .then(definition => _.set(result, _.values(table)[0], definition));
-    }, {});
+      const table = _.values(table_result)[0];
+      return Database(database).query<iMYSQLColumnDescription[]>("DESCRIBE ??.??;", [env.databases[database].database, table])
+      .reduce((result, definition) => {
+        const [type, mod_value] = _.tail(definition.Type.match(/^([a-z]+)\((.+)\)$/));
+        const mod: {[key: string]: string} = {};
+        if (_.includes(["decimal", "float", "numeric", "double"], type)) {
+          const [precision, scale] = mod_value.split(",");
+          mod.precision = precision;
+          mod.scale = scale;
+        }
+        else if (_.includes(["time", "datetime", "timestamp"], type)) {
+          mod.precision = mod_value;
+        }
+        else if (_.includes(["enum", "set"], type)) {
+          mod.enum = mod_value;
+        }
+        return _.set(result, [table, definition.Field], _.assign(mod, {
+          type:        type,
+          primary_key: definition.Key === "PRI",
+          null:        definition.Null === "NO"
+        }));
+      }, {});
+    });
   })
   .then(res => console.log(res));
 });
 
 init_pipe.add(ePromisePipeStagesInit.DATABASE, () => database_pipe.resolve());
+
