@@ -306,25 +306,36 @@ const Table: cTable = class Table implements iTable {
     }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
   }
   
+  public static sqlFromTable(table: Table): string {
+    return _.template("CREATE ${temporary} TABLE ${exists} `${name}` ${definition} ${table_options} ${partition_options}")({
+      temporary:         table.options.resource.temporary ? "TEMPORARY" : "",
+      exists:            table.options.resource.exists_check ? "IF NOT EXISTS" : "",
+      name:              table.resource.type,
+      definition:        Table.sqlFromDefinition(table),
+      table_options:     Table.sqlFromTableOptions(table.options.table),
+      partition_options: Table.sqlFromPartitionOptions(table.options.partition)
+    }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
+  }
+  
   private static sqlFromDefinition(table: Table): string {
-    return _.template("(${columns}, ${constraints})")({
-      columns:     _.join(_.map(table.definition, (column, key) =>
-        _.template("`${name}` ${data_type} ${is_null} ${default_value} ${ai} ${comment} ${format}")({
-          name:          key,
-          data_type:     this.sqlFromDataType(column),
-          is_null:       column.null || column.default === null ? "NULL" : "NOT NULL",
-          default_value: column.default !== undefined ? "DEFAULT " + (column.default !== null ? (column.default.toString() === "" ? "''" : column.default.toString()) : "NULL") : "",
-          ai:            column.auto_increment ? "AUTO_INCREMENT" : "",
-          collate:       column.collation ? "COLLATE " + column.collation : "",
-          comment:       column.comment ? "COMMENT " + column.comment : "",
-          format:        column.column_format ? "COLUMN_FORMAT " + column.column_format : ""
-        }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "")
-      ), ", "),
-      constraints: _.join([
-        Table.sqlFromIndexes(table.indexes),
-        Table.sqlFromReferences(table)
-      ], ", ").replace(/\s{2,}/g, " ").replace(/^\s|\s$|,\s*$/g, "")
-    });
+    return `(${_.join([
+      _.map(table.definition, (column, key) => this.sqlFromColumn(key, column)),
+      this.sqlFromIndexes(table.indexes),
+      this.sqlFromReferences(table)
+    ], ", ").replace(/\s{2,}/g, " ").replace(/^\s|\s$|,\s*$/g, "")})`;
+  }
+  
+  public static sqlFromColumn<T>(name: string, column: tTableColumn<T>) {
+    return _.template("`${name}` ${data_type} ${is_null} ${default_value} ${ai} ${comment} ${format}")({
+      name:          name,
+      data_type:     this.sqlFromDataType(column),
+      is_null:       column.null || column.default === null ? "NULL" : "NOT NULL",
+      default_value: column.default !== undefined ? "DEFAULT " + (column.default !== null ? (column.default.toString() === "" ? "''" : column.default.toString()) : "NULL") : "",
+      ai:            column.auto_increment ? "AUTO_INCREMENT" : "",
+      collate:       column.collation ? "COLLATE " + column.collation : "",
+      comment:       column.comment ? "COMMENT " + column.comment : "",
+      format:        column.column_format ? "COLUMN_FORMAT " + column.column_format : ""
+    }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
   }
   
   private static sqlFromIndexes(indexes) {
@@ -385,10 +396,10 @@ const Table: cTable = class Table implements iTable {
   }
   
   private static sqlFromDataType(column) {
-    if (column.length) { return `${_.toUpper(column.type)} (${column.length})`; }
-    if (column.precision && !column.scale) { return `${_.toUpper(column.type)} (${column.precision})`; }
-    if (column.precision && column.scale) { return `${_.toUpper(column.type)} (${column.precision}, ${column.scale})`; }
-    if (column.values) { return `${_.toUpper(column.type)} ('${_.join(column.values, "','")}')`; }
+    if (column.length) { return `${column.type}(${column.length})`; }
+    if (column.precision && !column.scale) { return `${column.type}(${column.precision})`; }
+    if (column.precision && column.scale) { return `${column.type}(${column.precision}, ${column.scale})`; }
+    if (column.values) { return `${column.type}('${_.join(column.values, "','")}')`; }
     return _.toUpper(column.type);
   }
   
