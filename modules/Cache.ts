@@ -137,11 +137,11 @@ function unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, millis
  */
 
 function keyFromSet(parts: (string | number)[]): string {
-  return _.join(_.filter(parts), "::");
+  return _.join(_.map(_.filter(parts, part => +part === 0 || part === "" || part), part => _.snakeCase(_.toString(part))), "::");
 }
 
 function keysFromSets(parts: (string | number)[][]): string[] {
-  return _.map(parts, part => _.join(_.filter(part), "::"));
+  return _.map(parts, part => _.join(_.map(_.filter(part, fragment => +fragment === 0 || fragment === "" || fragment), fragment => _.snakeCase(_.toString(fragment))), "::"));
 }
 
 const exported: iCacheService = _.assign(

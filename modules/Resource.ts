@@ -93,8 +93,11 @@ const Resource: cResource = class Resource implements iResource {
   }
   
   public getKeys(): (string | number)[][] {
-    const $this = (<typeof Resource>this.constructor);
-    return _.map($this.table.keys, sets => _.map(sets, (key) => this[key] instanceof Buffer ? uuidFromBuffer(this[key]) : this[key]));
+    return _.map((<typeof Resource>this.constructor).table.keys, sets => _.map(sets, (key) => this[key] instanceof Buffer ? uuidFromBuffer(this[key]) : this[key]));
+  }
+  
+  public getKeyValues(): (string | number)[][] {
+    return _.reduce((<typeof Resource>this.constructor).table.keys, (result, keys) => _.every(keys, key => !_.isUndefined(this[key])) ? [...result, [_.map(keys, key => this[key])]] : result, []);
   }
   
   public toObject(deep?: boolean): Promise<Partial<this>> {
@@ -128,13 +131,13 @@ const Resource: cResource = class Resource implements iResource {
     );
   }
   
-  public static select<T extends cResource>(this: T & {new(init: tResourceObject): iResource}, start: number = 0, limit: number = 100): Promise<InstanceType<T>[]> {
+  public static select<T extends cResource>(this: T & { new(init: tResourceObject): iResource }, start: number = 0, limit: number = 100): Promise<InstanceType<T>[]> {
     return this.table.select(start, limit)
     .map(resource => <any>(new this(resource)))
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
-  public static selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | Resource): Promise<InstanceType<T> | InstanceType<T>[]> {
+  public static selectByID<T extends cResource>(this: T & { new(init: tResourceObject): InstanceType<T> }, id: string | Buffer | Resource): Promise<InstanceType<T> | InstanceType<T>[]> {
     return this.table.selectByID(id)
     .then(resource => _.isArray(resource) ? Promise.map(resource, r => <any>(new this(r))) : Promise.resolve(<any>(new this(resource))))
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
@@ -218,16 +221,15 @@ const Table: cTable = class Table implements iTable {
   }
   
   public validate<T extends iResource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
-    const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => !_.isUndefined(resource[key])) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
-    const cache_keys = options.keys || _.map(keys, key => Cache.keyFromSet(_.values(key)));
+    const cache_keys = options.keys || Cache.keysFromSets(resource.getKeyValues());
     
-    if (_.size(keys) === 0) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
+    if (_.size(cache_keys) === 0) { return Promise.reject(Response.error(400, "cache", {keys: cache_keys, object: resource})); }
     
     return Cache.getAny<T>(Cache.types.RESOURCE, this.resource.type, cache_keys)
     .catch(err => {
       if (err.code !== 404) { return Promise.reject(Response.error(err.code, err.type, err)); }
-      const where = _.join(_.map(keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
-      if (!where.length) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
+      const where = _.join(_.map(cache_keys, (key) => _.join(_.map(key, (v, k) => Database.parse("?? = ?", [k, v])), " AND ")), " OR ");
+      if (!where.length) { return Promise.reject(Response.error(400, "cache", {keys: cache_keys, object: resource})); }
       return Cache.set<T>(Cache.types.VALIDATE, this.resource.type, cache_keys, () => {
         return Database(this.options.resource.database).queryOne<T>(`SELECT * FROM ?? WHERE ${where} LIMIT 1`, this.resource.type);
       }, {timeout: 0, collision_fallback: true});
@@ -236,22 +238,21 @@ const Table: cTable = class Table implements iTable {
   
   public save<T extends iResource>(resource: T, options: iResourceActionOptions = {}): Promise<T> {
     let where = "";
-    const keys: {[key: string]: string}[] = _.reduce(this.keys, (result, keys) => _.every(keys, key => resource[key]) ? [...result, _.reduce(keys, (r, k) => _.set(r, k, resource[k]), {})] : result, []);
-    const cache_keys = options.keys || _.map(keys, key => Cache.keyFromSet(_.values(key)));
+    const cache_keys = options.keys || Cache.keysFromSets(resource.getKeyValues());
     
-    if (_.size(keys) === 0) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
+    if (_.size(cache_keys) === 0) { return Promise.reject(Response.error(400, "cache", {keys: cache_keys, object: resource})); }
     if (!resource.validated) { return Promise.reject(Response.error(400, "resource", this)); }
     
     if (resource.exists) {
       where = _.join(_.map(this.indexes.primary, key => Database.parse("?? = ?", [key, resource[key]])), " AND ");
-      if (!where.length) { return Promise.reject(Response.error(400, "cache", {keys: keys, object: resource})); }
+      if (!where.length) { return Promise.reject(Response.error(400, "cache", {keys: cache_keys, object: resource})); }
     }
     
     return Cache.set<T>(Cache.types.RESOURCE, this.resource.type, cache_keys, () => {
       const set = [this.resource.type, _.pick(resource, _.keys(this.definition))];
       return Database(this.options.resource.database).query<iDatabaseActionResult>(resource.exists ? `UPDATE ?? SET ? WHERE ${where}` : "INSERT INTO ?? SET ?", _.concat(set))
       .then(res => {
-        if (res.affectedRows === 0) { return Promise.reject(Response.error(500, "resource", {keys: keys, object: resource})); }
+        if (res.affectedRows === 0) { return Promise.reject(Response.error(500, "resource", {keys: cache_keys, object: resource})); }
         return Promise.resolve(_.set(resource, "exists", true));
       });
     }, {timeout: 0, collision_fallback: true});
@@ -290,7 +291,7 @@ const Table: cTable = class Table implements iTable {
   
   public count(): Promise<number> {
     return Cache.setOne<number>(Cache.types.QUERY, this.resource.type, "count", () => {
-      return Database(this.options.resource.database).queryOne<{count: number}>("SELECT COUNT(1) as `count` FROM ??")
+      return Database(this.options.resource.database).queryOne<{ count: number }>("SELECT COUNT(1) as `count` FROM ??")
       .then(res => res.count);
     }, {timeout: 0, collision_fallback: true});
   }
@@ -306,36 +307,25 @@ const Table: cTable = class Table implements iTable {
     }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
   }
   
-  public static sqlFromTable(table: Table): string {
-    return _.template("CREATE ${temporary} TABLE ${exists} `${name}` ${definition} ${table_options} ${partition_options}")({
-      temporary:         table.options.resource.temporary ? "TEMPORARY" : "",
-      exists:            table.options.resource.exists_check ? "IF NOT EXISTS" : "",
-      name:              table.resource.type,
-      definition:        Table.sqlFromDefinition(table),
-      table_options:     Table.sqlFromTableOptions(table.options.table),
-      partition_options: Table.sqlFromPartitionOptions(table.options.partition)
-    }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
-  }
-  
   private static sqlFromDefinition(table: Table): string {
-    return `(${_.join([
-      _.map(table.definition, (column, key) => this.sqlFromColumn(key, column)),
-      this.sqlFromIndexes(table.indexes),
-      this.sqlFromReferences(table)
-    ], ", ").replace(/\s{2,}/g, " ").replace(/^\s|\s$|,\s*$/g, "")})`;
-  }
-  
-  public static sqlFromColumn<T>(name: string, column: tTableColumn<T>) {
-    return _.template("`${name}` ${data_type} ${is_null} ${default_value} ${ai} ${comment} ${format}")({
-      name:          name,
-      data_type:     this.sqlFromDataType(column),
-      is_null:       column.null || column.default === null ? "NULL" : "NOT NULL",
-      default_value: column.default !== undefined ? "DEFAULT " + (column.default !== null ? (column.default.toString() === "" ? "''" : column.default.toString()) : "NULL") : "",
-      ai:            column.auto_increment ? "AUTO_INCREMENT" : "",
-      collate:       column.collation ? "COLLATE " + column.collation : "",
-      comment:       column.comment ? "COMMENT " + column.comment : "",
-      format:        column.column_format ? "COLUMN_FORMAT " + column.column_format : ""
-    }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "");
+    return _.template("(${columns}, ${constraints})")({
+      columns:     _.join(_.map(table.definition, (column, key) =>
+        _.template("`${name}` ${data_type} ${is_null} ${default_value} ${ai} ${comment} ${format}")({
+          name:          key,
+          data_type:     this.sqlFromDataType(column),
+          is_null:       column.null || column.default === null ? "NULL" : "NOT NULL",
+          default_value: column.default !== undefined ? "DEFAULT " + (column.default !== null ? (column.default.toString() === "" ? "''" : column.default.toString()) : "NULL") : "",
+          ai:            column.auto_increment ? "AUTO_INCREMENT" : "",
+          collate:       column.collation ? "COLLATE " + column.collation : "",
+          comment:       column.comment ? "COMMENT " + column.comment : "",
+          format:        column.column_format ? "COLUMN_FORMAT " + column.column_format : ""
+        }).replace(/\s{2,}/g, " ").replace(/^\s|\s$/g, "")
+      ), ", "),
+      constraints: _.join([
+        Table.sqlFromIndexes(table.indexes),
+        Table.sqlFromReferences(table)
+      ], ", ").replace(/\s{2,}/g, " ").replace(/^\s|\s$|,\s*$/g, "")
+    });
   }
   
   private static sqlFromIndexes(indexes) {
@@ -396,10 +386,10 @@ const Table: cTable = class Table implements iTable {
   }
   
   private static sqlFromDataType(column) {
-    if (column.length) { return `${column.type}(${column.length})`; }
-    if (column.precision && !column.scale) { return `${column.type}(${column.precision})`; }
-    if (column.precision && column.scale) { return `${column.type}(${column.precision}, ${column.scale})`; }
-    if (column.values) { return `${column.type}('${_.join(column.values, "','")}')`; }
+    if (column.length) { return `${_.toUpper(column.type)} (${column.length})`; }
+    if (column.precision && !column.scale) { return `${_.toUpper(column.type)} (${column.precision})`; }
+    if (column.precision && column.scale) { return `${_.toUpper(column.type)} (${column.precision}, ${column.scale})`; }
+    if (column.values) { return `${_.toUpper(column.type)} ('${_.join(column.values, "','")}')`; }
     return _.toUpper(column.type);
   }
   

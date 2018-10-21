@@ -54,6 +54,8 @@ export interface iResource {
   
   getKeys(): (string | number)[][]
   
+  getKeyValues(): (string | number)[][]
+  
   toObject(deep?: boolean): Promise<Partial<this>>
 }
 
@@ -64,8 +66,6 @@ export interface cTable {
   toReferenceColumn: <T extends tEnum<T>>(table: tEnumValue<T> & string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
   toTimeColumn: (index?: string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
   toFlagColumn: (hidden?: boolean) => tTableColumn<tTableColumnTypes>
-  sqlFromTable: (table: iTable) => string;
-  sqlFromColumn: <T extends tTableColumnTypes>(name: string, column: tTableColumn<T>) => string;
 }
 
 export interface iTable {
