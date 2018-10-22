@@ -141,7 +141,7 @@ function keyFromSet(parts: (string | number)[]): string {
 }
 
 function keysFromSets(parts: (string | number)[][]): string[] {
-  return _.map(parts, part => _.join(keyFromSet(part), "::"));
+  return _.map(parts, part => keyFromSet(part));
 }
 
 const exported: iCacheService = _.assign(

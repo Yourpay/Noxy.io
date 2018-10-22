@@ -52,7 +52,9 @@ export interface iResource {
   
   remove(options?: iResourceActionOptions): Promise<this>
   
-  getKeys(): (string | number)[][]
+  getKeyValues(as_object?: false, convert_to_uuid?: boolean): (string | number)[][]
+  
+  getKeyValues(as_object?: true, convert_to_uuid?: boolean): {[key: string]: string | number}[]
   
   getKeyValues(): (string | number)[][]
   

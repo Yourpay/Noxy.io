@@ -37,26 +37,28 @@ function remove(id: string): boolean {
   return delete store[id];
 }
 
-function parse(sql: string, replacers: any | any[]) {
-  
-  //TODO: Implement using (?<=\s+|^|[(.])\?{1,3}(?=\s+|$|[);.]) with lookbehinds.
-  
-  return _.reduce(sql.match(/(\s+|^|[(.])\?{1,3}(?=\s+|$|[);.])/g), (result, match, i) => {
+function parse(sql: string, replacers?: any): string {
+  return _.reduce(sql.match(/(?<=\s+|^|[(.])\?{1,3}(?=\s+|$|[);.])/g), (result, qmarks, index) => {
     if (_.isUndefined(replacers)) { return result; }
-    const r = _.concat(replacers)[i];
-    const length = (match.match(/\?/g) || []).length;
-    const regex = new RegExp("(\\\s+|^|[(.])\\\?{" + length + "}(\\\s+|$|[);.])");
-    if (length === 3) {
-      if (r.type === "where")
-        if (r.type === "in" && r.key && r.values) { return result.replace(regex, "$1`" + r.key + "` IN (" + mysql.escape(r.values) + ")$2"); }
-      return result.replace(regex, "$1" + mysql.escape(r) + "$2");
+    const replacer = _.concat(replacers)[index];
+    const regex = new RegExp("(?<=\\\s+|^|[(.])\\\?{" + qmarks.length + "}(?=\\\s+|$|[);.])");
+    if (qmarks.length === 3) {
+      return result.replace(regex, parseWhere(replacer));
     }
-    if (length === 2) {
-      if (_.isArray(r)) { return result.replace(regex, "$1" + _.join(_.map(r, s => "`" + s + "`"), ".") + "$2"); }
-      return result.replace(regex, "$1`" + r + "`$2");
+    if (qmarks.length === 2) {
+      if (_.isArray(replacer)) { return result.replace(regex, "$1" + _.join(_.map(replacer, s => "`" + s + "`"), ".") + "$2"); }
+      return result.replace(regex, "`" + replacer + "`");
     }
-    return result.replace(regex, "$1" + mysql.escape(r) + "$2");
+    return result.replace(regex, mysql.escape(replacer));
   }, sql);
+}
+
+function parseWhere(rps: any[]) {
+  if (_.isArray(rps)) { return `(${_.join(_.map(rps, replacer => parseWhere(replacer)), ") OR (")})`; }
+  if (_.isPlainObject(rps)) {
+    return `(${_.join(_.map(rps, (o, k) => !_.isArray(o) && _.isPlainObject(o) ? mysql.format(`?? IN (${_.join(_.map(o, r => mysql.format("?", r)), ", ")})`, [k]) : mysql.format("?? = ?", [k, o])), ") AND (")})`;
+  }
+  return mysql.format("?? IS NULL", rps);
 }
 
 class DatabasePool implements iDatabasePool {
