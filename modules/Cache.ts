@@ -27,7 +27,7 @@ function get<T>(type: eCacheTypes, namespace: string, keys: tCacheKey[]): tCache
     return Promise.reject(Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
   })
   .then(values => {
-    if (_.every(values, value => value instanceof Error)) { throw Response.error(404, "cache", _.map(values, "content")); }
+    if (_.every(values, value => value instanceof Error)) { Promise.reject(Response.error(404, "cache", _.map(values, "content"))); }
     return Promise.resolve(values);
   });
 }
@@ -50,10 +50,10 @@ function getAny<T>(type: eCacheTypes, namespace: string, keys: tCacheKey[]): Pro
     return Promise.reject(Response.error(500, "cache", {type: type, namespace: namespace, keys: keys}));
   }))
   .catch(err => {
-    if (_.every(_.initial(_.values(err)), e => e.code === 404)) { throw Response.error(404, "cache", _.map(err, "content")); }
+    if (_.every(_.initial(_.values(err)), e => e.code === 404)) { return Promise.reject(Response.error(404, "cache", _.map(err, "content"))); }
     const t_error = _.find(err, e => !e.code && !e.type);
-    if (t_error) { throw Response.error(500, "cache", t_error); }
-    throw Response.error(500, "cache", err);
+    if (t_error) { return Promise.reject(Response.error(500, "cache", t_error)); }
+    return Promise.reject(Response.error(500, "cache", err));
   });
 }
 
@@ -137,11 +137,11 @@ function unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, millis
  */
 
 function keyFromSet(parts: (string | number)[]): string {
-  return _.join(_.map(_.filter(parts, part => +part === 0 || part === "" || part), part => _.snakeCase(_.toString(part))), "::");
+  return _.join(_.map(_.filter(parts, part => +part === 0 || part === "" || part), part => _.snakeCase(_.toString(part).replace(/^\s+|\s+$/, ""))), "::");
 }
 
 function keysFromSets(parts: (string | number)[][]): string[] {
-  return _.map(parts, part => _.join(_.map(_.filter(part, fragment => +fragment === 0 || fragment === "" || fragment), fragment => _.snakeCase(_.toString(fragment))), "::"));
+  return _.map(parts, part => _.join(keyFromSet(part), "::"));
 }
 
 const exported: iCacheService = _.assign(
