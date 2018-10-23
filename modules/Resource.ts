@@ -388,11 +388,12 @@ const Table: cTable = class Table implements iTable {
   }
   
   private static sqlFromDataType(column) {
-    if (column.length) { return `${_.toUpper(column.type)} (${column.length})`; }
-    if (column.precision && !column.scale) { return `${_.toUpper(column.type)} (${column.precision})`; }
-    if (column.precision && column.scale) { return `${_.toUpper(column.type)} (${column.precision}, ${column.scale})`; }
-    if (column.values) { return `${_.toUpper(column.type)} ('${_.join(column.values, "','")}')`; }
-    return _.toUpper(column.type);
+    return _.template("${type}${length} ${unsigned} ${zerofill}")({
+      type:     column.type,
+      length:   column.length ? `(${column.length})` : (column.scale ? `(${column.scale})` : (column.precision ? `(${column.precision},${column.scale})` : (column.values ? `('${_.join(column.values, "','")}')` : ""))),
+      unsigned: column.unsigned ? "UNSIGNED" : "",
+      zerofill: column.zerofill ? "ZEROFILL" : ""
+    });
   }
   
   public static toPrimaryColumn<T extends tEnum<T>>(reference?: tEnumValue<T> & string, hidden?: boolean): tTableColumn<tTableColumnTypes> {
@@ -407,8 +408,8 @@ const Table: cTable = class Table implements iTable {
     return {type: "bigint", length: 13, required: true, protected: true, default: null, index: index ? index : null, hidden: hidden};
   }
   
-  public static toFlagColumn(hidden: boolean = false): tTableColumn<tTableColumnTypes> {
-    return {type: "tinyint", length: 1, required: true, protected: true, default: null, hidden: hidden};
+  public static toFlagColumn(dflt: boolean = false, hidden: boolean = false): tTableColumn<tTableColumnTypes> {
+    return {type: "tinyint", length: 1, required: true, protected: true, default: dflt ? 1 : 0, hidden: hidden};
   }
   
 };

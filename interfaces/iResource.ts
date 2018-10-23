@@ -67,7 +67,7 @@ export interface cTable {
   toPrimaryColumn: <T extends tEnum<T>>(reference?: tEnumValue<T> & string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
   toReferenceColumn: <T extends tEnum<T>>(table: tEnumValue<T> & string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
   toTimeColumn: (index?: string, hidden?: boolean) => tTableColumn<tTableColumnTypes>
-  toFlagColumn: (hidden?: boolean) => tTableColumn<tTableColumnTypes>
+  toFlagColumn: (default_value?: boolean, hidden?: boolean) => tTableColumn<tTableColumnTypes>
 }
 
 export interface iTable {
@@ -212,36 +212,44 @@ export type tTableColumnTypes =
   "point" | "linestring" | "polygon" | "geometry" | "multipoint" | "multilinestring" | "multipolygon" | "geometrycollection" |
   "enum" | "set";
 
-export type tTableColumnLengthTypes = "tinyint" | "smallint" | "mediumint" | "int" | "bigint" | "bit" | "char" | "varchar" | "binary" | "varbinary";
+export type tTableColumnNumericTypes = "tinyint" | "smallint" | "mediumint" | "int" | "bigint";
+export type tTableColumnLengthTypes = "bit" | "char" | "varchar" | "binary" | "varbinary";
 export type tTableColumnDecimalTypes = "float" | "double" | "decimal" | "numeric";
 export type tTableColumnPrecisionTypes = "time" | "datetime" | "timestamp";
 export type tTableColumnSetTypes = "enum" | "set";
 
-export type tTableColumn<T> = T extends tTableColumnTypes & tTableColumnLengthTypes ? iTableColumnLength<T> :
+export type tTableColumn<T> = T extends tTableColumnTypes & tTableColumnNumericTypes ? tTableColumnNumeric<T> :
+                              T extends tTableColumnTypes & tTableColumnLengthTypes ? iTableColumnLength<T> :
                               T extends tTableColumnTypes & tTableColumnDecimalTypes ? iTableColumnDecimal<T> :
                               T extends tTableColumnTypes & tTableColumnPrecisionTypes ? iTableColumnPrecision<T> :
                               T extends tTableColumnTypes & tTableColumnSetTypes ? iTableColumnSet<T> :
                               iTableColumnAny<T>
 
+export interface tTableColumnNumeric<T> extends iTableColumnBase {
+  type: T
+  length: number
+  unsigned?: boolean
+}
+
 export interface iTableColumnLength<T> extends iTableColumnBase {
   type: T
-  length: number;
+  length: number
 }
 
 export interface iTableColumnDecimal<T> extends iTableColumnBase {
   type: T
   precision: number;
-  scale: number;
+  scale: number
 }
 
 export interface iTableColumnPrecision<T> extends iTableColumnBase {
   type: T
-  precision: number;
+  precision: number
 }
 
 export interface iTableColumnSet<T> extends iTableColumnBase {
   type: T
-  values: string[];
+  values: string[]
 }
 
 export interface iTableColumnAny<T> extends iTableColumnBase {
