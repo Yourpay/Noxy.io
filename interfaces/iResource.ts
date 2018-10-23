@@ -56,8 +56,6 @@ export interface iResource {
   
   getKeyValues(as_object?: true, convert_to_uuid?: boolean): {[key: string]: string | number}[]
   
-  getKeyValues(): (string | number)[][]
-  
   toObject(deep?: boolean): Promise<Partial<this>>
 }
 
