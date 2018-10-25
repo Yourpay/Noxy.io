@@ -137,7 +137,7 @@ function unsetAfter(type: eCacheTypes, namespace: string, key: tCacheKey, millis
  */
 
 function keyFromSet(parts: (string | number)[]): string {
-  return _.join(_.map(_.filter(parts, part => +part === 0 || part === "" || part), part => _.snakeCase(_.toString(part).replace(/^\s+|\s+$/, ""))), "::");
+  return _.join(_.map(_.filter(parts, part => +part === 0 || part === "" || part), part => _.snakeCase(_.toLower(_.toString(part).replace(/^\s+|\s+$/, "")))), "::");
 }
 
 function keysFromSets(parts: (string | number)[][]): string[] {
