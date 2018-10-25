@@ -12,5 +12,3 @@ ddl.sql
 package-lock.json
 /dist/
 /.idea/
-/.idea/codeStyles/
-/.idea/inspectionProfiles/
