@@ -11,7 +11,7 @@ export type Omit<T, K> = Pick<T, Exclude<keyof T, K>>
 export type tNonFnPropNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
 export type tNonFnProps<T> = Pick<T, tNonFnPropNames<T>>;
 export type tNonFnPropsOptional<T> = Partial<Pick<T, tNonFnPropNames<T>>>;
-export type tPromiseFn<T> = () => Promise<T>
+export type tPromiseFunction<T> = () => Promise<T>
 
 export interface iMYSQLTable {
   TABLE_ID: number

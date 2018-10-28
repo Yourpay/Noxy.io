@@ -107,6 +107,7 @@ const Resource: cResource = class Resource implements iResource {
     return <any>Promise.props(
       _.transform(_.omitBy($this.table.definition, v => v.hidden),
         (r, v, k) => {
+          if (_.isNull(this[k]) || _.isUndefined(this[k]) || _.isNaN(this[k])) { return this[k]; }
           const [type, value] = _.tail(_.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0)));
           if (type === "binary") {
             if (value === "16") {
