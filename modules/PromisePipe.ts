@@ -1,7 +1,7 @@
 import * as Promise from "bluebird";
 import * as _ from "lodash";
 import * as uuid from "uuid";
-import {tEnum, tEnumKeys, tPromiseFn} from "../interfaces/iAuxiliary";
+import {tEnum, tEnumKeys, tPromiseFunction} from "../interfaces/iAuxiliary";
 import {cPromisePipe, ePromisePipeStatus, iPromisePipe, iPromisePipeFn, iPromisePipeService} from "../interfaces/iPromisePipe";
 import * as Response from "../modules/Response";
 
@@ -15,7 +15,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
   
   private status: ePromisePipeStatus;
   public readonly stages: T;
-  public readonly promises: { [K in tEnumKeys<T>]?: {[key: string]: tPromiseFn<any>} };
+  public readonly promises: { [K in tEnumKeys<T>]?: {[key: string]: tPromiseFunction<any>} };
   
   constructor(stages: T) {
     this.status = ePromisePipeStatus.READY;
@@ -30,7 +30,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
     });
   }
   
-  public add<K>(stage: tEnumKeys<T>, fn: tPromiseFn<K>): string {
+  public add<K>(stage: tEnumKeys<T>, fn: tPromiseFunction<K>): string {
     const key = uuid.v4();
     this.promises[stage][key] = fn;
     return key;
@@ -56,7 +56,7 @@ const PromisePipe: cPromisePipe = class PromisePipe<T extends tEnum<T>> implemen
     return PromisePipe.resolve(this);
   }
   
-  private static resolve<T extends tEnum<T>>(pipe: PromisePipe<any>, promises?: {[key: string]: tPromiseFn<any>}[]): Promise<any> {
+  private static resolve<T extends tEnum<T>>(pipe: PromisePipe<any>, promises?: {[key: string]: tPromiseFunction<any>}[]): Promise<any> {
     if (!promises) { promises = _.values(pipe.promises); }
     const [stage, remaining] = [_.head(promises), _.tail(promises)];
     return Promise.map(_.values(stage), fn => fn())
