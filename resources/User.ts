@@ -23,7 +23,7 @@ const options = {};
 
 export default class User extends Resource.Constructor {
   
-  private static __login_callbacks: ((request: express.Request, response: express.Response, user: tObject | User) => Promise<tObject | User>)[] = [];
+  private static __login_callbacks: ((request: express.Request, response: express.Response, user: tObject<any> | User) => Promise<tObject<any> | User>)[] = [];
   
   public username: string;
   public email: string;
@@ -55,7 +55,7 @@ export default class User extends Resource.Constructor {
     return crypto.pbkdf2Sync(password, salt.toString("base64"), 10000, 64, "sha512");
   }
   
-  public static addLoginCallback(callback: (request: express.Request, response: express.Response, user: tObject | User) => Promise<tObject | User>): void {
+  public static addLoginCallback(callback: (request: express.Request, response: express.Response, user: tObject<any> | User) => Promise<tObject<any> | User>): void {
     User.__login_callbacks.push(callback);
   }
   
