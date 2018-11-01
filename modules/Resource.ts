@@ -1,4 +1,5 @@
 import * as Promise from "bluebird";
+import * as express from "express";
 import * as _ from "lodash";
 import * as uuid from "uuid";
 import {env} from "../globals";
@@ -102,36 +103,71 @@ const Resource: cResource = class Resource implements iResource {
     );
   }
   
-  public toObject(deep?: boolean): Promise<Partial<this>> {
+  public toObject(deep?: boolean | number): Promise<Partial<this>> {
     const $this = (<typeof Resource>this.constructor);
-    return <any>Promise.props(
-      _.transform(_.omitBy($this.table.definition, v => v.hidden),
-        (r, v, k) => {
-          if (_.isNull(this[k]) || _.isUndefined(this[k]) || _.isNaN(this[k])) { return this[k]; }
-          const [type, value] = _.tail(_.reduce(v.type.match(/([^()]*)(?:\((.*)\))?/), (r, v, k) => _.set(r, k, v), Array(3).fill(0)));
-          if (type === "binary") {
-            if (value === "16") {
-              if (deep && v.reference && (_.isString(v.reference) || _.isPlainObject(v.reference) || _.size(v.reference) === 1)) {
-                Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[k])
-                .catch(err => {
-                  if (err.code !== 404 || err.type !== "cache") { return Promise.reject(Response.error(err.code, err.type, err)); }
-                  return new exported.list[_.join([$this.table.options.resource.database, _.get(v, "reference.table", v.reference)], "::")]({id: this[k]}).validate();
-                })
-                .then(res => res.toObject())
-                .then(res => _.set(r, k, res));
-              }
-              return _.set(r, k, uuidFromBuffer(this[k]));
-            }
-            return _.set(r, k, (<Buffer>this[k]).toString("hex"));
+    const definition = $this.table.definition;
+    
+    return Promise.props(<Promise.ResolvableProps<Partial<this>>>_.reduce(this, (result, value, key) => {
+      /* Remove values not present in the table definition. */
+      if (_.isUndefined(definition[key]) || definition[key].hidden) { return result; }
+      /* Remove errorful values from the object */
+      if (_.isUndefined(value) || _.isNaN(value)) { return result; }
+      /* Null values does not need interpretation. */
+      if (_.isNull(value)) { return _.set(result, key, Promise.resolve(value)); }
+      
+      const column = definition[key];
+      
+      if (column.type === "binary") {
+        if (column.length === 16) {
+          if (deep && column.reference) {
+            return Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[key])
+            .catch(err => {
+              if (err.code !== 404) { return Promise.reject(Response.error(err.code, err.type, err)); }
+              const database = env.databases[$this.table.options.resource.database].database;
+              const reference = typeof column.reference === "string" ? column.reference : column.reference.table;
+              const resource = exported.list[_.join([database, reference], "::")];
+              return new resource({id: this[key]}).validate();
+            })
+            .tap(res => console.log(res))
+            .then(res => _.set(result, key, res.toObject(_.isBoolean(deep) ? deep : deep--)));
           }
-          if (type === "varbinary") { return _.set(r, k, (<Buffer>this[k]).toString("utf8")); }
-          if (type === "blob") { return _.set(r, k, (<Buffer>this[k]).toString("base64")); }
-          if (type === "tinyint" && value === "1") { return _.set(r, k, !!this[k]); }
-          return _.set(r, k, this[k]);
-        },
-        {}
-      )
-    );
+          return _.set(result, key, uuidFromBuffer(this[key]));
+        }
+        return _.set(result, key, (<Buffer>this[key]).toString("hex"));
+      }
+      
+      return _.set(result, key, value);
+    }, <any>{}));
+    
+    // return <any>Promise.props(
+    //   _.transform(_.omitBy($this.table.definition, v => v.hidden),
+    //     (result, column, key) => {
+    //       if (_.isNull(this[key]) || _.isUndefined(this[key]) || _.isNaN(this[key])) { return this[key]; }
+    //       if (column.type === "binary") {
+    //         if (column.length === 16) {
+    //           if (deep && column.reference) {
+    //             return Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[key])
+    //             .catch(err => {
+    //               if (err.code !== 404) { return Promise.reject(Response.error(err.code, err.type, err)); }
+    //               const resource = exported.list[_.join([env.databases[$this.table.options.resource.database].database, typeof column.reference === "object" ? column.reference.table : column.reference], "::")];
+    //               return new resource({id: this[key]}).validate();
+    //             })
+    //             .tap(res => console.log(res))
+    //             .then(res => res.toObject(_.isBoolean(deep) ? deep : deep--))
+    //             .then(res => _.set(result, key, res));
+    //           }
+    //           return _.set(result, key, uuidFromBuffer(this[key]));
+    //         }
+    //         return _.set(result, key, (<Buffer>this[key]).toString("hex"));
+    //       }
+    //       if (column.type === "varbinary") { return _.set(result, key, (<Buffer>this[key]).toString("utf8")); }
+    //       if (column.type === "blob") { return _.set(result, key, (<Buffer>this[key]).toString("base64")); }
+    //       if (column.type === "tinyint" && column.length === 1) { return _.set(result, key, !!this[key]); }
+    //       return _.set(result, key, this[key]);
+    //     },
+    //     {}
+    //   )
+    // );
   }
   
   public static select<T extends cResource>(this: T & {new(init: tResourceObject): iResource}, start: number = 0, limit: number = 100): Promise<InstanceType<T>[]> {
@@ -146,17 +182,17 @@ const Resource: cResource = class Resource implements iResource {
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
-  public static count() {
+  public static count(request: express.Request, response: express.Response) {
     return this.table.count()
     .catch(err => Promise.reject(Response.error(err.code, err.type, err)));
   }
   
-  public static get(start: number, limit: number): Promise<Partial<iResource>[]> {
-    return this.select(start, limit).map(res => res.toObject());
+  public static get(request: express.Request, response: express.Response): Promise<Partial<iResource>[]> {
+    return this.select(request.query.start, request.query.limit).map(res => res.toObject());
   }
   
-  public static getByID(id: string | Buffer | Resource): Promise<Partial<iResource> | Partial<iResource>[]> {
-    return this.selectByID(id)
+  public static getByID(request: express.Request, response: express.Response): Promise<Partial<iResource> | Partial<iResource>[]> {
+    return this.selectByID(response.locals.id)
     .then(res => {
       
       return Promise.reduce(_.concat(res), (result, value) => { return value.toObject().then(v => _.concat(result, v)); }, [])
@@ -164,20 +200,20 @@ const Resource: cResource = class Resource implements iResource {
     });
   }
   
-  public static post(resource: any): Promise<Partial<iResource>> {
-    return new this(resource).validate()
+  public static post(request: express.Request, response: express.Response): Promise<Partial<iResource>> {
+    return new this(request.body).validate()
     .then((res: iResource) => !res.exists ? res.save() : Promise.reject(Response.error(409, "resource")))
     .then(res => res.toObject());
   }
   
-  public static put(resource: any): Promise<Partial<iResource>> {
-    return new this(resource).validate()
+  public static put(request: express.Request, response: express.Response): Promise<Partial<iResource>> {
+    return new this(_.merge(request.body, {id: response.locals.id})).validate()
     .then((res: iResource) => res.exists ? res.save() : Promise.reject(Response.error(409, "resource")))
     .then(res => res.toObject());
   }
   
-  public static delete(id: string | Buffer): Promise<Partial<iResource>> {
-    return new this({id: id}).validate()
+  public static delete(request: express.Request, response: express.Response): Promise<Partial<iResource>> {
+    return new this({id: response.locals.id}).validate()
     .then((res: iResource) => res.exists ? res.remove() : Promise.reject(Response.error(409, "resource")))
     .then(res => res.toObject());
   }
@@ -430,7 +466,7 @@ function uuidFromBuffer(buffer: Buffer): string {
 }
 
 function toKey(string: string): string {
-  return string || string.replace(/\s/g, "") === "" ? _.snakeCase(_.deburr(string)) : undefined;
+  return string && string.replace(/\s/g, "") !== "" ? _.snakeCase(_.deburr(string)) : undefined;
 }
 
 const exported: iResourceService = _.assign(

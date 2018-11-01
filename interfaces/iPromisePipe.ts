@@ -39,4 +39,5 @@ export enum ePromisePipeStagesInit {
   "DATABASE"  = 0,
   "RESOURCE"  = 1,
   "PUBLICIZE" = 2,
+  "ROUTINE"   = 3,
 }

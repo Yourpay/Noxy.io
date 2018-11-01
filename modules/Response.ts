@@ -1,47 +1,69 @@
 import * as _ from "lodash";
 import * as ms from "ms";
-import {iResponseErrorObject, iResponseFn, iResponseJSONObject, iResponseService, tResponseCodes, tResponseContent} from "../interfaces/iResponse";
+import {tObject} from "../interfaces/iAuxiliary";
+import {cResponseError, cResponseJSON, iResponseError, iResponseFn, iResponseJSON, iResponseService, tResponseCodes} from "../interfaces/iResponse";
 
 const Service: iResponseFn = Default;
 
-function Default(code: number, type: string, content: tResponseContent | iResponseErrorObject = null, start?: number): iResponseErrorObject | iResponseJSONObject {
-  return content instanceof Error && !start ? error(code, type, content) : json(code, type, content, start);
+function Default(code: number, type: string, content?: iResponseError | Error | tObject<any>): iResponseError;
+function Default(code: number, type: string, start: number, content: tObject<any>): iResponseJSON;
+function Default(code: number, type: string, s_or_c?: number | iResponseError | Error | tObject<any>, content?: tObject<any>): iResponseError | iResponseJSON {
+  return typeof s_or_c === "number" ? new ResponseJSON(code, type, s_or_c, content) : new ResponseError(code, type, s_or_c);
 }
 
-function json(code: number, type: string, content?: tResponseContent, start?: number): iResponseJSONObject {
-  const now = Date.now();
-  const object: iResponseJSONObject = {
-    code:           _.isNumber(code) && !_.isNaN(code) ? code : 500,
-    type:           type || "any",
-    message:        _.get(codes, [code || 500, type || "any"], "No message given."),
-    time_completed: now
-  };
-  if (start) { object.time_elapsed = ms(now - start); }
-  if (!_.isUndefined(content)) { object.content = content; }
-  return object;
+function json(code: number, type: string, start: number, content: tObject<any>): iResponseJSON {
+  return new ResponseJSON(code, type, start, content);
 }
 
-function error(code: number, type: string, content: tResponseContent | iResponseErrorObject | Error): iResponseErrorObject {
-  const error_object = content instanceof Error ? content : Error.prototype.constructor();
-  const stack = error_object.log || error_object.stack;
-  const object = _.assign(error_object, {
-    code:    (<tResponseContent>error_object).code || _.isNumber(code) && !_.isNaN(code) ? code : 500,
-    type:    (<tResponseContent>error_object).type || _.isString(type) && _.trim(type).length > 0 ? type : "any",
-    message: error_object.message || _.get(codes, [code || 500, type || "any"], "No message given."),
-    log:     _.isString(stack) ? parseErrorStack(stack) : stack
-  });
-  if (content !== error_object && !_.isUndefined(content)) { object.content = content; }
-  delete object.stack;
-  return object;
+function error(code: number, type: string, content: Error | Error | tObject<any>): iResponseError {
+  if (content instanceof ResponseError) { return content; }
+  return new ResponseError(code, type, content);
 }
 
-function isError(err: iResponseErrorObject): boolean {
-  return !!(err instanceof Error && err.code && err.type && err.message && err.log);
-}
+const ResponseJSON: cResponseJSON = class ResponseJSON implements iResponseJSON {
+  
+  public code: number;
+  public type: string;
+  public message: string;
+  public content: tObject<any>;
+  public time_elapsed: number;
+  public time_completed: number;
+  
+  constructor(code: number, type: string, start: number, content: tObject<any>) {
+    const now = Date.now();
+    this.code = _.isNumber(code) && !_.isNaN(code) ? code : 500;
+    this.type = _.isString(type) && _.trim(type).length > 0 ? type : "any";
+    this.message = _.get(codes, [code, type], "No message given.");
+    this.time_elapsed = ms(now - start);
+    this.time_completed = now;
+    this.content = content;
+  }
+  
+};
 
-function parseErrorStack(stack): string[] {
-  return _.map(_.tail((stack || "").split("\n")), _.trim);
-}
+const ResponseError: cResponseError = class ResponseError extends Error implements iResponseError {
+  
+  public code: number;
+  public type: string;
+  public log: string[];
+  public message: string;
+  public content: tObject<any>;
+  
+  constructor(code: number, type: string, content: Error | tObject<any>) {
+    super();
+    this.code = _.isNumber(code) && !_.isNaN(code) ? code : 500;
+    this.type = _.isString(type) && _.trim(type).length > 0 ? type : "any";
+    this.message = content instanceof Error ? content.message : _.get(codes, [code, type], "No message given.");
+    this.log = content instanceof Error && !(content instanceof ResponseError) ? ResponseError.logFromStack(content.stack) : ResponseError.logFromStack(this.stack);
+    if (content) { this.content = content; }
+    delete this.stack;
+  }
+  
+  private static logFromStack(stack: string): string[] {
+    return _.map(_.tail((stack || "").split("\n")), _.trim);
+  }
+  
+};
 
 const codes: tResponseCodes = {
   200: {
@@ -90,10 +112,12 @@ const codes: tResponseCodes = {
 const exported: iResponseService = _.assign(
   Service,
   {
-    codes:   codes,
-    json:    json,
-    error:   error,
-    isError: isError
+    JSON:  ResponseJSON,
+    json:  json,
+    Error: ResponseError,
+    error: error,
+    
+    codes: codes
   }
 );
 

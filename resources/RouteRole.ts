@@ -9,15 +9,15 @@ const definition: iTableDefinition = {
 };
 const options = {resource: {junction: true}};
 
-export default class RoleRoute extends Resource.Constructor {
+export default class RouteRole extends Resource.Constructor {
   
   public role_id: string | Buffer | Role;
   public route_id: string | Buffer | Role;
   
-  constructor(initializer: tNonFnPropsOptional<RoleRoute> = {}) {
+  constructor(initializer: tNonFnPropsOptional<RouteRole> = {}) {
     super(initializer);
   }
   
 }
 
-Resource<eResourceType>(eResourceType.ROLE_ROUTE, RoleRoute, definition, options);
+Resource<eResourceType>(eResourceType.ROUTE_ROLE, RouteRole, definition, options);

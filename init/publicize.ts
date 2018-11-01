@@ -3,6 +3,7 @@ import * as express from "express";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
 import {env, init_pipe} from "../globals";
+import {iApplicationRequest, iApplicationResponse} from "../interfaces/iApplication";
 import {ePromisePipeStagesInit} from "../interfaces/iPromisePipe";
 import * as Application from "../modules/Application";
 import * as PromisePipe from "../modules/PromisePipe";
@@ -37,9 +38,9 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
     .catch(() => user);
   });
   
-  return Application.addRoute(env.subdomains.api, User.type, "login", Application.methods.POST, (request, response) =>
+  return Application.addRoute(env.subdomains.api, User.type, "login", Application.methods.POST, (request: iApplicationRequest, response: iApplicationResponse) =>
     User.login(request, response)
-    .then(res => Response.json(200, "any", res, response.locals.time))
+    .then(res => Response.json(200, "any", response.locals.time, res))
     .catch(err => Response.error(err.code, err.type, err))
     .then(res => Application.respond(response, res))
   );
@@ -57,41 +58,41 @@ publicize_pipe.add(ePromisePipeStagesInitPublicize.SETUP, () => {
   return Promise.map(_.values(Resource.list), resource =>
     Promise.all([
       Application.addRoute(env.subdomains.api, "/", "/", Application.methods.GET, (request: express.Request, response: express.Response) =>
-        response.json(Response.json(200, "any"))
+        response.json(Response.json(200, "any", response.locals.time, {}))
       ),
       Application.addRoute(env.subdomains.api, resource.type, "/", Application.methods.GET, (request: express.Request, response: express.Response) => {
-        resource.get(request.query.start, request.query.limit)
-        .then(res => Response.json(200, "any", res, response.locals.time))
+        resource.get(request, response)
+        .then(res => Response.json(200, "any", response.locals.time, res))
         .catch(err => Response.error(err.code, err.type, err))
         .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/", Application.methods.POST, (request: express.Request, response: express.Response) => {
-        resource.post(request.body)
-        .then(res => Response.json(200, "any", res, response.locals.time))
+        resource.post(request, response)
+        .then(res => Response.json(200, "any", response.locals.time, res))
         .catch(err => Response.error(err.code, err.type, err))
         .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/:id", Application.methods.GET, (request: express.Request, response: express.Response) => {
-        resource.getByID(response.locals.id)
-        .then(res => Response.json(200, "any", res, response.locals.time))
+        resource.getByID(request, response)
+        .then(res => Response.json(200, "any", response.locals.time, res))
         .catch(err => Response.error(err.code, err.type, err))
         .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/:id", Application.methods.PUT, (request: express.Request, response: express.Response) => {
-        resource.put(request.body)
-        .then(res => Response.json(200, "any", res, response.locals.time))
+        resource.put(request, response)
+        .then(res => Response.json(200, "any", response.locals.time, res))
         .catch(err => Response.error(err.code, err.type, err))
         .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/count", Application.methods.GET, (request: express.Request, response: express.Response) => {
-        resource.count()
-        .then(res => Response.json(200, "any", {count: res}, response.locals.time))
+        resource.count(request, response)
+        .then(res => Response.json(200, "any", response.locals.time, {count: res}))
         .catch(err => Response.error(err.code, err.type, err))
         .then(res => Application.respond(response, res));
       }),
       Application.addRoute(env.subdomains.api, resource.type, "/:id", Application.methods.DELETE, (request: express.Request, response: express.Response) => {
-        resource.delete(request.body)
-        .then(res => Response.json(200, "any", res, response.locals.time))
+        resource.delete(request, response)
+        .then(res => Response.json(200, "any", response.locals.time, res))
         .catch(err => Response.error(err.code, err.type, err))
         .then(res => Application.respond(response, res));
       })

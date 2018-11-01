@@ -1,8 +1,9 @@
 import * as Promise from "bluebird";
 import * as express from "express";
-import RoleUser from "../resources/RoleUser";
+import Role from "../resources/Role";
 import Route from "../resources/Route";
-import {iResponseErrorObject, iResponseJSONObject} from "./iResponse";
+import User from "../resources/User";
+import {iResponseError, iResponseJSON} from "./iResponse";
 
 export interface iApplicationService {
   readonly store: iApplicationStore
@@ -11,7 +12,7 @@ export interface iApplicationService {
   readonly published: boolean
   readonly application: express.Application
   
-  isAdmin(roles: RoleUser[]): boolean
+  hasRole(src_roles: Role | Role[], target_roles: Role | Role[]): boolean
   
   addSubdomain(subdomain: string): iApplicationSubdomain
   
@@ -39,7 +40,7 @@ export interface iApplicationService {
   
   publicize(): Promise<boolean>
   
-  respond(response: express.Response, content: iResponseJSONObject | iResponseErrorObject): express.Response
+  respond(response: express.Response, content: iResponseJSON | iResponseError): express.Response
 }
 
 export interface iApplicationFn {
@@ -78,6 +79,24 @@ export interface iApplicationConfiguration {
   application: express.Application
 }
 
+export interface iApplicationRequest extends express.Request {
+  vhost: {
+    host: string
+    hostname: string
+    length: number
+  }
+}
+
+export interface iApplicationResponse extends express.Response {
+  locals: {
+    time: number
+    route: Route
+    user: User
+    roles: Role[]
+    params: {[key: string]: any}
+  }
+}
+
 export enum eApplicationMethods {
   GET    = "get",
   POST   = "post",
@@ -87,4 +106,3 @@ export enum eApplicationMethods {
 }
 
 export type tApplicationMiddleware = (request: express.Request, response: express.Response, next?: express.NextFunction, value?: string, name?: string) => void
-export type tApplicationRouteSet<T> = {[namespace: string]: {[path: string]: { [key in eApplicationMethods]?: T }}}

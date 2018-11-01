@@ -4,9 +4,9 @@ import * as express from "express";
 import * as jwt from "jsonwebtoken";
 import * as _ from "lodash";
 import {env} from "../globals";
+import {iApplicationRequest, iApplicationResponse} from "../interfaces/iApplication";
 import {tNonFnPropsOptional, tObject} from "../interfaces/iAuxiliary";
 import {eResourceType, iTableDefinition} from "../interfaces/iResource";
-import {iResponseJSONObject} from "../interfaces/iResponse";
 import * as Resource from "../modules/Resource";
 import * as Response from "../modules/Response";
 
@@ -55,14 +55,14 @@ export default class User extends Resource.Constructor {
     return crypto.pbkdf2Sync(password, salt.toString("base64"), 10000, 64, "sha512");
   }
   
-  public static addLoginCallback(callback: (request: express.Request, response: express.Response, user: tObject<any> | User) => Promise<tObject<any> | User>): void {
+  public static addLoginCallback(callback: (request: iApplicationRequest, response: iApplicationResponse, user: tObject<any> | User) => Promise<tObject<any> | User>): void {
     User.__login_callbacks.push(callback);
   }
   
-  public static login(request: express.Request, response: express.Response): Promise<iResponseJSONObject> {
+  public static login(request: iApplicationRequest, response: iApplicationResponse): Promise<{jwt: string, object: Partial<User>}> {
     return Promise.reduce(User.login_callbacks, (user, fn) => fn(request, response, user).then(res => _.assign(user, res)), new User())
     .then(user => user instanceof User && user.exists ? user.toObject() : Promise.reject(Response.error(400, "login")))
-    .then(user => Response.json(200, "any", {jwt: jwt.sign(user, env.tokens.jwt, {expiresIn: "7d"}), object: user}))
+    .then(user => ({jwt: jwt.sign(user, env.tokens.jwt), object: user}))
     .catch(err => Promise.reject(err.code && err.type ? err : Response.error(500, "any", err)));
   }
   

@@ -1,5 +1,5 @@
 import * as Promise from "bluebird";
-
+import * as express from "express";
 import {Omit, tEnum, tEnumValue, tNonFnPropsOptional} from "./iAuxiliary";
 
 export interface iResourceService extends iResourceFn {
@@ -27,17 +27,17 @@ export interface cResource {
   
   selectByID<T extends cResource>(this: T & {new(init: tResourceObject): InstanceType<T>}, id: string | Buffer | iResource): Promise<InstanceType<T> | InstanceType<T>[]>
   
-  count(): Promise<number>
+  count(request: express.Request, response: express.Response): Promise<number>
   
-  get(start?: number, limit?: number): Promise<Partial<iResource>[]>
+  get(request: express.Request, response: express.Response): Promise<Partial<iResource>[]>
   
-  getByID(id?: string | Buffer | iResource): Promise<Partial<iResource> | Partial<iResource>[]>
+  getByID(request: express.Request, response: express.Response): Promise<Partial<iResource> | Partial<iResource>[]>
   
-  post(resource: any): Promise<Partial<iResource>>
+  post(request: express.Request, response: express.Response): Promise<Partial<iResource>>
   
-  put(resource: any): Promise<Partial<iResource>>
+  put(request: express.Request, response: express.Response): Promise<Partial<iResource>>
   
-  delete(id?: string | Buffer): Promise<Partial<iResource>>
+  delete(request: express.Request, response: express.Response): Promise<Partial<iResource>>
 }
 
 export interface iResource {
@@ -56,7 +56,7 @@ export interface iResource {
   
   getKeyValues(as_object?: true, convert_to_uuid?: boolean): {[key: string]: string | number}[]
   
-  toObject(deep?: boolean): Promise<Partial<this>>
+  toObject(deep?: boolean | number): Promise<Partial<this>>
 }
 
 export interface cTable {
@@ -276,8 +276,8 @@ export type tResourceInitializer<T extends Omit<tNonFnPropsOptional<T>, "exists"
 
 export enum eResourceType {
   "USER"       = "user",
+  "USER_ROLE"  = "user/role",
   "ROLE"       = "role",
-  "ROLE_USER"  = "role/user",
-  "ROLE_ROUTE" = "role/route",
   "ROUTE"      = "route",
+  "ROUTE_ROLE" = "route/role",
 }

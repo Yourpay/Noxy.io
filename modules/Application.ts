@@ -9,14 +9,14 @@ import * as path from "path";
 import * as favicon from "serve-favicon";
 import * as vhost from "vhost";
 import {env} from "../globals";
-import {eApplicationMethods, iApplicationConfiguration, iApplicationNamespace, iApplicationPath, iApplicationService, iApplicationStore, iApplicationSubdomain, tApplicationMiddleware} from "../interfaces/iApplication";
-import {iResponseErrorObject, iResponseJSONObject} from "../interfaces/iResponse";
+import {eApplicationMethods, iApplicationConfiguration, iApplicationNamespace, iApplicationPath, iApplicationRequest, iApplicationResponse, iApplicationService, iApplicationStore, iApplicationSubdomain, tApplicationMiddleware} from "../interfaces/iApplication";
+import {iResponseError, iResponseJSON} from "../interfaces/iResponse";
 import * as Response from "../modules/Response";
 import Role from "../resources/Role";
-import RoleRoute from "../resources/RoleRoute";
-import RoleUser from "../resources/RoleUser";
 import Route from "../resources/Route";
+import RouteRole from "../resources/RouteRole";
 import User from "../resources/User";
+import UserRole from "../resources/UserRole";
 import * as Database from "./Database";
 import * as Resource from "./Resource";
 
@@ -190,42 +190,82 @@ function sortObject(object: object, key: string, sort: "asc" | "desc" | 1 | -1):
   return _.reduce(_.keys(object).sort((a, b) => object[a][key] === object[b][key] ? 0 : ((object[a][key] < object[b][key] ? -1 : 1) * ((sort === "asc" || sort > 0) ? 1 : -1))), (r, v) => _.set(r, v, object[v]), {});
 }
 
-function isAdmin(roles: RoleUser[]): boolean {
-  return roles && _.size(roles) && _.some(roles, role => {
-    if (_.isString(role.role_id)) { return role.role_id === env.roles.admin.id; }
-    if (role.role_id instanceof Role) { return role.role_id.uuid === env.roles.admin.id; }
-    if (role.role_id instanceof Buffer) { return Resource.uuidFromBuffer(role.role_id) === env.roles.admin.id; }
+function hasRole(src_roles: string | Buffer | Role | (string | Buffer | Role)[], target_roles: string | Buffer | Role | (string | Buffer | Role)[]): boolean {
+  if (!target_roles || !src_roles) { return false; }
+  if (_.isArray(src_roles)) { return _.some(src_roles, src_role => hasRole(src_role, target_roles)); }
+  const role = src_roles;
+  if (_.isArray(target_roles)) { return _.some(target_roles, target_role => hasRole(role, target_role)); }
+  const target = target_roles;
+  
+  if (typeof role === "string") {
+    if (typeof target === "string") { return role === target; }
+    if (target instanceof Buffer) { return role === Resource.uuidFromBuffer(target); }
+    if (target instanceof Role) {
+      if (typeof target.id === "string") { return role === target.id; }
+      if (target.id instanceof Buffer) { return role === Resource.uuidFromBuffer(target.id); }
+    }
     return false;
-  });
+  }
+  if (role instanceof Buffer) {
+    if (typeof target === "string") { return Resource.uuidFromBuffer(role) === target; }
+    if (target instanceof Buffer) { return role.equals(target); }
+    if (target instanceof Role) {
+      if (typeof target.id === "string") { return Resource.uuidFromBuffer(role) === target.id; }
+      if (target.id instanceof Buffer) { return role.equals(target.id); }
+    }
+    return false;
+  }
+  if (role instanceof Role) {
+    if (typeof role.id === "string") {
+      if (typeof target === "string") { return role.id === target; }
+      if (target instanceof Buffer) { return role.id === Resource.uuidFromBuffer(target); }
+      if (target instanceof Role) {
+        if (typeof target.id === "string") { return role.id === target.id; }
+        if (target.id instanceof Buffer) { return role.id === Resource.uuidFromBuffer(target.id); }
+      }
+      return false;
+    }
+    if (role.id instanceof Buffer) {
+      if (typeof target === "string") { return Resource.uuidFromBuffer(role.id) === target; }
+      if (target instanceof Buffer) { return role.id.equals(target); }
+      if (target instanceof Role) {
+        if (typeof target.id === "string") { return Resource.uuidFromBuffer(role.id) === target.id; }
+        if (target.id instanceof Buffer) { return role.id.equals(target.id); }
+      }
+      return false;
+    }
+  }
+  
+  return false;
 }
 
-function respond(response: express.Response, content: iResponseJSONObject | iResponseErrorObject): express.Response {
+function respond(response: iApplicationResponse, content: iResponseJSON | iResponseError): express.Response {
   if (content instanceof Error) {
-    return response.status(content.code).json(isAdmin(response.locals.roles) ? content : _.omit(content, ["log", "stack"]));
+    const object = hasRole(response.locals.roles, new Role(env.roles.admin)) ? content : _.omit(content, ["log", "stack"]);
+    return response.status(content.code && _.isNumber(content.code) ? content.code : 500).json(object);
   }
   return response.json(content);
 }
 
-function auth(request: express.Request & {vhost: {host: string}}, response: express.Response, next: express.NextFunction) {
+function auth(request: iApplicationRequest, response: iApplicationResponse, next: express.NextFunction) {
   return new Promise((resolve, reject) => {
     const subdomain = request.vhost ? request.vhost.host.substring(0, request.vhost.host.length - configuration.domain.length - 1) : env.subdomains.default;
     const namespace = request.baseUrl.replace(/^\/*/, "");
-    const path = request.route.path.replace(/^\/*/, "");
+    const path = request.route.path.replace(/\/+/g, "/");
     const method = _.toLower(request.method);
     
     response.locals.time = Date.now();
     
     if (response.locals.route = _.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) {
       if (!response.locals.route.flag_active) {
-        return Promise.promisify(jwt.verify)(request.get("Authorization"), env.tokens.jwt)
-        .then(jwt_user => new User(jwt_user).validate())
+        return userFromJWT(request.get("Authorization"))
         .then(user => {
           if (!user.exists) { return reject(Response.error(404, "any")); }
-          Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [RoleUser.type, user.id])
-          .then(user_roles => {
-            if (isAdmin(user_roles)) {
+          return rolesFromUser(user)
+          .then(roles => {
+            if (hasRole(roles, env.roles.admin.id)) {
               response.locals.user = user;
-              response.locals.roles = user_roles;
+              response.locals.roles = roles;
               return resolve();
             }
             return reject(Response.error(404, "any"));
@@ -233,16 +273,14 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
         })
         .catch(() => reject(Response.error(404, "any")));
       }
-      return Database(env.mode).query<RoleRoute[]>("SELECT * FROM ?? WHERE `route_id` = ?", [RoleRoute.type, response.locals.route.id])
+      return rolesFromRoute(response.locals.route)
       .then(route_roles => {
-        if (!route_roles.length) { return next(); }
-        Promise.promisify(jwt.verify)(request.get("Authorization"), env.tokens.jwt)
-        .then(user => new User(user).validate())
+        return userFromJWT(request.get("Authorization"))
         .then(user => {
           if (!user.exists) { reject(Response.error(401, "jwt", {token: request.get("Authorization")})); }
-          Database(env.mode).query<RoleUser[]>("SELECT * FROM ?? WHERE `user_id` = ?", [RoleUser.type, user.id])
+          rolesFromUser(user)
           .then(user_roles => {
-            if (_.some(route_roles, route_role => _.some(user_roles, user_role => user_role.uuid === route_role.uuid))) {
+            if (hasRole(user_roles, route_roles)) {
               response.locals.user = user;
               response.locals.roles = user_roles;
               return resolve();
@@ -261,8 +299,23 @@ function auth(request: express.Request & {vhost: {host: string}}, response: expr
   .catch(err => respond(response, err));
 }
 
-function notFound(request: express.Request, response: express.Response) {
-  response.json(Response.json(404, "any"));
+function rolesFromRoute(route: Route): Promise<Role[]> {
+  return Database(env.mode).query<RouteRole[]>("SELECT * FROM ?? WHERE `route_id` = ?", [RouteRole.type, route.id])
+  .map(route_role => new Role({id: <Buffer>route_role.role_id}).validate());
+}
+
+function rolesFromUser(user: User): Promise<Role[]> {
+  return Database(env.mode).query<UserRole[]>("SELECT * FROM ?? WHERE `user_id` = ?", [UserRole.type, user.id])
+  .map(user_role => new Role({id: <Buffer>user_role.role_id}).validate());
+}
+
+function userFromJWT(token: string): Promise<User> {
+  return Promise.promisify(jwt.verify)(token, env.tokens.jwt)
+  .then(jwt_user => new User(jwt_user).validate());
+}
+
+function notFound(request: iApplicationRequest, response: iApplicationResponse) {
+  response.json(Response.json(404, "any", response.locals.time, {}));
 }
 
 const exported: iApplicationService = _.assign(
@@ -273,7 +326,7 @@ const exported: iApplicationService = _.assign(
     get methods() { return configuration.methods; },
     get published() { return configuration.published; },
     get application() { return configuration.application; },
-    isAdmin:      isAdmin,
+    hasRole:      hasRole,
     addSubdomain: addSubdomain,
     addNamespace: addNamespace,
     addPath:      addPath,

@@ -10,15 +10,15 @@ const definition: iTableDefinition = {
 };
 const options = {resource: {junction: true}};
 
-export default class RoleUser extends Resource.Constructor {
+export default class UserRole extends Resource.Constructor {
   
   public role_id: string | Buffer | Role;
   public user_id: string | Buffer | User;
   
-  constructor(initializer: tNonFnPropsOptional<RoleUser> = {}) {
+  constructor(initializer: tNonFnPropsOptional<UserRole> = {}) {
     super(initializer);
   }
   
 }
 
-Resource<eResourceType>(eResourceType.ROLE_USER, RoleUser, definition, options);
+Resource<eResourceType>(eResourceType.USER_ROLE, UserRole, definition, options);

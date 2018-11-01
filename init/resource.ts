@@ -6,8 +6,8 @@ import {env, init_pipe} from "../globals";
 import {ePromisePipeStagesInit} from "../interfaces/iPromisePipe";
 import * as PromisePipe from "../modules/PromisePipe";
 import Role from "../resources/Role";
-import RoleUser from "../resources/RoleUser";
 import User from "../resources/User";
+import UserRole from "../resources/UserRole";
 
 export enum ePromisePipeStagesInitResource {
   USER      = 0,
@@ -57,7 +57,7 @@ resource_pipe.add(ePromisePipeStagesInitResource.ROLE, () =>
 resource_pipe.add(ePromisePipeStagesInitResource.ROLE_USER, () =>
   Promise.map(_.values(env.roles), role =>
     Promise.map(_.values(env.users), user =>
-      new RoleUser({role_id: role.id, user_id: user.id})
+      new UserRole({role_id: role.id, user_id: user.id})
       .save({update_protected: true})
     )
   )
