@@ -12,7 +12,7 @@ class Test extends Resource.Constructor {
   
 }
 
-Resource<eResourceType>(eResourceType.ROLE_USER, Test, {}, {});
+Resource<eResourceType>(eResourceType.USER_ROLE, Test, {}, {});
 
 interface cResource {
   new(): iResource

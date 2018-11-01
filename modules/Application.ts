@@ -250,9 +250,11 @@ function respond(response: iApplicationResponse, content: iResponseJSON | iRespo
 function auth(request: iApplicationRequest, response: iApplicationResponse, next: express.NextFunction) {
   return new Promise((resolve, reject) => {
     const subdomain = request.vhost ? request.vhost.host.substring(0, request.vhost.host.length - configuration.domain.length - 1) : env.subdomains.default;
-    const namespace = request.baseUrl.replace(/^\/*/, "");
-    const path = request.route.path.replace(/\/+/g, "/");
+    const namespace = request.baseUrl.replace(/^\/+(?=[^\/\s])|(?<=.)\/+$/g, "");
+    const path = request.route.path.replace(/^\/+(?=[^\/\s])|(?<=.)\/+$/g, "");
     const method = _.toLower(request.method);
+    
+    console.log(subdomain, namespace, path, method);
     
     response.locals.time = Date.now();
     
