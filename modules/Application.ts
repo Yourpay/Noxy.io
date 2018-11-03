@@ -254,8 +254,6 @@ function auth(request: iApplicationRequest, response: iApplicationResponse, next
     const path = request.route.path.replace(/^\/+(?=[^\/\s])|(?<=.)\/+$/g, "");
     const method = _.toLower(request.method);
     
-    console.log(subdomain, namespace, path, method);
-    
     response.locals.time = Date.now();
     
     if (response.locals.route = _.get(store, [subdomain, "namespaces", namespace, "paths", path, "methods", method])) {

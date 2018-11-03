@@ -227,6 +227,7 @@ export interface tTableColumnNumeric<T> extends iTableColumnBase {
   type: T
   length: number
   unsigned?: boolean
+  zerofill?: boolean
 }
 
 export interface iTableColumnLength<T> extends iTableColumnBase {

@@ -18,4 +18,3 @@ Include("./init")
   if (err.stack) { console.log(err.stack); }
   process.exitCode = 1;
 });
-

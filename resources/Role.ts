@@ -7,7 +7,6 @@ import User from "./User";
 const definition: iTableDefinition = {
   name:         {type: "varchar", length: 32, required: true},
   key:          {type: "varchar", length: 32, required: true, protected: true, unique_index: "key"},
-  user_created: Resource.Table.toReferenceColumn<eResourceType>(eResourceType.USER),
   time_created: Resource.Table.toTimeColumn("time_created"),
   time_updated: Resource.Table.toTimeColumn(null, true)
 };

@@ -107,37 +107,38 @@ const Resource: cResource = class Resource implements iResource {
     const $this = (<typeof Resource>this.constructor);
     const definition = $this.table.definition;
     
-    return Promise.props(<Promise.ResolvableProps<Partial<this>>>_.reduce(this, (result, value, key) => {
-      /* Remove values not present in the table definition. */
-      if (_.isUndefined(definition[key]) || definition[key].hidden) { return result; }
-      /* Remove errorful values from the object */
-      if (_.isUndefined(value) || _.isNaN(value)) { return result; }
-      /* Null values does not need interpretation. */
-      if (_.isNull(value)) { return _.set(result, key, Promise.resolve(value)); }
-      
-      const column = definition[key];
-      
-      if (column.type === "binary") {
-        if (column.length === 16) {
-          if (deep && column.reference) {
-            return Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[key])
-            .catch(err => {
-              if (err.code !== 404) { return Promise.reject(Response.error(err.code, err.type, err)); }
-              const database = env.databases[$this.table.options.resource.database].database;
-              const reference = typeof column.reference === "string" ? column.reference : column.reference.table;
-              const resource = exported.list[_.join([database, reference], "::")];
-              return new resource({id: this[key]}).validate();
-            })
-            .tap(res => console.log(res))
-            .then(res => _.set(result, key, res.toObject(_.isBoolean(deep) ? deep : deep--)));
+    return Promise.props(
+      <Promise.ResolvableProps<Partial<this>>>_.reduce(this, (result, value, key) => {
+        /* Remove values not present in the table definition. */
+        if (_.isUndefined(definition[key]) || definition[key].hidden) { return result; }
+        /* Remove errorful values from the object */
+        if (_.isUndefined(value) || _.isNaN(value)) { return result; }
+        /* Null values does not need interpretation. */
+        if (_.isNull(value)) { return _.set(result, key, value); }
+        
+        const column = definition[key];
+        
+        if (column.type === "binary") {
+          if (column.length === 16) {
+            if (deep && column.reference) {
+              return _.set(result, key, Cache.getOne<Resource>(Cache.types.RESOURCE, $this.type, this[key])
+              .catch(err => {
+                if (err.code !== 404) { return Promise.reject(Response.error(err.code, err.type, err)); }
+                const database = env.databases[$this.table.options.resource.database].database;
+                const reference = typeof column.reference === "string" ? column.reference : column.reference.table;
+                const resource = exported.list[_.join([database, reference], "::")];
+                return new resource({id: this[key]}).validate();
+              })
+              .then(res => res.toObject(_.isBoolean(deep) ? deep : deep--)));
+            }
+            return _.set(result, key, uuidFromBuffer(this[key]));
           }
-          return _.set(result, key, uuidFromBuffer(this[key]));
+          return _.set(result, key, (<Buffer>this[key]).toString("hex"));
         }
-        return _.set(result, key, (<Buffer>this[key]).toString("hex"));
-      }
-      
-      return _.set(result, key, value);
-    }, <any>{}));
+        
+        return _.set(result, key, value);
+      }, <any>{})
+    );
     
     // return <any>Promise.props(
     //   _.transform(_.omitBy($this.table.definition, v => v.hidden),
