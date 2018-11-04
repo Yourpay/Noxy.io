@@ -12,3 +12,4 @@ ddl.sql
 package-lock.json
 /dist/
 /.idea/
+/desktop.ini

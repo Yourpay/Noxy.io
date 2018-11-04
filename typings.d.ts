@@ -1,19 +1,19 @@
 type ModeEnvironmental = "development" | "production";
 
-interface UserEnvironmental {
+interface iUserEnvironmental {
   id?: string
   username: string
   password?: string
   email: string
 }
 
-interface RoleEnvironmental {
+interface iRoleEnvironmental {
   id?: string
   name: string
   key: string
 }
 
-interface DatabaseEnvironmental {
+interface iDatabaseEnvironmental {
   user: string
   password: string
   database: "master" | string
@@ -35,8 +35,8 @@ interface DatabaseEnvironmental {
   ssl?: any
 }
 
-interface DatabaseMasterEnvironmental extends DatabaseEnvironmental {
-  slaves?: {[key: string]: DatabaseEnvironmental} | DatabaseEnvironmental[]
+export interface iDatabaseMasterEnvironmental extends iDatabaseEnvironmental {
+  slaves?: {[key: string]: iDatabaseEnvironmental} | iDatabaseEnvironmental[]
 }
 
 declare module "*env.json" {
@@ -50,11 +50,11 @@ declare module "*env.json" {
     }
     
     databases: {
-      [key: string]: DatabaseMasterEnvironmental
+      [key: string]: iDatabaseMasterEnvironmental
       
-      information_schema: DatabaseMasterEnvironmental
-      development: DatabaseMasterEnvironmental
-      production: DatabaseMasterEnvironmental
+      information_schema: iDatabaseMasterEnvironmental
+      development: iDatabaseMasterEnvironmental
+      production: iDatabaseMasterEnvironmental
     },
     
     ports: {
@@ -82,27 +82,19 @@ declare module "*env.json" {
     tokens: {[key: string]: string}
     
     users: {
-      [key: string]: UserEnvironmental
+      [key: string]: iUserEnvironmental
       
-      admin: UserEnvironmental
-      server: UserEnvironmental
+      admin: iUserEnvironmental
+      server: iUserEnvironmental
     }
     
     roles: {
-      [key: string]: RoleEnvironmental
+      [key: string]: iRoleEnvironmental
       
-      user: RoleEnvironmental
-      admin: RoleEnvironmental
+      user: iRoleEnvironmental
+      admin: iRoleEnvironmental
     }
     
   };
   export = value;
-}
-
-declare module _ {
-  interface LoDashStatic {
-    pack<T>(value: T | T[]): T[];
-    
-    unpack<T>(value: T[]): T | T[];
-  }
 }
